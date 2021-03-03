@@ -1,0 +1,6 @@
+{
+  "port": 4000,
+  "jwtSecret": "secret jwt key",
+  "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
+  "baseUrl": "http://localhost:4000"
+}

@@ -1,0 +1,102 @@
+.mainBlock {
+  display: flex;
+  flex-direction: row;
+}
+
+.newUserBlock {
+  flex: 1 200px;
+
+  min-height: 100vh;
+
+  padding: 2rem 2rem;
+}
+
+.usersTableBlock {
+  flex: 4 400px;
+
+  min-height: 100vh;
+
+  padding: 0 2rem;
+}
+
+.credsBlock {
+  display: flex;
+  flex-direction: row;
+}
+
+.newCredBlock {
+  flex: 1 200px;
+
+  padding: 0 0;
+}
+
+.credsTableBlock {
+  flex: 4 400px;
+
+  padding: 0 0 0 1rem;
+}
+
+.d {
+  padding: 0 2rem;
+}
+
+.secondBtn {
+  margin-left: 8px;
+}
+
+.cardTitle {
+  padding-bottom: 1rem;
+}
+
+.errMess {
+  color: red;
+}
+
+.usersTbl td {
+  overflow: hidden;
+}
+
+.expandCell {
+  width: 5%;
+  min-width: 80px;
+}
+
+.loginCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.passwordCell {
+  width: 10%;
+  min-width: 50px;
+}
+
+.nameCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.fatherNameCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.surnameCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.sectorCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.postCell {
+  width: 10%;
+  min-width: 100px;
+}
+
+.actionsCell {
+  width: 10%;
+  min-width: 160px;
+}

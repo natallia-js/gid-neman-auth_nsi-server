@@ -1,0 +1,19 @@
+.HelpBlock {
+  padding: 0 2rem;
+}
+
+.HelpTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 3rem;
+}
+
+h5 {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.helpData {
+  font-size: 1rem;
+  padding-left: 8rem;
+}
