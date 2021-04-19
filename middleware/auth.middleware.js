@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('config');
 
-const CONFIG_JWT_SECRET_PARAM_NAME = 'jwtSecret';
+const { CONFIG_JWT_SECRET_PARAM_NAME } = require('../constants');
+const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
 
 
 /**
@@ -35,7 +36,7 @@ module.exports = (req, res, next) => {
     // Function 'verify()' acts synchronously if a callback is not supplied.
     // Returns the payload (полезные данные: например, id пользователя, его роль и т.д.)
     // decoded if the signature is valid. If not, it will throw an error.
-    const decoded = jwt.verify(token, config.get(CONFIG_JWT_SECRET_PARAM_NAME));
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
 
     // Переходим к следующему обработчику

@@ -29,9 +29,6 @@ export const ModalBtn = (props) => {
           confirmBtnText,
           confirmCallback } = props;
 
-  const confirmBtnRef = React.createRef();
-
-
   useEffect(() => {
     const options = {
       inDuration: 250,    // скорость появления модального окна
@@ -46,9 +43,7 @@ export const ModalBtn = (props) => {
     const elem = document.getElementById(id);
     M.Modal.init(elem, options);
 
-    confirmBtnRef.current.focus();
-
-  }, [confirmBtnRef, id]);
+  }, [id]);
 
 
   return (
@@ -69,7 +64,6 @@ export const ModalBtn = (props) => {
         <div className="modal-footer">
           <a href="#!"
              className={`${cancelBtnClassNames} modal-close`}
-             ref={confirmBtnRef}
           >
             {cancelBtnText}
           </a>

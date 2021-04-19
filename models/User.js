@@ -13,10 +13,12 @@ const schema = new Schema({
   surname: { type: String, required: true },
   // отчество
   fatherName: { type: String, required: false },
-  // участок работы
-  sector: { type: String, required: true },
   // должность
   post: { type: String, required: true },
+  // служба
+  service: { type: String, required: true },
+  // участок работы
+  sector: { type: String, required: true },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId]
 

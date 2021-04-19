@@ -3,32 +3,177 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 const auth = require('../middleware/auth.middleware');
-const { validationResult, check, body } = require('express-validator');
+const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const {
+  registerValidationRules,
+  addRoleValidationRules,
+  loginValidationRules,
+  delUserValidationRules,
+  delRoleValidationRules,
+  modUserValidationRules,
+} = require('../validators/auth.validator');
+const validate = require('../validators/validate');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const App = require('../models/App');
 
 const router = Router();
 
-const CONFIG_JWT_SECRET_PARAM_NAME = 'jwtSecret';
+const {
+  CONFIG_JWT_SECRET_PARAM_NAME,
+
+  OK,
+  ERR,
+  UNKNOWN_ERR,
+  UNKNOWN_ERR_MESS,
+
+  ALL_PERMISSIONS,
+
+  GidNemanAuthNSIUtil_ShortTitle,
+  GidNemanAuthNSIUtil_Title,
+
+  MAIN_ADMIN_ROLE_NAME,
+  MAIN_ADMIN_ROLE_DESCRIPTION,
+  MAIN_ADMIN_LOGIN,
+  MAIN_ADMIN_PASSWORD,
+  MAIN_ADMIN_NAME,
+  MAIN_ADMIN_SURNAME,
+  MAIN_ADMIN_POST,
+
+  GET_ALL_USERS_ACTION,
+  REGISTER_USER_ACTION,
+  MOD_USER_ACTION,
+
+  Get_GidNemanAuthNSIUtil_AllCredentials,
+} = require('../constants');
+
+const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
+
+
+/**
+ * Обработка запроса на регистрацию главного администратора ГИД Неман.
+ *
+ * Данный запрос доступен каждому.
+ *
+ * Если главный администратор ГИД Неман ранее был зарегистрирован, запрос вернет ошибку.
+ */
+router.put(
+  '/registerSuperAdmin',
+  async (_req, res) => {
+    try {
+      // Чтобы созданный администратор мог работать, необходимо определить для него
+      // полномочия в утилите аутентификации и НСИ ГИД Неман.
+
+      // Ищем в БД приложение, shortTitle которого совпадает с GidNemanAuthNSIUtil
+      let authApp = await App.findOne({ shortTitle: GidNemanAuthNSIUtil_ShortTitle });
+
+      // Если не находим, то создаем
+      if (!authApp) {
+        authApp = new App({
+          shortTitle: GidNemanAuthNSIUtil_ShortTitle,
+          title: GidNemanAuthNSIUtil_Title,
+          credentials: Get_GidNemanAuthNSIUtil_AllCredentials().map(el => { return { englAbbreviation: el, description: '' } }),
+        });
+        await authApp.save();
+      }
+
+      // Проверяем наличие роли главного администратора ГИД Неман.
+      // Если нет - создаем, наделяя ее созданными выше полномочиями в GidNemanAuthNSIUtil.
+      let adminRole = await Role.findOne({ englAbbreviation: MAIN_ADMIN_ROLE_NAME });
+      if (!adminRole) {
+        adminRole = new Role({
+          englAbbreviation: MAIN_ADMIN_ROLE_NAME,
+          description: MAIN_ADMIN_ROLE_DESCRIPTION,
+          subAdminCanUse: false,
+          apps: [
+            {
+              appId: authApp._id,
+              creds: authApp.credentials.map(cred => cred._id)
+            }
+          ],
+        });
+        await adminRole.save();
+      }
+
+      // Ищем пользователя, логин которого совпадает с default-логином главного администратора ГИД Неман.
+      // Если найдем, то повторно такого же пользователя создавать не будем.
+      const candidate = await User.findOne({ login: MAIN_ADMIN_LOGIN });
+
+      if (candidate) {
+        return res.status(ERR).json({ message: 'Пользователь "Главный администратор ГИД Неман по умолчанию" уже существует' });
+      }
+
+      // Получаем хеш default-пароля
+      const hashedPassword = await bcrypt.hash(MAIN_ADMIN_PASSWORD, 12);
+
+      // Создаем в БД нового пользователя - default-администратора ГИД Неман
+      const user = new User({
+        login: MAIN_ADMIN_LOGIN,
+        password: hashedPassword,
+        name: MAIN_ADMIN_NAME,
+        fatherName: '',
+        surname: MAIN_ADMIN_SURNAME,
+        post: MAIN_ADMIN_POST,
+        service: ALL_PERMISSIONS,
+        sector: ALL_PERMISSIONS,
+        roles: [adminRole._id],
+      });
+      await user.save();
+
+      res.status(OK).json({ message: 'Регистрация прошла успешно',
+                             userId: user._id });
+
+    } catch (e) {
+      console.log(e.message);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
+  }
+);
 
 
 /**
  * Обрабатывает запрос на получение списка всех пользователей.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман получит полный список всех пользователей,
+ * иное же лицо получит полный список тех пользователей, которые закреплены за его службой.
  */
-router.get('/data',
-           auth,
-           async (_req_, res) => {
-  try {
-    const data = await User.find();
+router.get(
+  '/data',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_USERS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const serviceName = req.user.service;
 
-    res.status(201).json(data);
+      let data;
+      if (serviceName !== ALL_PERMISSIONS) {
+        // Ищем пользователей, принадлежащих заданной службе
+        data = await User.find({ service: serviceName });
+      } else {
+        // Извлекаем информацию обо всех пользователях
+        data = await User.find();
+      }
 
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(OK).json(data);
+
+    } catch (e) {
+      console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
   }
-});
+);
 
 
 /**
@@ -38,22 +183,20 @@ router.get('/data',
  */
 const checkRoleExists = async (roleId) => {
   if (!roleId) {
-    return false;
+    return null;
   }
-
-  const candidate = await Role.findOne({ _id: roleId });
-
-  if (!candidate) {
-    return false;
-  }
-
-  return true;
+  return await Role.findOne({ _id: roleId });
 }
 
 
 /**
- * Обработка запроса на регистрацию нового пользователя
- * (тот, кто регистрирует, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на регистрацию нового пользователя.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман может зарегистрировать любого пользователя,
+ * а иное лицо сможет зарегистрировать пользователя лишь в рамках своей службы.
+ *
  * Параметры тела запроса:
  *  _id - идентификатор пользователя (может отсутствовать, в этом случае будет сгенерирован автоматически),
  * login - логин пользователя (обязателен),
@@ -68,70 +211,44 @@ const checkRoleExists = async (roleId) => {
  */
 router.post(
   '/register',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('login')
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина логина 1 символ')
-      .bail() // stops running validations if any of the previous ones have failed
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В логине допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('password')
-      .isLength({ min: 6 })
-      .withMessage('Минимальная длина пароля 6 символов')
-      .bail()
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В пароле допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('name')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина имени 1 символ'),
-    check('fatherName')
-      .if(body('fatherName').exists())
-      .trim(),
-    check('surname')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина фамилии 1 символ'),
-    check('sector')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка 1 символ'),
-    check('post')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина должности 1 символ'),
-    check('roles')
-      .isArray()
-      .withMessage('Список ролей пользователя должен быть массивом')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [REGISTER_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  registerValidationRules,
+  validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе регистрационные данные
+    const { _id, login, password, name, fatherName, surname, post, service, sector, roles } = req.body;
+
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
+    if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== service)) {
+      return res.status(ERR).json({ message: `У Вас нет полномочий на регистрацию пользователя в службе ${service}` });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем регистрационных данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при регистрации'
-        })
-      }
-
-      // Считываем находящиеся в пользовательском запросе регистрационные данные
-      const { _id, login, password, name, fatherName, surname, sector, post, roles } = req.body;
-
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
       const candidate = await User.findOne({ login });
 
       // Если находим, то процесс регистрации продолжать не можем
       if (candidate) {
-        return res.status(400).json({ message: 'Пользователь с таким логином уже существует' });
+        return res.status(ERR).json({ message: 'Пользователь с таким логином уже существует' });
       }
 
       for (let role of roles) {
         if (!await checkRoleExists(role)) {
-          return res.status(400).json({ message: 'Для пользователя определены несуществующие роли' });
+          return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
         }
       }
 
@@ -141,55 +258,62 @@ router.post(
       // Создаем в БД нового пользователя
       let user;
       if (_id) {
-        user = new User({ _id, login, password: hashedPassword, name, fatherName, surname, sector, post, roles });
+        user = new User({ _id, login, password: hashedPassword, name, fatherName, surname, post, service, sector, roles });
       } else {
-        user = new User({ login, password: hashedPassword, name, fatherName, surname, sector, post, roles });
+        user = new User({ login, password: hashedPassword, name, fatherName, surname, post, service, sector, roles });
       }
       await user.save();
 
-      res.status(201).json({ message: 'Регистрация прошла успешно',
-                             hashedPassword,
-                             userId: user._id });
+      res.status(OK).json({
+        message: 'Регистрация прошла успешно',
+        hashedPassword,
+        userId: user._id
+      });
 
     } catch (e) {
       console.log(e.message);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на добавление новой роли пользователя
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на добавление новой роли пользователя.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман может добавить любую роль любому пользователю,
+ * а иное лицо сможет добавить роль пользователю лишь в рамках своей службы:
+ * пользователь должен принадлежать данной службе и роль должна быть доступна добавляющему
+ * для добавления ее пользователю.
+ *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
  * roleId - идентификатор роли (обязателен)
  */
 router.post(
   '/addRole',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('userId')
-      .exists()
-      .withMessage('Не указан id пользователя'),
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id роли')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  addRoleValidationRules,
+  validate,
   async (req, res) => {
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
-      // Проводим проверку корректности переданных пользователем данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при добавлении роли пользователя'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { userId, roleId } = req.body;
 
@@ -198,19 +322,28 @@ router.post(
 
       // Если не находим, то процесс добавления роли продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
+      }
+
+      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли пользователю в службе ${candidate.service}` });
       }
 
       // Среди ролей пользователя ищем такую, id которой совпадает с переданным пользователем
       for (let role of candidate.roles) {
         if (String(role) === String(roleId)) {
-          return res.status(400).json({ message: 'Данная роль уже определена для данного пользователя' });
+          return res.status(ERR).json({ message: 'Данная роль уже определена для данного пользователя' });
         }
       }
 
       // Проверяю роль на присутствие в БД
-      if (!await checkRoleExists(roleId)) {
-        return res.status(400).json({ message: 'Роль не существует в БД' });
+      const role = await checkRoleExists(roleId);
+      if (!role) {
+        return res.status(ERR).json({ message: 'Роль не существует в базе данных' });
+      }
+
+      if ((serviceName !== ALL_PERMISSIONS) && !role.subAdminCanUse) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли ${englAbbreviation} пользователю` });
       }
 
       // Сохраняем информацию о новой роли в БД
@@ -218,11 +351,11 @@ router.post(
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
@@ -230,83 +363,63 @@ router.post(
 
 /**
  * Обработка запроса на вход в систему.
+ *
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
  * password - пароль пользователя (обязателен),
- *
- *  --- delete ---
- * role - роль пользователя (обязательна)
- *
  */
 router.post(
   '/login',
-  [
-    check('login', 'Введите логин').exists(),
-    check('password', 'Введите пароль').exists(),
-    /*check('role', 'Введите роль').exists()*/
-  ],
+  // проверка параметров запроса
+  loginValidationRules,
+  validate,
   async (req, res) => {
     try {
-      // Проводим проверку корректности переданных пользователем аутентификационных данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при входе в систему'
-        })
-      }
-
-      // Считываем находящиеся в пользовательском запросе login, password                 , role
-      const { login, password /*, role*/ } = req.body;
+      // Считываем находящиеся в пользовательском запросе login, password
+      const { login, password } = req.body;
 
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
       const user = await User.findOne({ login });
 
       // Если не находим, то процесс входа в систему продолжать не можем
       if (!user) {
-        return res.status(400).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-/*
-      // Проверяем, есть ли в списке ролей, хранящихся в БД для данного пользователя,
-      // указанная им роль
-      let foundRole;
-
-      if (user.roles && user.roles.length) {
-        foundRole = await Role.findOne({ englAbbreviation: role });
-
-        if (!foundRole) {
-          return res.status(400).json({ message: 'Указанная роль не найдена' });
-        }
-
-        if (!foundRole.apps || !foundRole.apps.length) {
-          return res.status(400).json({ message: 'Для данной роли не определено ни одного приложения' });
-        }
-
-        if (!user.roles.includes(foundRole.id)) {
-          return res.status(400).json({ message: 'За данным пользователем не закреплена указанная роль' });
-        }
-      } else {
-        return res.status(400).json({ message: 'Для пользователя не определена ни одна роль в системе' });
-      }
-*/
       // Проверяем переданный пользователем пароль
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
-        return res.status(400).json({ message: 'Неверный пароль, попробуйте снова' });
+        return res.status(ERR).json({ message: 'Неверный пароль, попробуйте снова' });
       }
+
+      // Сформируем список аббревиатур ролей пользователя.
+      // Данный список передадим пользователю.
+      const rolesAbbreviations = [];
 
       // Сформируем список кратких наименований приложений с соответствующими краткими
       // наименованиями полномочий пользователя в рамках данных приложений.
-      // Данный список передадим пользователю
+      // Данный список передадим пользователю.
       const appsCredentials = [];
+
+      // Вспомогательная функция, позволяющая добавить в rolesAbbreviations аббревиатуру роли.
+      // При добавлении информации функция избегает дублирования.
+      function addUserRole(userRole) {
+        let foundRole = false;
+        for (let i = 0; i < rolesAbbreviations.length; i += 1) {
+          if (rolesAbbreviations[i] === userRole) {
+            foundRole = true;
+            break;
+          }
+        }
+        if (!foundRole) {
+          rolesAbbreviations.push(userRole);
+        }
+      }
 
       // Вспомогательная функция, позволяющая определить, есть ли среди элементов
       // заданного массива полномочий такой, id которого совпадает с заданным id.
-      // Если есть, функция возвращает аббревиатуру соответствующего полномочия
+      // Если есть, функция возвращает аббревиатуру соответствующего полномочия.
       function credExists(credId, appCreds) {
         if (!credId || !appCreds) {
           return null;
@@ -360,6 +473,9 @@ router.post(
             continue;
           }
 
+          // Формируем массив аббревиатур ролей пользователя
+          addUserRole(foundRole.englAbbreviation);
+
           // Для каждого приложения, соответствующего данной роли, ...
           for (let app of foundRole.apps) {
 
@@ -394,98 +510,134 @@ router.post(
 
       const token = jwt.sign(
         {
-          userId: user.id,
+          userId: user._id,
+          service: user.service,
+          roles: rolesAbbreviations,
           credentials: appsCredentials,
         },
-        config.get(CONFIG_JWT_SECRET_PARAM_NAME),
-        { expiresIn: '1h' }
+        jwtSecret,
+        //{ expiresIn: '1h' }
       );
 
-      res.status(201).json({ token,
-                             userId: user.id,
-                             userInfo: {
-                               name: user.name,
-                               fatherName: user.fatherName,
-                               surname: user.surname,
-                               sector: user.sector,
-                               post: user.post,
-                             },
-                             credentials: appsCredentials });
+      res.status(OK).json({
+        token,
+        userId: user._id,
+        userInfo: {
+          name: user.name,
+          fatherName: user.fatherName,
+          surname: user.surname,
+          service: user.service,
+          sector: user.sector,
+          post: user.post,
+        },
+        roles: rolesAbbreviations,
+        credentials: appsCredentials
+      });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на удаление пользователя
- * (тот, кто удаляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на удаление пользователя.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман может удалить любого пользователя,
+ * а иное лицо может удалить лишь того пользователя, который закреплен за его службой.
+ *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен)
  */
 router.post(
   '/del',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('userId')
-      .exists()
-      .withMessage('Не указан id удаляемого пользователя'),
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  delUserValidationRules,
+  validate,
   async (req, res) => {
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { userId } = req.body;
 
+      const candidate = await User.findOne({ _id: userId });
+
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
+      }
+
+      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление пользователя в службе ${candidate.service}` });
+      }
+
       // Удаляем в БД запись
       const delRes = await User.deleteOne({ _id: userId });
       if (!delRes.deletedCount) {
-        return res.status(400).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-      res.status(201).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на удаление роли пользователя
- * (тот, кто удаляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на удаление роли пользователя.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман может удалить роль любого пользователя,
+ * а иное лицо может удалить лишь роль того пользователя, который закреплен за его службой.
+ *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
  * roleId - идентификатор роли (обязателен)
  */
 router.post(
   '/delRole',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('userId')
-      .exists()
-      .withMessage('Не указан id пользователя'),
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id роли')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  delRoleValidationRules,
+  validate,
   async (req, res) => {
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
-      // Проводим проверку корректности переданных пользователем данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при удалении роли пользователя'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { userId, roleId } = req.body;
 
@@ -494,7 +646,11 @@ router.post(
 
       // Если не находим, то процесс удаления роли продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
+      }
+
+      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление роли пользователя в службе ${candidate.service}` });
       }
 
       // Среди ролей пользователя ищем такую, id которой совпадает с переданным пользователем
@@ -506,7 +662,7 @@ router.post(
         }
       }
       if (!found) {
-        return res.status(400).json({ message: 'Указанная роль не определена для данного пользователя' });
+        return res.status(ERR).json({ message: 'Указанная роль не определена для данного пользователя' });
       }
 
       // Сохраняем информацию в БД
@@ -514,19 +670,24 @@ router.post(
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на редактирование информации о пользователе
- * (тот, кто редактирует, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на редактирование информации о пользователе.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
+ * а также лицу, которое также наделено данным полномочием.
+ * При этом главный администратор ГИД Неман может редактировать информацию о любои пользователе,
+ * а иное лицо может отредактировать информацию лишь о том пользователе, который закреплен за его службой.
+ *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
  * login - логин пользователя (не обязателен),
@@ -534,81 +695,50 @@ router.post(
  * name - имя пользователя (не обязательно),
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (не обязательна),
- * sector - наименование участка (не обязательно),
  * post - наименование должности (не обязательно),
+ * service - наименование службы (не обязательно),
+ * sector - наименование участка (не обязательно),
  * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли)
  */
 router.post(
   '/mod',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('userId')
-      .exists()
-      .withMessage('Не указан id пользователя'),
-    check('login')
-      .if(body('login').exists())
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина логина 1 символ')
-      .bail() // stops running validations if any of the previous ones have failed
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В логине допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('password')
-      .if(body('password').exists())
-      .isLength({ min: 6 })
-      .withMessage('Минимальная длина пароля 6 символов')
-      .bail()
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В пароле допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('name')
-      .if(body('name').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина имени 1 символ'),
-    check('fatherName')
-      .if(body('fatherName').exists())
-      .trim(),
-    check('surname')
-      .if(body('surname').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина фамилии 1 символ'),
-    check('sector')
-      .if(body('sector').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка 1 символ'),
-    check('post')
-      .if(body('post').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина должности 1 символ'),
-    check('roles')
-      .if(body('roles').exists())
-      .isArray()
-      .withMessage('Список ролей пользователя должен быть массивом')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  modUserValidationRules,
+  validate,
   async (req, res) => {
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
-      // Проводим проверку корректности переданных пользователем новых данных пользователя
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные новые данные пользователя'
-        })
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
-      const { userId, login, password, name, fatherName, surname, sector, post, roles } = req.body;
+      const { userId, login, password, name, fatherName, surname, post, service, sector, roles } = req.body;
+
+      if ((serviceName !== ALL_PERMISSIONS) && service && (service !== serviceName)) {
+        return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
+      }
 
       // Ищем в БД пользователя, id которого совпадает с переданным
       const candidate = await User.findById(userId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Указанный пользователь не существует' });
+        return res.status(ERR).json({ message: 'Указанный пользователь не существует в базе данных' });
+      }
+
+      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование информации о пользователе в службе ${candidate.service}` });
       }
 
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
@@ -620,13 +750,13 @@ router.post(
 
       // Если находим, то смотрим, тот ли это самый пользователь. Если нет, продолжать не можем.
       if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
-        return res.status(400).json({ message: 'Пользователь с таким логином уже существует' });
+        return res.status(ERR).json({ message: 'Пользователь с таким логином уже существует' });
       }
 
       if (roles) {
         for (let role of roles) {
           if (!await checkRoleExists(role)) {
-            return res.status(400).json({ message: 'Для пользователя определены несуществующие роли' });
+            return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
           }
         }
       }
@@ -651,11 +781,14 @@ router.post(
       if (surname) {
         candidate.surname = surname;
       }
-      if (sector) {
-        candidate.sector = sector;
-      }
       if (post) {
         candidate.post = post;
+      }
+      if (service) {
+        candidate.service = service;
+      }
+      if (sector) {
+        candidate.sector = sector;
       }
       if (roles) {
         candidate.roles = roles;
@@ -663,129 +796,15 @@ router.post(
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно изменена',
+      res.status(OK).json({ message: 'Информация успешно изменена',
                              hashedPassword: candidate.password });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
-
-/**
- * Обработка запроса на регистрацию нового пользователя
- */
-/*router.post(
-  '/register',
-  [
-    check('email', 'Некорректный email').isEmail(),
-    check('password', 'Минимальная длина пароля 6 символов').isLength({ min: 6 })
-  ],
-  async (req, res) => {
-    try {
-      // Проводим проверку корректности переданных пользователем email и password
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Некорректные данные при регистрации'
-        })
-      }
-
-      // Считываем находящиеся в пользовательском запросе email и password
-      const { email, password } = req.body;
-
-      // Ищем в БД пользователя, email которого совпадает с переданным пользователем
-      const candidate = await User.findOne({ email });
-
-      // Если находим, то процесс регистрации продолжать не можем
-      if (candidate) {
-        return res.status(400).json({ message: 'Такой пользователь уже существует' });
-      }
-
-      // Получаем хеш заданного пользователем пароля
-      const hashedPassword = await bcrypt.hash(password, 12);
-
-      // Создаем в БД нового пользователя
-      const user = new User({ email, password: hashedPassword });
-      await user.save();
-
-      res.status(201).json({ message: 'Регистрация прошла успешно' });
-
-    } catch (e) {
-      console.log(e.message);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
-    }
-  }
-);
-*/
-
-
-/**
- * Обработка запроса на вход пользователя в систему
- */
-/*router.post(
-  '/login',
-  [
-    check('email', 'Введите корректный email').normalizeEmail().isEmail(),
-    check('password', 'Введите пароль').exists()
-  ],
-  async (req, res) => {
-    try {
-      // Проводим проверку корректности переданных пользователем email и password
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Некорректные данные при входе в систему'
-        })
-      }
-
-      // Считываем находящиеся в пользовательском запросе email и password
-      const { email, password } = req.body;
-
-      // Ищем в БД пользователя, email которого совпадает с переданным пользователем
-      const user = await User.findOne({ email });
-
-      // Если не находим, то процесс входа в систему продолжать не можем
-      if (!user) {
-        return res.status(400).json({ message: 'Пользователь не найден' });
-      }
-
-      // Проверяем переданный пользователем пароль
-      const isMatch = await bcrypt.compare(password, user.password);
-
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Неверный пароль, попробуйте снова' });
-      }
-
-      // Создаем JWT-токен (as string) для успешно вошедшего в систему пользователя.
-      // JWT состоит из трех частей: заголовок (header - JSON-объект, содержит информацию о том,
-      // как должна вычисляться JWT подпись), полезные данные (payload) и
-      // подпись (signature - получается так: алгоритм base64url кодирует header и payload, соединяет
-      // закодированные строки через точку, затем полученная строка хешируется алгоритмом, заданном в
-      // header на основе секретного ключа).
-      // Здесь производится synchronous sign with default (HMAC SHA256).
-      const token = jwt.sign(
-        { userId: user.id },
-        config.get(CONFIG_JWT_SECRET_PARAM_NAME),
-        { expiresIn: '1h' }
-      );
-
-      res.json({ token, userId: user.id });
-
-    } catch (e) {
-      console.log(e.message);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
-    }
-  }
-);
-*/
 
 module.exports = router;

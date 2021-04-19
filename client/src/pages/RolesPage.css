@@ -73,6 +73,11 @@
   min-width: 200px;
 }
 
+.subAdminCanUseCell {
+  width: 10%;
+  min-width: 50px;
+}
+
 .actionsCell {
   width: 10%;
   min-width: 160px;

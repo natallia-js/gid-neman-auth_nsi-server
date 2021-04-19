@@ -1,48 +1,125 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
+const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const Role = require('../models/Role');
 const App = require('../models/App');
 const User = require('../models/User');
-const { validationResult, check, body } = require('express-validator');
+const {
+  addRoleValidationRules,
+  addCredValidationRules,
+  changeCredsValidationRules,
+  delRoleValidationRules,
+  modRoleValidationRules,
+} = require('../validators/roles.validator');
+const validate = require('../validators/validate');
 
 const router = Router();
+
+const {
+  OK,
+  ERR,
+  UNKNOWN_ERR,
+  UNKNOWN_ERR_MESS,
+
+  ALL_PERMISSIONS,
+
+  MOD_APP_CREDENTIALS_ACTION,
+  GET_ALL_ROLES_ACTION,
+  MOD_ROLE_ACTION,
+} = require('../constants');
 
 
 /**
  * Обрабатывает запрос на получение списка всех ролей.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман и администратору нижнего уровня,
+ * которые наделены соответствующим полномочием.
+ * При этом главный администратор ГИД Неман получит полный список всех ролей,
+ * а администратор нижнего уровня получит полный список тех ролей, которые ему разрешил
+ * использовать главный администратор ГИД Неман.
  */
-router.get('/data',
-           auth,
-           async (req, res) => {
-  try {
-    const data = await Role.find();
+router.get(
+  '/data',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ROLES_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const serviceName = req.user.service;
 
-    res.status(201).json(data);
+      let data;
+      if (serviceName !== ALL_PERMISSIONS) {
+        // Ищем роли, доступные лишь для администратора нижнего уровня
+        data = await Role.find({ subAdminCanUse: true });
+      } else {
+        // Извлекаем информацию обо всех ролях
+        data = await Role.find();
+      }
 
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(OK).json(data);
+
+    } catch (e) {
+      console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
   }
-});
+);
 
 
 /**
  * Обрабатывает запрос на получение списка аббревиатур всех ролей с их идентификаторами.
+ *
+ * Данный запрос доступен главному администратору ГИД Неман и администратору нижнего уровня,
+ * которые наделены соответствующим полномочием.
+ * При этом главный администратор ГИД Неман получит полный список аббревиатур ролей,
+ * а администратор нижнего уровня получит полный список аббревиатур тех ролей, которые ему разрешил
+ * использовать главный администратор ГИД Неман.
  */
-router.get('/abbrs',
-           auth,
-           async (req, res) => {
-  try {
-    const data = await Role.find({}, { _id: 1, englAbbreviation: 1 });
+router.get(
+  '/abbrs',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ROLES_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const serviceName = req.user.service;
 
-    res.status(201).json(data);
+      let data;
+      if (serviceName !== ALL_PERMISSIONS) {
+        // Ищем роли, доступные лишь для администратора нижнего уровня
+        data = await Role.find({ subAdminCanUse: true }, { _id: 1, englAbbreviation: 1 });
+      } else {
+        // Извлекаем информацию обо всех ролях
+        data = await Role.find({}, { _id: 1, englAbbreviation: 1 });
+      }
 
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(OK).json(data);
+
+    } catch (e) {
+      console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
   }
-});
+);
 
 
 /**
@@ -87,12 +164,16 @@ const checkAppWithCredsExists = async (app) => {
 
 
 /**
- * Обработка запроса на добавление новой роли
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на добавление новой роли.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
- *  _id - идентификатор роли (может отсутствовать, в этом случае будет сгенерирован автоматически),
+ * _id - идентификатор роли (может отсутствовать, в этом случае будет сгенерирован автоматически),
  * englAbbreviation - аббревиатура роли (обязательна),
  * description - описание роли (не обязательно),
+ * subAdminCanUse - true / false (возможность использования роли администратором нижнего уровня) - не обязательно,
+ *                  по умолчанию true,
  * apps - массив приложений (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
  *        каждый элемент массива - объект с параметрами:
  *        _id - идентификатор объекта (может отсутствовать, в этом случае будет сгенерирован автоматически),
@@ -101,75 +182,71 @@ const checkAppWithCredsExists = async (app) => {
  */
 router.post(
   '/add',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('englAbbreviation')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры роли 1 символ')
-      .bail() // stops running validations if any of the previous ones have failed
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В аббревиатуре роли допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('description')
-      .if(body('description').exists())
-      .trim(),
-    check('apps')
-      .isArray()
-      .withMessage('Список приложений роли должен быть массивом')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_ROLE_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  addRoleValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Добавить новую роль для приложений ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных новой роли
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при добавлении роли'
-        })
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
-      const { _id, englAbbreviation, description, apps } = req.body;
+      const { _id, englAbbreviation, description, subAdminCanUse, apps } = req.body;
 
       // Ищем в БД роль, englAbbreviation которой совпадает с переданной пользователем
       const candidate = await Role.findOne({ englAbbreviation });
 
       // Если находим, то процесс создания продолжать не можем
       if (candidate) {
-        return res.status(400).json({ message: 'Роль с такой аббревиатурой уже существует' });
+        return res.status(ERR).json({ message: 'Роль с такой аббревиатурой уже существует' });
       }
 
       // Проверяю приложения с полномочиями на присутствие в БД
       for (let app of apps) {
         if (!await checkAppWithCredsExists(app)) {
-          return res.status(400).json({ message: 'Для роли определены несуществующие параметры приложений' });
+          return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры приложений' });
         }
       }
 
       // Создаем в БД запись с данными о новой роли
       let role;
       if (_id) {
-        role = new Role({ _id, englAbbreviation, description, apps });
+        role = new Role({ _id, englAbbreviation, description, subAdminCanUse: !!subAdminCanUse, apps });
       } else {
-        role = new Role({ englAbbreviation, description, apps });
+        role = new Role({ englAbbreviation, description, subAdminCanUse: !!subAdminCanUse, apps });
       }
       await role.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена', roleId: role._id });
+      res.status(OK).json({ message: 'Информация успешно сохранена', roleId: role._id });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на добавление нового полномочия в приложении
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на добавление в роль нового полномочия в приложении.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
  * appId - идентификатор приложения (обязателен),
@@ -177,31 +254,29 @@ router.post(
  */
 router.post(
   '/addCred',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id роли'),
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('credId')
-      .exists()
-      .withMessage('Не указан id полномочия')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_ROLE_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  addCredValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Добавить к роли новое полномочие в приложении ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при добавлении полномочия приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { roleId, appId, credId } = req.body;
 
@@ -210,12 +285,12 @@ router.post(
 
       // Если не находим, то процесс добавления полномочия продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Роль не найдена' });
+        return res.status(ERR).json({ message: 'Роль не найдена' });
       }
 
       // Проверяю приложение с полномочием на присутствие в БД
       if (!await checkAppWithCredsExists({ appId: appId, creds: [credId] })) {
-        return res.status(400).json({ message: 'Приложение и/или полномочие не существует в БД' });
+        return res.status(ERR).json({ message: 'Приложение и/или полномочие не существует в базе данных' });
       }
 
       // Проверяем, связано ли указанное приложение с указанной ролью
@@ -226,7 +301,7 @@ router.post(
         }
         // Проверяем, связано ли указанное полномочие приложения с указанной ролью
         if (appEl.creds.includes(credId)) {
-          return res.status(400).json({ message: 'Данное полномочие приложения уже определено для данной роли' });
+          return res.status(ERR).json({ message: 'Данное полномочие приложения уже определено для данной роли' });
         } else {
           appEl.creds.push(credId);
         }
@@ -237,19 +312,21 @@ router.post(
       // Сохраняем в БД
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на изменение списка полномочий в приложении
- * (тот, кто изменяет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на изменение списка полномочий в приложении.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
  * appId - идентификатор приложения (обязателен),
@@ -258,34 +335,29 @@ router.post(
  */
 router.post(
   '/changeCreds',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id роли'),
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('newCredIds')
-      .exists()
-      .withMessage('Не указан массив id полномочий')
-      .bail()
-      .isArray()
-      .withMessage('Список id полномочий должен быть массивом')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_CREDENTIALS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  changeCredsValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Изменить список полномочий в приложении ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при изменении списка полномочий приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { roleId, appId, newCredIds } = req.body;
 
@@ -294,12 +366,12 @@ router.post(
 
       // Если не находим, то процесс изменения списка полномочий продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Роль не найдена' });
+        return res.status(ERR).json({ message: 'Роль не найдена' });
       }
 
       // Проверяю приложение с полномочиями на присутствие в БД
       if (!await checkAppWithCredsExists({ appId: appId, creds: newCredIds })) {
-        return res.status(400).json({ message: 'Приложение и/или полномочие не существует в БД' });
+        return res.status(ERR).json({ message: 'Приложение и/или полномочие не существует в базе данных' });
       }
 
       const appEl = candidate.apps.find(app => String(app.appId) === String(appId));
@@ -313,31 +385,47 @@ router.post(
       // Сохраняем в БД
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на удаление роли
- * (тот, кто удаляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на удаление роли.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен)
  */
 router.post(
   '/del',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id удаляемой роли'),
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_ROLE_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  delRoleValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Удалить роль в приложениях ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -368,17 +456,17 @@ router.post(
       } else {
         await session.abortTransaction();
 
-        return res.status(400).json({ message: errMess });
+        return res.status(ERR).json({ message: errMess });
       }
 
-      res.status(201).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
       console.log(e);
 
       await session.abortTransaction();
 
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
 
     } finally {
       session.endSession();
@@ -388,12 +476,15 @@ router.post(
 
 
 /**
- * Обработка запроса на редактирование роли
- * (тот, кто редактирует, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на редактирование роли.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
  * englAbbreviation - аббревиатура роли (не обязательна),
  * description - описание роли (не обязательно),
+ * subAdminCanUse - true / false (возможность использования роли администратором нижнего уровня) - не обязательно,
  * apps - массив приложений (не обязателен; если задан и не пуст, то каждый элемент массива - объект с параметрами:
  *        _id - идентификатор объекта (может отсутствовать, в этом случае будет сгенерирован автоматически),
  *        appId - id приложения (обязателен),
@@ -401,49 +492,38 @@ router.post(
  */
 router.post(
   '/mod',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('roleId')
-      .exists()
-      .withMessage('Не указан id роли'),
-    check('englAbbreviation')
-      .if(body('englAbbreviation').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры роли 1 символ')
-      .bail() // stops running validations if any of the previous ones have failed
-      .matches(/^[A-Za-z0-9_]+$/)
-      .withMessage('В аббревиатуре роли допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'),
-    check('description')
-      .if(body('description').exists())
-      .trim(),
-    check('apps')
-      .if(body('apps').exists())
-      .isArray()
-      .withMessage('Список приложений роли должен быть массивом')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_ROLE_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  modRoleValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Отредактировать роль в приложениях ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем новых данных роли
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные новые данные роли'
-        })
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
-      const { roleId, englAbbreviation, description, apps } = req.body;
+      const { roleId, englAbbreviation, description, subAdminCanUse, apps } = req.body;
 
       // Ищем в БД роль, id которой совпадает с переданным пользователем
       const candidate = await Role.findById(roleId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Указанная роль не существует' });
+        return res.status(ERR).json({ message: 'Указанная роль не существует в базе данных' });
       }
 
       // Ищем в БД роль, englAbbreviation которой совпадает с переданным пользователем
@@ -455,14 +535,14 @@ router.post(
 
       // Если находим, то смотрим, та ли это самая роль. Если нет, продолжать не можем.
       if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
-        return res.status(400).json({ message: 'Роль с такой аббревиатурой уже существует' });
+        return res.status(ERR).json({ message: 'Роль с такой аббревиатурой уже существует' });
       }
 
       // Проверяю приложения с полномочиями на присутствие в БД
       if (apps) {
         for (let app of apps) {
           if (!await checkAppWithCredsExists(app)) {
-            return res.status(400).json({ message: 'Для роли определены несуществующие параметры приложений' });
+            return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры приложений' });
           }
         }
       }
@@ -474,17 +554,18 @@ router.post(
       if (description || (description === '')) {
         candidate.description = description;
       }
+      candidate.subAdminCanUse = subAdminCanUse;
       if (apps) {
         candidate.apps = apps;
       }
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );

@@ -2,5 +2,15 @@
   "port": 4000,
   "jwtSecret": "secret jwt key",
   "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
-  "baseUrl": "http://localhost:4000"
+  "baseUrl": "http://localhost:4000",
+  "CentralConfigDB": {
+    "host": "localhost",
+    "dialect": "mssql",
+    "port": 1433,
+    "timezone": "+03:00",
+    "dbName": "CentralConfigDB",
+    "login": "sa",
+    "password": "1",
+    "timezoneFormat": "YYYY-MM-DD HH:mm:ss.SSS"
+  }
 }

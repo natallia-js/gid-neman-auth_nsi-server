@@ -4,8 +4,8 @@ import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { Loader } from '../components/Loader/Loader';
-import M from 'materialize-css';
 
+import M from 'materialize-css';
 import './UsersPage.css';
 
 // Идентификаторы элементов и подэлементов в таблице должны быть уникальны в рамках
@@ -51,15 +51,16 @@ export const UsersPage = () => {
   // Информация, которая относится к выделенной строке в таблице пользователей
   const [selectedRowData, setSelectedRowData] = useState(null);
 
-  // Информация о новом юпользователе (добавляемом)
+  // Информация о новом пользователе (добавляемом)
   const [newUserForm, setNewUserForm] = useState({
     login: '',
     password: '',
     name: '',
     fatherName: '',
     surname: '',
-    sector: '',
     post: '',
+    service: '',
+    sector: '',
     roles: []
   });
 
@@ -69,8 +70,9 @@ export const UsersPage = () => {
   const [newNameErr, setNewNameErr] = useState(null);
   const [newFatherNameErr, setNewFatherNameErr] = useState(null);
   const [newSurnameErr, setNewSurnameErr] = useState(null);
-  const [newSectorErr, setNewSectorErr] = useState(null);
   const [newPostErr, setNewPostErr] = useState(null);
+  const [newServiceErr, setNewServiceErr] = useState(null);
+  const [newSectorErr, setNewSectorErr] = useState(null);
 
   // Ошибки редактирования информации о пользователе
   const [editLoginErr, setEditLoginErr] = useState(null);
@@ -78,9 +80,9 @@ export const UsersPage = () => {
   const [editNameErr, setEditNameErr] = useState(null);
   const [editFatherNameErr, setEditFatherNameErr] = useState(null);
   const [editSurnameErr, setEditSurnameErr] = useState(null);
-  const [editSectorErr, setEditSectorErr] = useState(null);
   const [editPostErr, setEditPostErr] = useState(null);
-
+  const [editServiceErr, setEditServiceErr] = useState(null);
+  const [editSectorErr, setEditSectorErr] = useState(null);
 
   /**
    * Для того чтобы input'ы стали активными при переходе на страницу
@@ -157,8 +159,9 @@ export const UsersPage = () => {
     setNewNameErr(null);
     setNewFatherNameErr(null);
     setNewSurnameErr(null);
-    setNewSectorErr(null);
     setNewPostErr(null);
+    setNewServiceErr(null);
+    setNewSectorErr(null);
 
     // Отправляем запрос на добавление записи о пользователе на сервер
     request('/api/auth/register', 'POST', { ...newUserForm }, {
@@ -193,11 +196,14 @@ export const UsersPage = () => {
               case 'surname':
                 setNewSurnameErr(e.msg);
                 break;
-              case 'sector':
-                setNewSectorErr(e.msg);
-                break;
               case 'post':
                 setNewPostErr(e.msg);
+                break;
+              case 'service':
+                setNewServiceErr(e.msg);
+                break;
+              case 'sector':
+                setNewSectorErr(e.msg);
                 break;
               default:
                 break;
@@ -261,8 +267,9 @@ export const UsersPage = () => {
     setEditNameErr(null);
     setEditFatherNameErr(null);
     setEditSurnameErr(null);
-    setEditSectorErr(null);
     setEditPostErr(null);
+    setEditServiceErr(null);
+    setEditSectorErr(null);
 
     // Определяем вначале, какие данные изменились, и формируем объект лишь с измененными данными
     const objToSend = { userId: newRowData._id };
@@ -292,12 +299,16 @@ export const UsersPage = () => {
       objToSend.fatherName = newRowData.fatherName;
       changesCount += 1;
     }
-    if (prevRowData.sector !== newRowData.sector) {
-      objToSend.sector = newRowData.sector;
-      changesCount += 1;
-    }
     if (prevRowData.post !== newRowData.post) {
       objToSend.post = newRowData.post;
+      changesCount += 1;
+    }
+    if (prevRowData.service !== newRowData.service) {
+      objToSend.service = newRowData.service;
+      changesCount += 1;
+    }
+    if (prevRowData.sector !== newRowData.sector) {
+      objToSend.sector = newRowData.sector;
       changesCount += 1;
     }
 
@@ -319,8 +330,9 @@ export const UsersPage = () => {
             item.name = newRowData.name;
             item.fatherName = newRowData.fatherName;
             item.surname = newRowData.surname;
-            item.sector = newRowData.sector;
             item.post = newRowData.post;
+            item.service = newRowData.service;
+            item.sector = newRowData.sector;
             item.roles = newRowData.roles;
           }
           return true;
@@ -348,11 +360,14 @@ export const UsersPage = () => {
               case 'surname':
                 setEditSurnameErr(e.msg);
                 break;
-              case 'sector':
-                setEditSectorErr(e.msg);
-                break;
               case 'post':
                 setEditPostErr(e.msg);
+                break;
+              case 'service':
+                setEditServiceErr(e.msg);
+                break;
+              case 'sector':
+                setEditSectorErr(e.msg);
                 break;
               default:
                 break;
@@ -616,6 +631,7 @@ export const UsersPage = () => {
                 className="input"
                 name="login"
                 id="login"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -626,7 +642,7 @@ export const UsersPage = () => {
             <div className="input-field">
               <input
                 placeholder="Введите пароль"
-                type="text"
+                type="password"
                 className="input"
                 id="password"
                 name="password"
@@ -644,6 +660,7 @@ export const UsersPage = () => {
                 className="input"
                 id="name"
                 name="name"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -658,6 +675,7 @@ export const UsersPage = () => {
                 className="input"
                 id="fatherName"
                 name="fatherName"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -672,6 +690,7 @@ export const UsersPage = () => {
                 className="input"
                 id="surname"
                 name="surname"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -686,6 +705,7 @@ export const UsersPage = () => {
                 className="input"
                 id="post"
                 name="post"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -695,11 +715,27 @@ export const UsersPage = () => {
 
             <div className="input-field">
               <input
+                placeholder="Введите наименование службы"
+                type="text"
+                className="input"
+                id="service"
+                name="service"
+                autoComplete="off"
+                onChange={changeUserFormFieldHandler}
+                onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
+              />
+              <label className="active" htmlFor="service">Служба</label>
+              <p className="errMess">{newServiceErr}</p>
+            </div>
+
+            <div className="input-field">
+              <input
                 placeholder="Введите наименование участка"
                 type="text"
                 className="input"
                 id="sector"
                 name="sector"
+                autoComplete="off"
                 onChange={changeUserFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addUserBtn')}
               />
@@ -747,6 +783,7 @@ export const UsersPage = () => {
               <th>Отчество</th>
               <th>Фамилия</th>
               <th>Должность</th>
+              <th>Служба</th>
               <th>Участок</th>
               <th>Действие</th>
             </tr>
@@ -820,20 +857,30 @@ export const UsersPage = () => {
                     {
                       editableTableCell({
                         rowKey: item._id,
-                        fieldName: "sector",
-                        initVal: item.sector,
-                        tdClassName: "sectorCell",
-                        errMess: editSectorErr,
+                        fieldName: "post",
+                        initVal: item.post,
+                        tdClassName: "postCell",
+                        errMess: editPostErr,
                         errClassName: "errMess"
                       })
                     }
                     {
                       editableTableCell({
                         rowKey: item._id,
-                        fieldName: "post",
-                        initVal: item.post,
-                        tdClassName: "postCell",
-                        errMess: editPostErr,
+                        fieldName: "service",
+                        initVal: item.service,
+                        tdClassName: "serviceCell",
+                        errMess: editServiceErr,
+                        errClassName: "errMess"
+                      })
+                    }
+                    {
+                      editableTableCell({
+                        rowKey: item._id,
+                        fieldName: "sector",
+                        initVal: item.sector,
+                        tdClassName: "sectorCell",
+                        errMess: editSectorErr,
                         errClassName: "errMess"
                       })
                     }
@@ -851,7 +898,7 @@ export const UsersPage = () => {
                       className="expanded-row-content hide-row"
                       style={{display: "none"}}
                   >
-                    <td colSpan="9" className="d">
+                    <td colSpan={Object.keys(newUserForm).length + 1} className="d">
                       <h5>Роли</h5>
                       {
                         roleAbbrs &&

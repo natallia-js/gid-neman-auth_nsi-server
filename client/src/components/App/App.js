@@ -10,18 +10,28 @@ import 'materialize-css';
 
 
 /**
- * Компонент приложения "Лицевой счет диспетчера".
+ * Компонент приложения.
  */
 export default function App() {
   // Работа с приложением предполагает аутентификацию пользователя
-  const { token, login, logout, userId, ready } = useAuth();
+  const {
+    login,
+    logout,
+    userId,
+    token,
+    ready,
+    userService,
+    userRoles,
+    userCredentials,
+    authError,
+    clearAuthError } = useAuth();
 
   // Флаг (true/false) аутентифицированности пользователя
   const isAuthenticated = !!token;
 
-  // Маршруты, по которым могут передвигаться пользователи, определяются
-  // флагом isAuthenticated
-  const routes = useRoutes(isAuthenticated);
+  // Маршруты, по которым может передвигаться пользователь, определяются
+  // флагом isAuthenticated и ролью пользователя
+  const routes = useRoutes(isAuthenticated, userRoles);
 
   // Если процесс аутентификации пользователя еще не завершен, отображаем компонент
   // ожидания загрузки
@@ -31,7 +41,8 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{
-      token, login, logout, userId, isAuthenticated
+      login, logout, isAuthenticated, token, userId, userService, userRoles,
+      userCredentials, authError, clearAuthError
     }}>
       <Router>
         {isAuthenticated && <Navbar />}

@@ -57,16 +57,19 @@ export const RolesPage = () => {
   const [newRoleForm, setNewRoleForm] = useState({
     englAbbreviation: '',
     description: '',
+    subAdminCanUse: false,
     apps: []
   });
 
   // Ошибки добавления информации о новой роли
   const [newEnglAbbreviationErr, setNewEnglAbbreviationErr] = useState(null);
   const [newDescriptionErr, setNewDescriptionErr] = useState(null);
+  const [newSubAdminCanUseErr, setNewSubAdminCanUseErr] = useState(null);
 
   // Ошибки редактирования информации о роли
   const [editEnglAbbreviationErr, setEditEnglAbbreviationErr] = useState(null);
   const [editDescriptionErr, setEditDescriptionErr] = useState(null);
+  const [editSubAdminCanUseErr, setEditSubAdminCanUseErr] = useState(null);
 
 
   /**
@@ -74,7 +77,7 @@ export const RolesPage = () => {
    */
   useEffect(() => {
     if (window.M) {
-      //window.M.AutoInit();
+      window.M.AutoInit();
       window.M.updateTextFields();
     }
   }, []);
@@ -125,12 +128,22 @@ export const RolesPage = () => {
 
 
   /**
-   * Обрабатываем изменение в одном из текстовых полей ввода информации о новой роли
+   * Обрабатываем изменение в одном из текстовых полей ввода информации о новой роли.
    *
    * @param {object} event
    */
   const changeRoleFormFieldHandler = useCallback((event) => {
     setNewRoleForm({ ...newRoleForm, [event.target.name]: event.target.value });
+  }, [newRoleForm]);
+
+
+  /**
+   * Обрабатываем изменение возможности использования роли администратором нижнего уровня.
+   *
+   * @param {object} event
+   */
+  const toggleSubAdminCanUse = useCallback((event) => {
+    setNewRoleForm({ ...newRoleForm, subAdminCanUse: !newRoleForm.subAdminCanUse });
   }, [newRoleForm]);
 
 
@@ -141,6 +154,7 @@ export const RolesPage = () => {
     // Обнуляем ошибки запроса на сервер
     setNewEnglAbbreviationErr(null);
     setNewDescriptionErr(null);
+    setNewSubAdminCanUseErr(null);
 
     // Отправляем запрос на добавление записи о роли на сервер
     request('/api/roles/add', 'POST', { ...newRoleForm }, {
@@ -165,6 +179,9 @@ export const RolesPage = () => {
                 break;
               case 'description':
                 setNewDescriptionErr(e.msg);
+                break;
+              case 'subAdminCanUse':
+                setNewSubAdminCanUseErr(e.msg);
                 break;
               default:
                 break;
@@ -225,6 +242,7 @@ export const RolesPage = () => {
     // Обнуляем ошибки запроса на сервер
     setEditEnglAbbreviationErr(null);
     setEditDescriptionErr(null);
+    setEditSubAdminCanUseErr(null);
 
     // Определяем вначале, какие данные изменились, и формируем объект лишь с измененными данными
     const objToSend = { roleId: newRowData._id };
@@ -236,6 +254,10 @@ export const RolesPage = () => {
     }
     if (prevRowData.description !== newRowData.description) {
       objToSend.description = newRowData.description;
+      changesCount += 1;
+    }
+    if (prevRowData.subAdminCanUse !== newRowData.subAdminCanUse) {
+      objToSend.subAdminCanUse = newRowData.subAdminCanUse;
       changesCount += 1;
     }
 
@@ -254,6 +276,7 @@ export const RolesPage = () => {
           if (String(item._id) === String(newRowData._id)) {
             item.englAbbreviation = newRowData.englAbbreviation;
             item.description = newRowData.description;
+            item.subAdminCanUse = newRowData.subAdminCanUse;
             item.apps = newRowData.apps;
           }
           return true;
@@ -271,6 +294,9 @@ export const RolesPage = () => {
                 break;
               case 'description':
                 setEditDescriptionErr(e.msg);
+                break;
+              case 'subAdminCanUse':
+                setEditSubAdminCanUseErr(e.msg);
                 break;
               default:
                 break;
@@ -326,7 +352,8 @@ export const RolesPage = () => {
                                errMess = null,
                                errClassName = null }) => {
     return (
-      <td className={tdClassName}>{
+      <td className={tdClassName}>
+      {
         inEditMode.status && inEditMode.rowKey === rowKey ? (
           <React.Fragment>
             <input value={selectedRowData ? selectedRowData[fieldName] : null}
@@ -350,14 +377,60 @@ export const RolesPage = () => {
           ) : (
             initVal
           )
-        }
+      }
       </td>
     )
   };
 
 
   /**
-   * Возвращает компонент ячейки таблицы пользователей с кнопками для выполнения
+   * Возвращает компонент ячейки таблицы с checkbox для редактирования.
+   *
+   * @param {object} param - объект с полями:
+   *                         rowKey (ключ строки),
+   *                         fieldName (название отображаемого поля),
+   *                         initVal (исходное значение поля),
+   *                         tdClassName (...),
+   *                         errMess (...),
+   *                         errClassName (...)
+   */
+  const editableCheckboxTableCell = ({ rowKey,
+                                       fieldName,
+                                       initVal,
+                                       tdClassName = null,
+                                       errMess = null,
+                                       errClassName = null }) => {
+    return (
+      <td className={tdClassName}>
+      {
+        inEditMode.status && inEditMode.rowKey === rowKey ? (
+          <React.Fragment>
+            <label>
+              <input
+                type="checkbox"
+                checked={selectedRowData[fieldName]}
+                onChange={(event) => {
+                  setSelectedRowData({
+                    ...selectedRowData,
+                    [fieldName]: !selectedRowData[fieldName]
+                  })
+                }}
+              />
+              <span>Доступно администратору нижнего уровня</span>
+            </label>
+            <p className={errClassName}>{errMess}</p>
+          </React.Fragment>
+          ) : (
+            <span>{initVal ? 'Да' : 'Нет'}</span>
+          )
+      }
+      </td>
+    )
+  };
+
+
+  /**
+   * Возвращает компонент ячейки таблицы ролей с кнопками для выполнения
    * действий по редактированию соответствующего ряда.
    *
    * @param {object} param - объект с полями:
@@ -520,7 +593,6 @@ export const RolesPage = () => {
       message(res.message);
     })
     .catch((err) => {
-      console.log(err)
       message(err.message);
     });
   }
@@ -545,6 +617,7 @@ export const RolesPage = () => {
                 className="input"
                 name="englAbbreviation"
                 id="englAbbreviation"
+                autoComplete="off"
                 onChange={changeRoleFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addRoleBtn')}
               />
@@ -559,6 +632,7 @@ export const RolesPage = () => {
                 className="input"
                 id="description"
                 name="description"
+                autoComplete="off"
                 onChange={changeRoleFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addRoleBtn')}
               />
@@ -566,7 +640,21 @@ export const RolesPage = () => {
               <p className="errMess">{newDescriptionErr}</p>
             </div>
 
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={newRoleForm.subAdminCanUse}
+                  onChange={toggleSubAdminCanUse}
+                />
+                <span>Доступно администратору нижнего уровня</span>
+                <p className="errMess">{newSubAdminCanUseErr}</p>
+              </label>
+            </div>
+
           </div>
+
+          <br />
 
           <ModalBtn
             id="addRoleBtn"
@@ -602,6 +690,7 @@ export const RolesPage = () => {
               <th></th>
               <th>Аббревиатура</th>
               <th>Описание</th>
+              <th>Доступность администратору нижнего уровня</th>
               <th>Действие</th>
             </tr>
           </thead>
@@ -638,6 +727,16 @@ export const RolesPage = () => {
                         initVal: item.description,
                         tdClassName: "descriptionCell",
                         errMess: editDescriptionErr,
+                        errClassName: "errMess"
+                      })
+                    }
+                    {
+                      editableCheckboxTableCell({
+                        rowKey: item._id,
+                        fieldName: "subAdminCanUse",
+                        initVal: item.subAdminCanUse,
+                        tdClassName: "subAdminCanUseCell",
+                        errMess: editSubAdminCanUseErr,
                         errClassName: "errMess"
                       })
                     }

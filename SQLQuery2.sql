@@ -1,0 +1,196 @@
+use CentralConfigDB;
+GO
+
+/* Диспетчерские круги (участки ЭЦД) */
+CREATE TABLE TECDSectors
+(
+  ECDS_ID int IDENTITY (1,1),
+  ECDS_Title nvarchar(32) NOT NULL,
+  CONSTRAINT XPK_TECDSectors PRIMARY KEY CLUSTERED (ECDS_ID ASC),
+  CONSTRAINT XUniqueECDSectorTitle UNIQUE(ECDS_Title)
+)
+go
+
+/* Диспетчерские участки (участки ДНЦ) */
+CREATE TABLE TDNCSectors
+(
+  DNCS_ID int IDENTITY (1,1),
+  DNCS_Title nvarchar(32) NOT NULL,
+  CONSTRAINT XPK_TDNCSectors PRIMARY KEY CLUSTERED (DNCS_ID ASC),
+  CONSTRAINT XUniqueDNCSectorTitle UNIQUE(DNCS_Title)
+)
+go
+
+/* Диспетчерские участки (участки ДНЦ) и ближайшие к ним диспетчерские круги (участки ЭЦД) */
+CREATE TABLE TNearestDNCandECDSectors
+(
+  NDE_ECDSectorID int NOT NULL,
+  NDE_DNCSectorID int NOT NULL,
+  CONSTRAINT XPK_TNearestDNCandECDSectors PRIMARY KEY CLUSTERED (NDE_ECDSectorID ASC, NDE_DNCSectorID ASC),
+  CONSTRAINT XRef_TECDSectorFromNearest FOREIGN KEY (NDE_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TDNCSectorFromNearest FOREIGN KEY (NDE_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Смежные диспетчерские круги (участки ЭЦД) */
+CREATE TABLE TAdjacentECDSectors
+(
+  AECDS_ECDSectorID1 int NOT NULL,
+  AECDS_ECDSectorID2 int NOT NULL,
+  CONSTRAINT XPK_TAdjacentECDSectors PRIMARY KEY CLUSTERED (AECDS_ECDSectorID1 ASC, AECDS_ECDSectorID2 ASC),
+  CONSTRAINT XRef_TECDSectorFromAdjacent1 FOREIGN KEY (AECDS_ECDSectorID1) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TECDSectorFromAdjacent2 FOREIGN KEY (AECDS_ECDSectorID2) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Смежные диспетчерские участки (участки ДНЦ) */
+CREATE TABLE TAdjacentDNCSectors
+(
+  ADNCS_DNCSectorID1 int NOT NULL,
+  ADNCS_DNCSectorID2 int NOT NULL,
+  CONSTRAINT XPK_TAdjacentDNCSectors PRIMARY KEY CLUSTERED (ADNCS_DNCSectorID1 ASC, ADNCS_DNCSectorID2 ASC),
+  CONSTRAINT XRef_TDNCSectorFromAdjacent1 FOREIGN KEY (ADNCS_DNCSectorID1) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TDNCSectorFromAdjacent2 FOREIGN KEY (ADNCS_DNCSectorID2) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Поездной участок ЭЦД */
+CREATE TABLE TECDTrainSectors
+(
+  ECDTS_ID int IDENTITY (1,1),
+  ECDTS_Title nvarchar(32) NOT NULL,
+  ECDTS_ECDSectorID int NOT NULL,
+  CONSTRAINT XPK_TECDTrainSectors PRIMARY KEY CLUSTERED (ECDTS_ID ASC),
+  CONSTRAINT XUniqueECDTrainSectorTitle UNIQUE(ECDTS_Title),
+  CONSTRAINT XRef_TECDSectorFromTrainSector FOREIGN KEY (ECDTS_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Поездной участок ДНЦ */
+CREATE TABLE TDNCTrainSectors
+(
+  DNCTS_ID int IDENTITY (1,1),
+  DNCTS_Title nvarchar(32) NOT NULL,
+  DNCTS_DNCSectorID int NOT NULL,
+  CONSTRAINT XPK_TDNCTrainSectors PRIMARY KEY CLUSTERED (DNCTS_ID ASC),
+  CONSTRAINT XUniqueDNCTrainSectorTitle UNIQUE(DNCTS_Title),
+  CONSTRAINT XRef_TDNCSectorFromTrainSector FOREIGN KEY (DNCTS_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Вносим изменения в таблицу станций */
+ALTER TABLE TStations 
+ALTER COLUMN St_UNMC NVARCHAR(6) NOT NULL;
+go
+
+ALTER TABLE TStations
+ADD CONSTRAINT XUniqueStationUNMC UNIQUE(St_UNMC);
+
+ALTER TABLE TStations
+ADD St_ECDTrainSectorID int;
+
+ALTER TABLE TStations
+ADD St_DNCTrainSectorID int;
+
+/*ALTER TABLE TStations
+ADD St_ECDSectorID int;
+
+ALTER TABLE TStations
+ADD St_DNCSectorID int;
+*/
+ALTER TABLE TStations
+ADD CONSTRAINT XRef_TECDTrainSectorFromStation FOREIGN KEY (St_ECDTrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION;
+
+ALTER TABLE TStations
+ADD CONSTRAINT XRef_TDNCTrainSectorFromStation FOREIGN KEY (St_DNCTrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION;
+
+/*ALTER TABLE TStations
+ADD CONSTRAINT XRef_TECDSectorFromStation FOREIGN KEY (St_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION;
+
+ALTER TABLE TStations
+ADD CONSTRAINT XRef_TDNCSectorFromStation FOREIGN KEY (St_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION;
+*/
+ALTER TABLE TStations
+ADD St_DNCTrainSectorPosition tinyint;
+
+ALTER TABLE TStations
+ADD St_ECDTrainSectorPosition tinyint;
+
+/*
+ALTER TABLE TStations
+ADD createdAt DATETIMEOFFSET;
+ALTER TABLE TStations
+ADD updatedAt DATETIMEOFFSET;
+go
+
+UPDATE TStations
+SET createdAt = GETDATE(), updatedAt = GETDATE();
+go
+
+ALTER TABLE TStations 
+ALTER COLUMN createdAt DATETIMEOFFSET NOT NULL;
+ALTER TABLE TStations 
+ALTER COLUMN updatedAt DATETIMEOFFSET NOT NULL;
+go
+*/
+
+/* Перегоны межстанционные */
+CREATE TABLE TBlocks
+(
+  Bl_ID int IDENTITY (1,1),
+  Bl_Title nvarchar(64) NOT NULL,
+  Bl_StationID1 int NOT NULL,
+  Bl_StationID2 int NOT NULL,
+  Bl_ECDTrainSectorID int,
+  Bl_DNCTrainSectorID int,
+/*  Bl_ECDSectorID int,
+  Bl_DNCSectorID int,*/
+  Bl_DNCTrainSectorPosition tinyint,
+  Bl_ECDTrainSectorPosition tinyint,
+  CONSTRAINT XPK_TBlocks PRIMARY KEY CLUSTERED (Bl_ID ASC),
+  CONSTRAINT XRef_TStationFromBlock1 FOREIGN KEY (Bl_StationID1) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TStationFromBlock2 FOREIGN KEY (Bl_StationID2) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XUniqueBlockTitle UNIQUE (Bl_Title),
+  CONSTRAINT XUniqueBlockStations UNIQUE (Bl_StationID1, Bl_StationID2),
+  CONSTRAINT XRef_TECDTrainSectorFromBlock FOREIGN KEY (Bl_ECDTrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TDNCTrainSectorFromBlock FOREIGN KEY (Bl_DNCTrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  /*CONSTRAINT XRef_TECDSectorFromBlock FOREIGN KEY (Bl_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TDNCSectorFromBlock FOREIGN KEY (Bl_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION*/
+)
+go

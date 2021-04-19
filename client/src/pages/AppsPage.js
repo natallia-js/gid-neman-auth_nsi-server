@@ -645,7 +645,7 @@ export const AppsPage = () => {
 
 
   /**
-   * Возвращает компонент ячейки таблицы пользователей с кнопками для выполнения
+   * Возвращает компонент ячейки таблицы приложений с кнопками для выполнения
    * действий по редактированию соответствующего ряда.
    *
    * @param {object} param - объект с полями:
@@ -825,6 +825,7 @@ export const AppsPage = () => {
                 className="input"
                 name="shortTitle"
                 id="shortTitle"
+                autoComplete="off"
                 onChange={changeAppFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addAppBtn')}
               />
@@ -839,6 +840,7 @@ export const AppsPage = () => {
                 className="input"
                 id="title"
                 name="title"
+                autoComplete="off"
                 onChange={changeAppFormFieldHandler}
                 onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, 'addAppBtn')}
               />
@@ -989,6 +991,7 @@ export const AppsPage = () => {
                                       className="input"
                                       id={`englAbbreviation${item._id}`}
                                       name="englAbbreviation"
+                                      autoComplete="off"
                                       onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, `addAppCredBtn_${item._id}`)}
                                     />
                                     <label className="active" htmlFor={`englAbbreviation${item._id}`}>Аббревиатура полномочия</label>
@@ -1008,6 +1011,7 @@ export const AppsPage = () => {
                                       className="input"
                                       id={`description${item._id}`}
                                       name="description"
+                                      autoComplete="off"
                                       onKeyUp={(event) => keyPressOnNewInstInputHandler(event.key, `addAppCredBtn_${item._id}`)}
                                     />
                                     <label className="active" htmlFor={`description${item._id}`}>Описание полномочия</label>

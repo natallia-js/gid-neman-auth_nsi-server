@@ -1,49 +1,114 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
+const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const App = require('../models/App');
 const Role = require('../models/Role');
-const { validationResult, check, body } = require('express-validator');
+const {
+  addAppValidationRules,
+  addCredValidationRules,
+  delAppValidationRules,
+  delCredValidationRules,
+  modAppValidationRules,
+  modCredValidationRules,
+} = require('../validators/apps.validator');
+const validate = require('../validators/validate');
 
 const router = Router();
+
+const {
+  OK,
+  ERR,
+  UNKNOWN_ERR,
+  UNKNOWN_ERR_MESS,
+
+  ALL_PERMISSIONS,
+
+  GET_ALL_APPS_ACTION,
+  GET_APPS_CREDENTIALS_ACTION,
+  MOD_APP_ACTION,
+  MOD_APP_CREDENTIAL_ACTION,
+} = require('../constants');
 
 
 /**
  * Обрабатывает запрос на получение списка всех приложений.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  */
-router.get('/data',
-           auth,
-           async (req, res) => {
-  try {
-    const data = await App.find();
+router.get(
+  '/data',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_APPS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Проверяем принадлежность лица, производящего запрос
+      const serviceName = req.user.service;
+      if (serviceName !== ALL_PERMISSIONS) {
+        return res.status(ERR).json({ message: 'Список приложений ГИД Неман доступен лишь главному администратору ГИД Неман' });
+      }
 
-    res.status(201).json(data);
+      const data = await App.find();
 
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(OK).json(data);
+
+    } catch (e) {
+      console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
   }
-});
+);
 
 
 /**
  * Обрабатывает запрос на получение списка аббревиатур всех приложений, их идентификаторов
  * и, для каждого приложения, - соответствующего списка полномочий пользователей
  * (id + аббревиатуры полномочий).
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  */
-router.get('/abbrData',
-           auth,
-           async (req, res) => {
-  try {
-    const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: {_id: 1, englAbbreviation: 1} });
+router.get(
+  '/abbrData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_APPS_CREDENTIALS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Проверяем принадлежность лица, производящего запрос
+      const serviceName = req.user.service;
+      if (serviceName !== ALL_PERMISSIONS) {
+        return res.status(ERR).json({ message: 'Список приложений ГИД Неман доступен лишь главному администратору ГИД Неман' });
+      }
 
-    res.status(201).json(data);
+      const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: {_id: 1, englAbbreviation: 1} });
 
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(OK).json(data);
+
+    } catch (e) {
+      console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
   }
-});
+);
 
 
 /**
@@ -74,8 +139,10 @@ const checkCredentials = (val) => {
 
 
 /**
- * Обработка запроса на добавление нового приложения
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на добавление нового приложения.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  *  _id - идентификатор приложения (может отсутствовать, в этом случае будет сгенерирован автоматически),
  * shortTitle - аббревиатура приложения (обязательна),
@@ -88,35 +155,29 @@ const checkCredentials = (val) => {
  */
 router.post(
   '/add',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('shortTitle')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры приложения 1 символ'),
-    check('title')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования приложения 1 символ'),
-    check('credentials')
-      .isArray()
-      .withMessage('Список допустимых полномочий пользователей должен быть массивом')
-      .bail() // stops running validations if any of the previous ones have failed
-      .custom(val => checkCredentials(val))
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  addAppValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Добавить новое приложение ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных нового приложения
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при добавлении приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { _id, shortTitle, title, credentials } = req.body;
 
@@ -125,7 +186,7 @@ router.post(
 
       // Если находим, то процесс создания продолжать не можем
       if (candidate) {
-        return res.status(400).json({ message: 'Приложение с такой аббревиатурой уже существует' });
+        return res.status(ERR).json({ message: 'Приложение с такой аббревиатурой уже существует' });
       }
 
       // Создаем в БД запись с данными о новом приложении
@@ -137,19 +198,21 @@ router.post(
       }
       await app.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена', appId: app._id });
+      res.status(OK).json({ message: 'Информация успешно сохранена', appId: app._id });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на добавление нового полномочия приложения
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на добавление нового полномочия приложения.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен),
  * _id - идентификатор полномочия (может отсутствовать, в этом случае будет сгенерирован автоматически),
@@ -158,35 +221,29 @@ router.post(
  */
 router.post(
   '/addCred',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('englAbbreviation')
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры полномочия приложения 1 символ'),
-    check('description')
-      .custom(val => {
-        if (typeof val !== 'string') {
-          throw new Error('Неверный формат описания полномочия приложения');
-        }
-        return true;
-      })
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_CREDENTIAL_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  addCredValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Добавить новое полномочие приложения ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных нового полномочия
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные при добавлении полномочия приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, _id, englAbbreviation, description } = req.body;
 
@@ -195,13 +252,13 @@ router.post(
 
       // Если не находим, то процесс создания полномочия продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Не найдено приложение для добавляемого полномочия' });
+        return res.status(ERR).json({ message: 'Не найдено приложение для добавляемого полномочия' });
       }
 
       // Среди полномочий приложения ищем такое, englAbbreviation которого совпадает с переданным пользователем
       for (let cred of candidate.credentials) {
         if (cred.englAbbreviation === englAbbreviation) {
-          return res.status(400).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
+          return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
         }
       }
 
@@ -226,31 +283,47 @@ router.post(
         }
       }
 
-      res.status(201).json({ message: 'Информация успешно сохранена', credId: newRecId });
+      res.status(OK).json({ message: 'Информация успешно сохранена', credId: newRecId });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на удаление приложения
- * (тот, кто удаляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на удаление приложения.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен)
  */
 router.post(
   '/del',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('appId')
-      .exists()
-      .withMessage('Не указан id удаляемого приложения'),
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  delAppValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Удалить приложение ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -281,17 +354,17 @@ router.post(
       } else {
         await session.abortTransaction();
 
-        return res.status(400).json({ message: errMess });
+        return res.status(ERR).json({ message: errMess });
       }
 
-      res.status(201).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
       console.log(e);
 
       await session.abortTransaction();
 
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
 
     } finally {
       session.endSession();
@@ -301,40 +374,42 @@ router.post(
 
 
 /**
- * Обработка запроса на удаление полномочия приложения
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на удаление полномочия приложения.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен),
  * credId - идентификатор полномочия (обязателен)
  */
 router.post(
   '/delCred',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('credId')
-      .exists()
-      .withMessage('Не указан id полномочия')
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_CREDENTIAL_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  delCredValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Удалить полномочие приложения ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // Проводим проверку корректности переданных пользователем данных полномочия
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные данные полномочия приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, credId } = req.body;
 
@@ -343,7 +418,7 @@ router.post(
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Указанное приложение не существует' });
+        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
       }
 
       // Ищем полномочие (по id) и удаляем его
@@ -351,7 +426,7 @@ router.post(
       candidate.credentials = candidate.credentials.filter((cred) => String(cred._id) !== String(credId));
 
       if (prevCredLen === candidate.credentials.length) {
-        return res.status(400).json({ message: 'Указанное полномочие не существует' });
+        return res.status(ERR).json({ message: 'Указанное полномочие не определено для данного приложения в базе данных' });
       }
 
       await candidate.save();
@@ -364,14 +439,14 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(201).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
       console.log(e);
 
       await session.abortTransaction();
 
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
 
     } finally {
       session.endSession();
@@ -381,8 +456,10 @@ router.post(
 
 
 /**
- * Обработка запроса на редактирование приложения
- * (тот, кто редактирует, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на редактирование информации о приложении.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен),
  * shortTitle - аббревиатура приложения (не обязательна),
@@ -394,42 +471,29 @@ router.post(
  */
 router.post(
   '/mod',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('shortTitle')
-      .if(body('shortTitle').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры приложения 1 символ'),
-    check('title')
-      .if(body('title').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования приложения 1 символ'),
-    check('credentials')
-      .if(body('credentials').exists())
-      .isArray()
-      .withMessage('Список допустимых полномочий пользователей должен быть массивом')
-      .bail()
-      .custom(val => checkCredentials(val))
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  modAppValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Отредактировать информацию о приложении ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем новых данных приложения
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные новые данные приложения'
-        });
-
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, shortTitle, title, credentials } = req.body;
 
@@ -438,19 +502,17 @@ router.post(
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Указанное приложение не существует' });
+        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
       }
 
       // Ищем в БД приложение, shortTitle которого совпадает с переданным пользователем
-      let antiCandidate;
+      if (shortTitle || (shortTitle === '')) {
+        const antiCandidate = await App.findOne({ shortTitle });
 
-      if (shortTitle) {
-        antiCandidate = await App.findOne({ shortTitle });
-      }
-
-      // Если находим, то смотрим, то ли это самое приложение. Если нет, продолжать не можем.
-      if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
-        return res.status(400).json({ message: 'Приложение с такой аббревиатурой уже существует' });
+        // Если находим, то смотрим, то ли это самое приложение. Если нет, продолжать не можем.
+        if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
+          return res.status(ERR).json({ message: 'Приложение с такой аббревиатурой уже существует' });
+        }
       }
 
       // Редактируем в БД запись
@@ -466,19 +528,21 @@ router.post(
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );
 
 
 /**
- * Обработка запроса на редактирование полномочия приложения
- * (тот, кто добавляет, должен обладать правами на выполнение данного действия).
+ * Обработка запроса на редактирование информации о полномочии приложения.
+ *
+ * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
+ *
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен),
  * credId - идентификатор полномочия (обязателен),
@@ -488,40 +552,29 @@ router.post(
  */
 router.post(
   '/modCred',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  [
-    check('appId')
-      .exists()
-      .withMessage('Не указан id приложения'),
-    check('credId')
-      .exists()
-      .withMessage('Не указан id полномочия'),
-    check('englAbbreviation')
-      .if(body('englAbbreviation').exists())
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина аббревиатуры полномочия приложения 1 символ'),
-    check('description')
-      .if(body('description').exists())
-      .custom(val => {
-        if (typeof val !== 'string') {
-          throw new Error('Неверный формат описания полномочия приложения');
-        }
-        return true;
-      })
-  ],
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_APP_CREDENTIAL_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  modCredValidationRules,
+  validate,
   async (req, res) => {
+    // Проверяем принадлежность лица, производящего запрос
+    const serviceName = req.user.service;
+    if (serviceName !== ALL_PERMISSIONS) {
+      return res.status(ERR).json({ message: 'Отредактировать информацию о полномочии приложения ГИД Неман может лишь главный администратор ГИД Неман' });
+    }
+
     try {
-      // Проводим проверку корректности переданных пользователем данных полномочия
-      const errors = validationResult(req);
-
-      // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          errors: errors.array(),
-          message: 'Указаны некорректные новые данные полномочия приложения'
-        });
-      }
-
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, credId, englAbbreviation, description } = req.body;
 
@@ -530,14 +583,14 @@ router.post(
 
       // Если не находим, то процесс редактирования полномочия продолжать не можем
       if (!candidate) {
-        return res.status(400).json({ message: 'Указанное приложение не существует' });
+        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
       }
 
       // Среди полномочий приложения ищем такое, englAbbreviation которого совпадает с переданным пользователем
       if (englAbbreviation) {
         for (let cred of candidate.credentials) {
           if ((cred.englAbbreviation === englAbbreviation) && (String(cred._id) !== String(credId))) {
-            return res.status(400).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
+            return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
           }
         }
       }
@@ -560,16 +613,16 @@ router.post(
       }
 
       if (!found) {
-        return res.status(400).json({ message: 'Указанное полномочие не существует' });
+        return res.status(ERR).json({ message: 'Указанное полномочие не существует для данного приожения в базе данных' });
       }
 
       await candidate.save();
 
-      res.status(201).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (e) {
       console.log(e);
-      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }
 );

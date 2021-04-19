@@ -7,6 +7,8 @@ const schema = new Schema({
   englAbbreviation: { type: String, required: true, unique: true },
   // Описание роли
   description: { type: String },
+  // Доступность для применения подчиненным администратором
+  subAdminCanUse: { type: Boolean, required: true, default: true },
   // Список приложений, с которыми связана данная роль
   apps: [
     {

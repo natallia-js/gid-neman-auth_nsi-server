@@ -5,9 +5,6 @@ import { AuthContext } from '../context/AuthContext';
 
 import './AuthPage.css';
 
-const APP_ABBREVIATION = 'GidNemanAuthUtil';
-const ADMIN_CRED = 'ADMIN';
-
 
 /**
  * Возвращает компонент, представляющий собой страницу авторизации пользователя.
@@ -43,6 +40,21 @@ export const AuthPage = () => {
 
 
   /**
+   * Данный код выполнится после обновления ошибки authError
+   * (ошибка будет выведена во всплывающем окне)
+   */
+  useEffect(() => {
+    if (auth.authError) {
+      // Выводим сообщение об ошибке
+      message(auth.authError);
+
+      // Удаляем ошибку
+      auth.clearAuthError();
+    }
+  }, [message, auth]);
+
+
+  /**
    * Для того чтобы input'ы стали активными при переходе на страницу авторизации
    */
   useEffect(() => {
@@ -71,34 +83,13 @@ export const AuthPage = () => {
       // Отправляем запрос на вход в систему на сервер
       const data = await request('/api/auth/login', 'POST', { ...form });
 
-      // Получили от сервера список полномочий пользователя в каждой из систем ГИД Неман.
-      // Смотрим, есть ли у данного пользователя права на работу с данным приложением.
-      let found = false;
-      if (data.token && data.userId && data.credentials) {
-        for (let cred of data.credentials) {
-          if (cred && (cred.appAbbrev === APP_ABBREVIATION) && cred.creds) {
-            for (let c of cred.creds) {
-              if (c === ADMIN_CRED) {
-                found = true;
-                break;
-              }
-            }
-          }
-          if (found) {
-            break;
-          }
-        }
-      }
+      // Осуществляем попытку войти в систему
+      auth.login(data.token, data.userId, data.userInfo.service, data.roles, data.credentials);
 
-      if (found) {
-        // Сохраняем аутентификационные данные клиента
-        auth.login(data.token, data.userId, data.credentials);
-      } else {
-        message('Данный пользователь не имеет права на работу с текущим приложением');
-      }
     } catch (e) {
-      // здесь ничего делать не нужно, т.к. ошибки перехватываются в http.hook и устанавливаются
-      // во внутреннем состоянии error, на изменение которого мы выше реагируем
+      // здесь ничего делать не нужно, т.к. ошибки перехватываются в http.hook и AuthContext
+      // и устанавливаются во внутренних состояниях error и authError соответственно.
+      // На изменение данных состояний мы реагируем выше.
     }
   }
 

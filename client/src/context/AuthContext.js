@@ -13,8 +13,12 @@ function noop() {}
 export const AuthContext = createContext({
   token: null,
   userId: null,
-  credentials: null,
+  userService: null, // принадлежность службе
+  userRoles: null,
+  userCredentials: null,
+  authError: null,
   login: noop,
   logout: noop,
+  clearAuthError: noop,
   isAuthenticated: false
 });

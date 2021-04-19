@@ -1,0 +1,6 @@
+// Стили блока с подблоками смежных и ближайших участков
+@mixin adjacent-and-nearest-block {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
