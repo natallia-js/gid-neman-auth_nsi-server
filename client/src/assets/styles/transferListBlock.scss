@@ -1,16 +1,17 @@
 @import './vars';
+@import './text';
 
 // Стили внешнего блока
 @mixin transfer-list-block() {
   width: 50%;
-  min-width: 500px;
-  max-width: 700px;
-  height: 200px;
+  min-width: 30rem;
+  max-width: 50rem;
+  height: 12rem;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   overflow: auto;
-  margin: 10px;
+  margin: 1rem;
 }
 
 // Стили левого / правого подблока
@@ -47,13 +48,10 @@
 
 // Стили кнопки удаления записи из связанного списка и возврата в исходный список
 @mixin transfer-list-del-btn {
-  width: 50px;
+  width: 3rem;
 }
 
 // Стили заголовков
 @mixin transfer-list-title {
-  color: var(--title-color);
-  font-weight: var(--title-weight);
-  padding-left: 20px;
-  margin-bottom: 5px;
+  @include small-title();
 }

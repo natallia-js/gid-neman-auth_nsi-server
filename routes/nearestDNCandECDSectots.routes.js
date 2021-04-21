@@ -83,7 +83,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addECDToDNCValidationRules,
+  addECDToDNCValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -153,7 +153,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addDNCToECDValidationRules,
+  addDNCToECDValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -223,7 +223,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delNearestDNCOrECDValidationRules,
+  delNearestDNCOrECDValidationRules(),
   validate,
   async (req, res) => {
     try {

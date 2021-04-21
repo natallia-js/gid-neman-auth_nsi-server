@@ -81,7 +81,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addBlockValidationRules,
+  addBlockValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -163,7 +163,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delBlockValidationRules,
+  delBlockValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -209,7 +209,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modBlockValidationRules,
+  modBlockValidationRules(),
   validate,
   async (req, res) => {
     try {

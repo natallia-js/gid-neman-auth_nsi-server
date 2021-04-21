@@ -83,7 +83,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addECDSectorValidationRules,
+  addECDSectorValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -134,7 +134,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delECDSectorValidationRules,
+  delECDSectorValidationRules(),
   validate,
   async (req, res) => {
     const sequelize = req.sequelize;
@@ -227,7 +227,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modECDSectorValidationRules,
+  modECDSectorValidationRules(),
   validate,
   async (req, res) => {
     try {

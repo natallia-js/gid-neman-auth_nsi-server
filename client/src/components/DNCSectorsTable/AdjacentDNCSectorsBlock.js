@@ -16,7 +16,6 @@ import './styles.scss';
  */
 const AdjacentDNCSectorsBlock = (props) => {
   const {
-    dataSource, // источник данных об участках ДНЦ, смежных с данным участком ДНЦ
     currDNCSectorRecord: record, // текущая запись об участке ДНЦ
     possibleAdjDNCSectors, // источник данных об участках ДНЦ, которые не являются смежными с текущим участком
     setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ДНЦ
@@ -141,7 +140,20 @@ const AdjacentDNCSectorsBlock = (props) => {
           <List
             size="small"
             itemLayout="horizontal"
-            dataSource={dataSource}
+            dataSource={
+              // Хочу, чтобы наименования участков выводились в алфавитном порядке
+              record[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].sort((a, b) => {
+                const sectName1 = getDNCSectorNameByIdCallback(a[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
+                const sectName2 = getDNCSectorNameByIdCallback(b[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
+                if (sectName1 < sectName2) {
+                  return -1;
+                }
+                if (sectName1 > sectName2) {
+                  return 1;
+                }
+                return 0;
+              })
+            }
             renderItem={item => (
               <List.Item>
                 <div className="transfer-list-list-item">

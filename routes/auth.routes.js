@@ -224,7 +224,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  registerValidationRules,
+  registerValidationRules(),
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе регистрационные данные
@@ -307,7 +307,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addRoleValidationRules,
+  addRoleValidationRules(),
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
@@ -371,7 +371,7 @@ router.post(
 router.post(
   '/login',
   // проверка параметров запроса
-  loginValidationRules,
+  loginValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -568,7 +568,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delUserValidationRules,
+  delUserValidationRules(),
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
@@ -631,7 +631,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delRoleValidationRules,
+  delRoleValidationRules(),
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
@@ -715,7 +715,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modUserValidationRules,
+  modUserValidationRules(),
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие

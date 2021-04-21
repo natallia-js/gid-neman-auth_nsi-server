@@ -1,5 +1,6 @@
 @import '../../assets/styles/adjacentAndNearestSectorsBlock';
 @import '../../assets/styles/transferListBlock';
+@import '../../assets/styles/trainSectorsBlock';
 
 // Блок с подблоками смежных и ближайших участков
 .adjacent-and-nearest-block {
@@ -14,11 +15,6 @@
 // Подблок блока смежных / ближайших участков
 .transfer-list-sub-block {
   @include transfer-list-sub-block();
-}
-
-// Блок списка смежных / ближайших участков
-.transfer-list-list-block {
-  @include transfer-list-list-block();
 }
 
 // Запись списка смежных / ближайших участков
@@ -39,4 +35,19 @@
 // Стили заголовков блока смежных / ближайших участков
 .transfer-list-title {
   @include transfer-list-title();
+}
+
+// ------------------------------
+
+// Стили блока с информацией о поездных участках
+.train-sectors-block {
+  @include train-sectors-block();
+}
+
+.train-sectors-info-sub-block {
+  @include train-sectors-info-sub-block();
+}
+
+.train-sectors-title {
+  @include train-sectors-title();
 }

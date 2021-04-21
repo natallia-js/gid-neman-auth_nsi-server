@@ -4,9 +4,20 @@ import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewStationModal from '../NewStationModal';
-import { ServerAPI, STATION_FIELDS } from '../../constants';
+import {
+  ServerAPI,
+  DNCSECTOR_FIELDS,
+  ECDSECTOR_FIELDS,
+  STATION_FIELDS,
+  TRAIN_SECTOR_FIELDS,
+} from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import stationsTableColumns from './StationsTableColumns';
+import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
+import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
+import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
+import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
 import 'antd/dist/antd.css';
 
@@ -17,6 +28,18 @@ import 'antd/dist/antd.css';
 const StationsTable = () => {
   // Информация по станциям (массив объектов)
   const [tableData, setTableData] = useState(null);
+
+  // Информация по участкам ДНЦ
+  const [dncSectors, setDNCSectors] = useState(null);
+
+  // Информация по участкам ЭЦД
+  const [ecdSectors, setECDSectors] = useState(null);
+
+  // Информация по поездным участкам ДНЦ
+  const [dncTrainSectors, setDNCTrainSectors] = useState(null);
+
+  // Информация по поездным участкам ЭЦД
+  const [ecdTrainSectors, setECDTrainSectors] = useState(null);
 
   // Ошибка загрузки данных о станциях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -53,23 +76,6 @@ const StationsTable = () => {
 
 
   /**
-   * Преобразует объект станции, полученный из БД, в объект станции приложения.
-   *
-   * @param {object} dbStationObj
-   */
-  const getAppStationObjFromDBStationObj = (dbStationObj) => {
-    if (dbStationObj) {
-      return {
-        [STATION_FIELDS.KEY]: dbStationObj.St_ID,
-        [STATION_FIELDS.ESR_CODE]: dbStationObj.St_UNMC,
-        [STATION_FIELDS.NAME]: dbStationObj.St_Title,
-      }
-    }
-    return null;
-  }
-
-
-  /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
    * и устанавливает ее в локальное состояние
    */
@@ -78,11 +84,87 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по станциям
-      const res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
+      let res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
       const tableData = res.map((station) => getAppStationObjFromDBStationObj(station));
+
+      // ---------------------------------
+
+      // Теперь получаем информацию по всем участкам ДНЦ
+      res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const dncSectorsData = res.map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector));
+      setDNCSectors(dncSectorsData);
+
+      res.forEach((data) => {
+        const sector = getAppDNCSectorObjFromDBDNCSectorObj(data);
+        tableData.forEach((station) => {
+          if (station[STATION_FIELDS.DNC_SECTOR_ID] === sector[DNCSECTOR_FIELDS.KEY]) {
+            station[STATION_FIELDS.DNC_SECTOR_NAME] = sector[DNCSECTOR_FIELDS.NAME];
+          }
+        });
+      });
+
+      // ---------------------------------
+
+      // Получаем инфорацию по всем участкам ЭЦД
+      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const ecdSectorsData = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+      setECDSectors(ecdSectorsData);
+
+      res.forEach((data) => {
+        const sector = getAppECDSectorObjFromDBECDSectorObj(data);
+        tableData.forEach((station) => {
+          if (station[STATION_FIELDS.ECD_SECTOR_ID] === sector[ECDSECTOR_FIELDS.KEY]) {
+            station[STATION_FIELDS.ECD_SECTOR_NAME] = sector[ECDSECTOR_FIELDS.NAME];
+          }
+        });
+      });
+
+      // ---------------------------------
+
+      // Получаем информацию по всем поездным участкам ДНЦ
+      res = await request(ServerAPI.GET_DNCTRAINSECTORS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const dncTrainSectorsData = res.map((sector) => getAppDNCTrainSectorFromDBDNCTrainSectorObj(sector));
+      setDNCTrainSectors(dncTrainSectorsData);
+
+      res.forEach((data) => {
+        const sector = getAppDNCTrainSectorFromDBDNCTrainSectorObj(data);
+        tableData.forEach((station) => {
+          if (station[STATION_FIELDS.DNC_TRAINSECTOR_ID] === sector[TRAIN_SECTOR_FIELDS.KEY]) {
+            station[STATION_FIELDS.DNC_TRAINSECTOR_NAME] = sector[TRAIN_SECTOR_FIELDS.NAME];
+          }
+        });
+      });
+
+      // ---------------------------------
+
+      // Получаем информацию по всем поездным участкам ЭЦД
+      res = await request(ServerAPI.GET_ECDTRAINSECTORS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const ecdTrainSectorsData = res.map((sector) => getAppECDTrainSectorFromDBECDTrainSectorObj(sector));
+      setECDTrainSectors(ecdTrainSectorsData);
+
+      res.forEach((data) => {
+        const sector = getAppECDTrainSectorFromDBECDTrainSectorObj(data);
+        tableData.forEach((station) => {
+          if (station[STATION_FIELDS.ECD_TRAINSECTOR_ID] === sector[TRAIN_SECTOR_FIELDS.KEY]) {
+            station[STATION_FIELDS.ECD_TRAINSECTOR_NAME] = sector[TRAIN_SECTOR_FIELDS.NAME];
+          }
+        });
+      });
 
       setTableData(tableData);
       setLoadDataErr(null);
@@ -292,6 +374,12 @@ const StationsTable = () => {
           stationFieldsErrs={stationFieldsErrs}
           clearAddStationMessages={clearAddStationMessages}
           successSaveMessage={successSaveMessage}
+          dncSectors={
+            dncSectors &&
+            dncSectors.map(sector => {
+              return { id: sector[DNCSECTOR_FIELDS.KEY], name: sector[DNCSECTOR_FIELDS.NAME] };
+            })
+          }
         />
         <Button
           type="primary"

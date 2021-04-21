@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
-import { Modal, Form, Input, Button, Typography } from 'antd';
-import { STATION_FIELDS } from '../../constants';
+import { Modal, Form, Input, Button, Select, Typography } from 'antd';
+import { STATION_FIELDS, DNCSECTOR_FIELDS } from '../../constants';
 
 import 'antd/dist/antd.css';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 const ERR_VALIDATE_STATUS = 'error';
 
@@ -20,6 +21,7 @@ const ERR_VALIDATE_STATUS = 'error';
  *   stationFieldsErrs,
  *   clearAddStationMessages,
  *   successSaveMessage,
+ *   dncSectors,
  */
 const NewStationModal = ({
   isModalVisible,
@@ -29,6 +31,7 @@ const NewStationModal = ({
   stationFieldsErrs,
   clearAddStationMessages,
   successSaveMessage,
+  dncSectors,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -134,6 +137,18 @@ const NewStationModal = ({
             autoComplete="off"
             onClick={handleStationDataFieldClick}
           />
+        </Form.Item>
+
+        <Form.Item
+          label="Участок ДНЦ"
+          name={DNCSECTOR_FIELDS.NAME}
+        >
+          <Select>
+          {
+            dncSectors &&
+            dncSectors.map(sector => <Option key={sector.id} value={sector.id}>{sector.name}</Option>)
+          }
+          </Select>
         </Form.Item>
 
         <Form.Item>

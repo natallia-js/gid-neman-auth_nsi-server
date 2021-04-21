@@ -16,7 +16,6 @@ import './styles.scss';
  */
 const AdjacentECDSectorsBlock = (props) => {
   const {
-    dataSource, // источник данных об участках ЭЦД, смежных с данным участком ЭЦД
     currECDSectorRecord: record, // текущая запись об участке ЭЦД
     possibleAdjECDSectors, // источник данных об участках ЭЦД, которые не являются смежными с текущим участком
     setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ЭЦД
@@ -141,7 +140,7 @@ const AdjacentECDSectorsBlock = (props) => {
           <List
             size="small"
             itemLayout="horizontal"
-            dataSource={dataSource}
+            dataSource={record[ECDSECTOR_FIELDS.ADJACENT_ECDSECTORS]}
             renderItem={item => (
               <List.Item>
                 <div className="transfer-list-list-item">

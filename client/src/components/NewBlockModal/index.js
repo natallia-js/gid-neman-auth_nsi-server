@@ -21,7 +21,7 @@ const ERR_VALIDATE_STATUS = 'error';
  *   blockFieldsErrs,
  *   clearAddBlockMessages,
  *   successSaveMessage,
- *   stationsб
+ *   stations,
  */
 const NewBlockModal = ({
   isModalVisible,

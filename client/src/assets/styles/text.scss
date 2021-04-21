@@ -1,0 +1,9 @@
+@import './vars';
+
+// Стили заголовков списков, блоков, ...
+@mixin small-title {
+  color: var(--title-color);
+  font-weight: var(--title-weight);
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+}

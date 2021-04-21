@@ -8,6 +8,8 @@ const {
 } = require('../validators/dncTrainSectors.validator');
 const validate = require('../validators/validate');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
+const { TStation } = require('../models/TStation');
+const { TBlock } = require('../models/TBlock');
 
 const router = Router();
 
@@ -61,6 +63,7 @@ router.get(
  *
  * Параметры тела запроса:
  * name - наименование поездного участка ДНЦ (обязательно),
+ * dncSectorId - id участка ДНЦ (обязателен),
  */
 router.post(
   '/add',
@@ -77,12 +80,12 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addDNCTrainSectorValidationRules,
+  addDNCTrainSectorValidationRules(),
   validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { name } = req.body;
+      const { name, dncSectorId } = req.body;
 
       // Ищем в БД поездной участок ДНЦ, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TDNCTrainSector.findOne({ where: { DNCTS_Title: name } });
@@ -93,7 +96,7 @@ router.post(
       }
 
       // Создаем в БД запись с данными о новом поездном участке ДНЦ
-      const sector = await TDNCTrainSector.create({ DNCTS_Title: name });
+      const sector = await TDNCTrainSector.create({ DNCTS_Title: name, DNCTS_DNCSectorID: dncSectorId });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 
@@ -111,7 +114,7 @@ router.post(
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * id - id участка (обязателен)
+ * id - id поездного участка (обязателен)
   */
 router.post(
   '/del',
@@ -128,7 +131,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delDNCTrainSectorValidationRules,
+  delDNCTrainSectorValidationRules(),
   validate,
   async (req, res) => {
     const sequelize = req.sequelize;
@@ -143,46 +146,27 @@ router.post(
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCSector.findOne({ where: { DNCS_ID: id } });
+      // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
+      const candidate = await TDNCTrainSector.findOne({ where: { DNCTS_ID: id } });
 
       // Если не находим, то процесс удаления продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанный участок ДНЦ не существует в базе данных' });
+        return res.status(ERR).json({ message: 'Указанный поездной участок ДНЦ не существует в базе данных' });
       }
 
-      // Перед удалением участка ДНЦ ищем все поездные участки ДНЦ: они будут удалены в процессе
-      // удаления информации об участке ДНЦ, поэтому для станций и перегонов необходимо удалить ссылки
-      // на данные поездные участки
-      const dncTrainSectors = await TDNCTrainSector.findAll({ where: { DNCTS_DNCSectorID: id } });
-
-      // Удаляем в БД запись и все связанные с нею записи (порядок имеет значение!)
-      await TAdjacentDNCSector.destroy(
-        {
-          where: {
-            [Op.or]: [
-              { ADNCS_DNCSectorID1: id },
-              { ADNCS_DNCSectorID2: id },
-            ],
-          },
-        },
+      // Перед удалением поездного участка ДНЦ, для всех станций и перегонов, привязанных к нему,
+      // необходимо удалить ссылки на данный поездной участок
+      await TStation.update(
+        { St_DNCTrainSectorID: null },
+        { where: { St_DNCTrainSectorID: id } },
         { transaction: t }
       );
-      await TNearestDNCandECDSector.destroy({ where: { NDE_DNCSectorID: id } }, { transaction: t });
-      if (dncTrainSectors && dncTrainSectors.length) {
-        await TStation.update(
-          { St_DNCTrainSectorID: null },
-          { where: { St_DNCTrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) } },
-          { transaction: t }
-        );
-        await TBlock.update(
-          { Bl_DNCTrainSectorID: null },
-          { where: { Bl_DNCTrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) } },
-          { transaction: t }
-        );
-      }
-      await TDNCTrainSector.destroy({ where: { DNCTS_DNCSectorID: id } }, { transaction: t });
-      await TDNCSector.destroy({ where: { DNCS_ID: id } }, { transaction: t });
+      await TBlock.update(
+        { Bl_DNCTrainSectorID: null },
+        { where: { Bl_DNCTrainSectorID: id } },
+        { transaction: t }
+      );
+      await TDNCTrainSector.destroy({ where: { DNCTS_ID: id } }, { transaction: t });
 
       await t.commit();
 
@@ -221,7 +205,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modDNCTrainSectorValidationRules,
+  modDNCTrainSectorValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -229,7 +213,7 @@ router.post(
       const { id, name } = req.body;
 
       // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCTrainSector.findOne({ where: { DNCS_ID: id } });
+      const candidate = await TDNCTrainSector.findOne({ where: { DNCTS_ID: id } });
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {

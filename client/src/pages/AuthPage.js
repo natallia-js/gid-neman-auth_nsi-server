@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
+import { ServerAPI } from '../constants';
 
 import './AuthPage.css';
 
@@ -81,7 +82,7 @@ export const AuthPage = () => {
   const loginHandler = async () => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const data = await request('/api/auth/login', 'POST', { ...form });
+      const data = await request(ServerAPI.LOGIN, 'POST', { ...form });
 
       // Осуществляем попытку войти в систему
       auth.login(data.token, data.userId, data.userInfo.service, data.roles, data.credentials);

@@ -7,6 +7,8 @@ import NewBlockModal from '../NewBlockModal';
 import { ServerAPI, BLOCK_FIELDS, STATION_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import blocksTableColumns from './BlocksTableColumns';
+import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
+import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 
 import 'antd/dist/antd.css';
 
@@ -56,24 +58,6 @@ const BlocksTable = () => {
 
 
   /**
-   * Преобразует объект станции, полученный из БД, в объект станции приложения.
-   *
-   * @param {object} dbStationObj
-   */
-  const getAppStationObjFromDBStationObj = (dbStationObj) => {
-    if (dbStationObj) {
-      return {
-        [STATION_FIELDS.KEY]: dbStationObj.St_ID,
-        [STATION_FIELDS.ESR_CODE]: dbStationObj.St_UNMC,
-        [STATION_FIELDS.NAME]: dbStationObj.St_Title,
-        [STATION_FIELDS.NAME_AND_CODE]: `${dbStationObj.St_Title} (${dbStationObj.St_UNMC})`,
-      }
-    }
-    return null;
-  }
-
-
-  /**
    * По заданному идентификатору станции возвращает строку с ее названием и кодом.
    */
   const getStationInfoByID = useCallback((id) => {
@@ -93,16 +77,13 @@ const BlocksTable = () => {
    *
    * @param {object} dbBlockObj
    */
-  const getAppBlockObjFromDBBlockObj = useCallback((dbBlockObj) => {
+  const getAppBlockObjFromDBBlockObj_WithAddInfo = useCallback((dbBlockObj) => {
     if (dbBlockObj) {
       return {
-        [BLOCK_FIELDS.KEY]: dbBlockObj.Bl_ID,
-        [BLOCK_FIELDS.NAME]: dbBlockObj.Bl_Title,
-        [BLOCK_FIELDS.STATION1]: dbBlockObj.Bl_StationID1,
-        [BLOCK_FIELDS.STATION2]: dbBlockObj.Bl_StationID2,
+        ...getAppBlockObjFromDBBlockObj(dbBlockObj),
         [BLOCK_FIELDS.STATION1_NAME]: getStationInfoByID(dbBlockObj.Bl_StationID1),
         [BLOCK_FIELDS.STATION2_NAME]: getStationInfoByID(dbBlockObj.Bl_StationID2),
-      }
+      };
     }
     return null;
   }, [getStationInfoByID]);
@@ -159,7 +140,7 @@ const BlocksTable = () => {
           Authorization: `Bearer ${auth.token}`
         });
 
-        const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
+        const tableData = res.map((block) => getAppBlockObjFromDBBlockObj_WithAddInfo(block));
 
         setTableData(tableData);
         setLoadDataErr(null);
@@ -174,7 +155,7 @@ const BlocksTable = () => {
 
     loadBlocks();
 
-  }, [auth.token, getAppBlockObjFromDBBlockObj, request, stations]);
+  }, [auth.token, getAppBlockObjFromDBBlockObj_WithAddInfo, request, stations]);
 
 
   /**
@@ -209,7 +190,7 @@ const BlocksTable = () => {
 
       setSuccessSaveMessage(res.message);
 
-      const newBlock = getAppBlockObjFromDBBlockObj(res.block);
+      const newBlock = getAppBlockObjFromDBBlockObj_WithAddInfo(res.block);
 
       setTableData([...tableData, newBlock]);
 

@@ -78,7 +78,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addStationValidationRules,
+  addStationValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -129,7 +129,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delStationValidationRules,
+  delStationValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -174,7 +174,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modStationValidationRules,
+  modStationValidationRules(),
   validate,
   async (req, res) => {
     try {

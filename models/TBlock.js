@@ -2,6 +2,8 @@ const { DataTypes, Model } = require('sequelize');
 const { TStation } = require('./TStation');
 const { TDNCTrainSector } = require('./TDNCTrainSector');
 const { TECDTrainSector } = require('./TECDTrainSector');
+const { TECDSector } = require('./TECDSector');
+const { TDNCSector } = require('./TDNCSector');
 
 const MODEL_NAME = 'TBlock';
 const UNIQUE_BLOCK_TITLE_CONSTRAINT_NAME = 'XUniqueBlockTitle';
@@ -63,6 +65,22 @@ function createBlockModel(sequelize) {
       type: DataTypes.TINYINT,
       allowNull: true,
     },
+    Bl_ECDSectorID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: TECDSector,
+        key: 'ECDS_ID',
+      },
+    },
+    Bl_DNCSectorID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: TDNCSector,
+        key: 'DNCS_ID',
+      },
+    }
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance

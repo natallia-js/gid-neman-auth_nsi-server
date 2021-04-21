@@ -1,0 +1,25 @@
+@import './text';
+
+// Стили блока всей информации о поездных участках
+@mixin train-sectors-block {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  height: auto;
+  margin: 1rem;
+}
+
+// Стили блока информации о непосредственно самих поездных участках (их наименованиях)
+@mixin train-sectors-info-sub-block {
+  height: 100%;
+  width: 45%;
+  min-width: 25rem;
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+}
+
+// Стили заголовков
+@mixin train-sectors-title {
+  @include small-title();
+}

@@ -4,6 +4,7 @@ import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { Loader } from '../components/Loader/Loader';
+import { ServerAPI } from '../constants';
 
 import M from 'materialize-css';
 import './UsersPage.css';
@@ -103,12 +104,12 @@ export const UsersPage = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
-      const res = await request('/api/auth/data', 'GET', null, {
+      const res = await request(ServerAPI.GET_ALL_USERS, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
       // Делаем запрос на сервер с целью получения информации по ролям
-      const resRoles = await request('/api/roles/abbrs', 'GET', null, {
+      const resRoles = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -164,7 +165,7 @@ export const UsersPage = () => {
     setNewSectorErr(null);
 
     // Отправляем запрос на добавление записи о пользователе на сервер
-    request('/api/auth/register', 'POST', { ...newUserForm }, {
+    request(ServerAPI.ADD_NEW_USER, 'POST', { ...newUserForm }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -223,7 +224,7 @@ export const UsersPage = () => {
    */
   const onDelete = useCallback(({ rowKey }) => {
     // Отправляем запрос на удаление записи о пользователе на сервере
-    request('/api/auth/del', 'POST', { userId: rowKey }, {
+    request(ServerAPI.DEL_USER, 'POST', { userId: rowKey }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -317,7 +318,7 @@ export const UsersPage = () => {
     }
 
     // Отправляем запрос на редактирование записи о пользователе на сервере
-    request('/api/auth/mod', 'POST', objToSend, {
+    request(ServerAPI.MOD_USER, 'POST', objToSend, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -420,11 +421,14 @@ export const UsersPage = () => {
         // Будем добавлять новую роль пользователю
         if (!user.roles.includes(roleId)) {
 
-          request('/api/auth/addRole', 'POST', { userId: parentId,
-                                                 roleId },
-                                               {
-                                                 Authorization: `Bearer ${auth.token}`
-                                               })
+          request(ServerAPI.ADD_USER_ROLE, 'POST',
+          {
+            userId: parentId,
+            roleId
+          },
+          {
+            Authorization: `Bearer ${auth.token}`
+          })
             .then((res) => {
               // при успешном редактировании записи на сервере не запрашиваем заново всю информацию
               // обо всех пользователях, а обновляем общий массив путем обновления в нем соответствующего объекта
@@ -442,11 +446,14 @@ export const UsersPage = () => {
 
         } else {
           // Будем удалять роль у пользователя
-          request('/api/auth/delRole', 'POST', { userId: parentId,
-                                                 roleId },
-                                               {
-                                                 Authorization: `Bearer ${auth.token}`
-                                               })
+          request(ServerAPI.DEL_USER_ROLE, 'POST',
+            {
+              userId: parentId,
+              roleId,
+            },
+            {
+              Authorization: `Bearer ${auth.token}`
+            })
             .then((res) => {
               // при успешном редактировании записи на сервере не запрашиваем заново всю информацию
               // обо всех пользователях, а обновляем общий массив путем обновления в нем соответствующего объекта

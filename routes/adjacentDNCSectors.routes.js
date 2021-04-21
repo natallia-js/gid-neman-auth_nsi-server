@@ -79,7 +79,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addAdjacentDNCSectorsValidationRules,
+  addAdjacentDNCSectorsValidationRules(),
   validate,
   async (req, res) => {
     try {
@@ -174,7 +174,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delAdjacentDNCSectorValidationRules,
+  delAdjacentDNCSectorValidationRules(),
   validate,
   async (req, res) => {
     try {

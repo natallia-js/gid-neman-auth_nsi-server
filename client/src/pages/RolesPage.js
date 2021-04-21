@@ -5,6 +5,7 @@ import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { Loader } from '../components/Loader/Loader';
 import MultipleSelect from '../components/MultipleSelect/MultipleSelect';
+import { ServerAPI } from '../constants';
 import M from 'materialize-css';
 
 import './RolesPage.css';
@@ -92,11 +93,11 @@ export const RolesPage = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по ролям
-      const res = await request('/api/roles/data', 'GET', null, {
+      const res = await request(ServerAPI.GET_ROLES_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const appsData = await request('/api/apps/abbrData', 'GET', null, {
+      const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -157,7 +158,7 @@ export const RolesPage = () => {
     setNewSubAdminCanUseErr(null);
 
     // Отправляем запрос на добавление записи о роли на сервер
-    request('/api/roles/add', 'POST', { ...newRoleForm }, {
+    request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...newRoleForm }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -201,7 +202,7 @@ export const RolesPage = () => {
    */
   const onDelete = useCallback(({ rowKey }) => {
     // Отправляем запрос на удаление записи о роли на сервере
-    request('/api/roles/del', 'POST', { roleId: rowKey }, {
+    request(ServerAPI.DEL_ROLE_DATA, 'POST', { roleId: rowKey }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -266,7 +267,7 @@ export const RolesPage = () => {
     }
 
     // Отправляем запрос на редактирование записи о роли на сервере
-    request('/api/roles/mod', 'POST', objToSend, {
+    request(ServerAPI.MOD_ROLE_DATA, 'POST', objToSend, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -570,7 +571,7 @@ export const RolesPage = () => {
     }
 
     // Отправляем запрос об изменении списка полномочий на сервер
-    request('/api/roles/changeCreds', 'POST', { roleId, appId, newCredIds: credIds }, {
+    request(ServerAPI.MOD_ROLE_CREDS, 'POST', { roleId, appId, newCredIds: credIds }, {
       Authorization: `Bearer ${auth.token}`
     })
     .then((res) => {

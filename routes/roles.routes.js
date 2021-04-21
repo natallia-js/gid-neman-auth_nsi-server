@@ -195,7 +195,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addRoleValidationRules,
+  addRoleValidationRules(),
   validate,
   async (req, res) => {
     // Проверяем принадлежность лица, производящего запрос
@@ -267,7 +267,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  addCredValidationRules,
+  addCredValidationRules(),
   validate,
   async (req, res) => {
     // Проверяем принадлежность лица, производящего запрос
@@ -348,7 +348,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  changeCredsValidationRules,
+  changeCredsValidationRules(),
   validate,
   async (req, res) => {
     // Проверяем принадлежность лица, производящего запрос
@@ -418,7 +418,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  delRoleValidationRules,
+  delRoleValidationRules(),
   validate,
   async (req, res) => {
     // Проверяем принадлежность лица, производящего запрос
@@ -505,7 +505,7 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  modRoleValidationRules,
+  modRoleValidationRules(),
   validate,
   async (req, res) => {
     // Проверяем принадлежность лица, производящего запрос

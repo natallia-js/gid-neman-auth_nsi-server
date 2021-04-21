@@ -15,6 +15,10 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import AdjacentECDSectorsBlock from './AdjacentECDSectorsBlock';
 import NearestDNCSectorsBlock from './NearestDNCSectorsBlock';
 import ecdSectorsTableColumns from './ECDSectorsTableColumns';
+import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
+import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
+import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
 import 'antd/dist/antd.css';
 import './styles.scss';
@@ -66,46 +70,10 @@ const ECDSectorsTable = () => {
 
 
   /**
-   * Преобразует объект участка ЭЦД, полученный из БД, в объект участка ЭЦД, с которым
-   * работает приложение.
-   *
-   * @param {object} dbECDSectorObj
-   */
-  const getAppECDSectorObjFromDBECDSectorObj = (dbECDSectorObj) => {
-    if (dbECDSectorObj) {
-      return {
-        [ECDSECTOR_FIELDS.KEY]: dbECDSectorObj.ECDS_ID,
-        [ECDSECTOR_FIELDS.NAME]: dbECDSectorObj.ECDS_Title,
-        [ECDSECTOR_FIELDS.ADJACENT_ECDSECTORS]: [],
-        [ECDSECTOR_FIELDS.NEAREST_DNCSECTORS]: [],
-      }
-    }
-    return null;
-  };
-
-
-  /**
-   * Преобразует объект участка ДНЦ, полученный из БД, в объект участка ДНЦ, с которым
-   * работает приложение.
-   *
-   * @param {object} dbDNCSectorObj
-   */
-   const getAppDNCSectorObjFromDBDNCSectorObj = (dbDNCSectorObj) => {
-    if (dbDNCSectorObj) {
-      return {
-        [DNCSECTOR_FIELDS.KEY]: dbDNCSectorObj.DNCS_ID,
-        [DNCSECTOR_FIELDS.NAME]: dbDNCSectorObj.DNCS_Title,
-      }
-    }
-    return null;
-  };
-
-
-  /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
    * и устанавливает ее в локальное состояние.
    */
-   const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setDataLoaded(false);
 
     try {
@@ -164,6 +132,23 @@ const ECDSectorsTable = () => {
           ecdSector[ECDSECTOR_FIELDS.NEAREST_DNCSECTORS].push({
             [NEAREST_SECTOR_FIELDS.SECTOR_ID]: dncSector[DNCSECTOR_FIELDS.KEY],
           });
+        }
+      });
+
+      // -------------------
+
+      // Осталось получить информацию о поездных участках ЭЦД
+
+      res = await request(ServerAPI.GET_ECDTRAINSECTORS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      // Для каждой полученной записи создаем в tableData элемент массива поездных участков ЭЦД
+      // для соответствующего участка ЭЦД
+      res.forEach((data) => {
+        const ecdSector = tableData.find((el) => el[ECDSECTOR_FIELDS.KEY] === data.ECDTS_ECDSectorID);
+        if (ecdSector) {
+          ecdSector[ECDSECTOR_FIELDS.TRAIN_SECTORS].push(getAppECDTrainSectorFromDBECDTrainSectorObj(data));
         }
       });
 
@@ -465,7 +450,6 @@ const ECDSectorsTable = () => {
                     список участков ЭЦД, смежных с текущим
                   */}
                   <AdjacentECDSectorsBlock
-                    dataSource={record[ECDSECTOR_FIELDS.ADJACENT_ECDSECTORS]}
                     currECDSectorRecord={record}
                     possibleAdjECDSectors={
                       tableData
@@ -498,6 +482,14 @@ const ECDSectorsTable = () => {
                     getDNCSectorNameByIdCallback={getDNCSectorNameById}
                   />
                 </div>
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список поездных участков ЭЦД для текущего участка ЭЦД
+                */}
+                <ECDTrainSectorsBlock
+                  currECDSectorRecord={record}
+                  setTableDataCallback={setTableData}
+                />
               </>
             ),
             rowExpandable: record => true,

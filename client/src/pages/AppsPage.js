@@ -4,6 +4,7 @@ import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { Loader } from '../components/Loader/Loader';
+import { ServerAPI } from '../constants';
 import M from 'materialize-css';
 
 import './AppsPage.css';
@@ -109,7 +110,7 @@ export const AppsPage = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по приложениям
-      const res = await request('/api/apps/data', 'GET', null, {
+      const res = await request(ServerAPI.GET_APPS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -156,7 +157,7 @@ export const AppsPage = () => {
     setNewTitleErr(null);
 
     // Отправляем запрос на добавление записи о приложении на сервер
-    request('/api/apps/add', 'POST', { ...newAppForm }, {
+    request(ServerAPI.ADD_APP_DATA, 'POST', { ...newAppForm }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -208,12 +209,15 @@ export const AppsPage = () => {
     setActiveAppId(parentId);
 
     // Отправляем запрос на добавление записи о полномочии в приложении на сервер
-    request('/api/apps/addCred', 'POST', { appId: parentId,
-                                           englAbbreviation,
-                                           description },
-                                         {
-                                           Authorization: `Bearer ${auth.token}`
-                                         })
+    request(ServerAPI.ADD_APP_CRED_DATA, 'POST',
+      {
+        appId: parentId,
+        englAbbreviation,
+        description
+      },
+      {
+        Authorization: `Bearer ${auth.token}`
+      })
       .then((res) => {
         // при успешном добавлении записи на сервере не запрашиваем заново всю информацию
         // обо всех приложениях, а обновляем общий массив имеющимся объектом
@@ -257,7 +261,7 @@ export const AppsPage = () => {
    */
   const onDelete = useCallback(({ rowKey }) => {
     // Отправляем запрос на удаление записи о приложении на сервере
-    request('/api/apps/del', 'POST', { appId: rowKey }, {
+    request(ServerAPI.DEL_APP_DATA, 'POST', { appId: rowKey }, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -279,11 +283,14 @@ export const AppsPage = () => {
    *                         rowKey (id записи о полномочии, которую необходимо удалить)
    */
   const onDeleteSubTbl = useCallback(({ parentId, rowKey }) => {
-    request('/api/apps/delCred', 'POST', { appId: parentId,
-                                           credId: rowKey },
-                                         {
-                                           Authorization: `Bearer ${auth.token}`
-                                         })
+    request(ServerAPI.DEL_APP_CRED_DATA, 'POST',
+      {
+        appId: parentId,
+        credId: rowKey
+      },
+      {
+        Authorization: `Bearer ${auth.token}`
+      })
       .then((res) => {
         // при успешном удалении записи на сервере не запрашиваем заново всю информацию
         // обо всех приложениях, а обновляем общий массив путем удаления из него объекта
@@ -365,7 +372,7 @@ export const AppsPage = () => {
     }
 
     // Отправляем запрос на редактирование записи о приложении на сервере
-    request('/api/apps/mod', 'POST', objToSend, {
+    request(ServerAPI.MOD_APP_DATA, 'POST', objToSend, {
       Authorization: `Bearer ${auth.token}`
     })
       .then((res) => {
@@ -433,11 +440,14 @@ export const AppsPage = () => {
       return;
     }
 
-    request('/api/apps/modCred', 'POST', { appId: parentId,
-                                           ...objToSend },
-                                         {
-                                           Authorization: `Bearer ${auth.token}`
-                                         })
+    request(ServerAPI.MOD_APP_CRED_DATA, 'POST',
+      {
+        appId: parentId,
+        ...objToSend,
+      },
+      {
+        Authorization: `Bearer ${auth.token}`
+      })
       .then((res) => {
         // при успешном редактировании записи на сервере не запрашиваем заново всю информацию
         // обо всех приложениях, а обновляем общий массив путем обновления в нем соответствующего объекта

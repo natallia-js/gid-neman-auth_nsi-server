@@ -20,7 +20,7 @@ const app = express();
 app.use(express.json({ extended: true }));
 
 // CORS middleware
-const allowCrossDomain = function(req, res, next) {
+const allowCrossDomain = function(_req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', '*');
   res.header('Access-Control-Allow-Headers', '*');
@@ -37,11 +37,13 @@ app.use('/api/apps', require('./routes/apps.routes'));
 app.use('/api/roles', require('./routes/roles.routes'));
 app.use('/api/nsi/stations', require('./routes/stations.routes'));
 app.use('/api/nsi/blocks', require('./routes/blocks.routes'));
-app.use('/api/nsi/dncSectors', (req, res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncSectors.routes'));
-app.use('/api/nsi/ecdSectors', (req, res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdSectors.routes'));
+app.use('/api/nsi/dncSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncSectors.routes'));
+app.use('/api/nsi/ecdSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdSectors.routes'));
 app.use('/api/nsi/adjacentDNCSectors', require('./routes/adjacentDNCSectors.routes'));
 app.use('/api/nsi/adjacentECDSectors', require('./routes/adjacentECDSectors.routes'));
 app.use('/api/nsi/nearestDNCandECDSectors', require('./routes/nearestDNCandECDSectots.routes'));
+app.use('/api/nsi/dncTrainSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncTrainSectors.routes'));
+app.use('/api/nsi/ecdTrainSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectors.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

@@ -1,6 +1,8 @@
 const { DataTypes, Model } = require('sequelize');
 const { TDNCTrainSector } = require('./TDNCTrainSector');
 const { TECDTrainSector } = require('./TECDTrainSector');
+const { TECDSector } = require('./TECDSector');
+const { TDNCSector } = require('./TDNCSector');
 
 const MODEL_NAME = 'TStation';
 const UNIQUE_STATION_UNMC_CONSTRAINT_NAME = 'XUniqueStationUNMC';
@@ -46,6 +48,22 @@ function createStationModel(sequelize) {
     St_DNCTrainSectorPosition: {
       type: DataTypes.TINYINT,
       allowNull: true,
+    },
+    St_ECDSectorID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: TECDSector,
+        key: 'ECDS_ID',
+      },
+    },
+    St_DNCSectorID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: TDNCSector,
+        key: 'DNCS_ID',
+      },
     },
   }, {
     // Other model options go here
