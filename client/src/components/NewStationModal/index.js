@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Modal, Form, Input, Button, Select, Typography } from 'antd';
 import { STATION_FIELDS, DNCSECTOR_FIELDS } from '../../constants';
 
@@ -37,19 +37,6 @@ const NewStationModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
-  // Ref для кнопки подтверждения ввода
-  const submitBtn = useRef(null);
-
-  // Для полей ввода формы
-  const layout = {
-    labelCol: {
-      span: 8,
-    },
-    wrapperCol: {
-      span: 16,
-    },
-  };
-
 
   /**
    * Чистим поля ввода информации о новой станции.
@@ -57,19 +44,6 @@ const NewStationModal = ({
   const onReset = () => {
     form.resetFields();
   };
-
-
-  /**
-   * При нажатии кнопки Enter на текстовом поле ввода происходит подтверждение
-   * пользователем окончания ввода.
-   *
-   * @param {object} event
-   */
-  const handleStationDataFieldClick = (event) => {
-    if (event.key === 'Enter') {
-      submitBtn.current.click();
-    }
-  }
 
 
   /**
@@ -104,8 +78,7 @@ const NewStationModal = ({
       onCancel={onCancel}
     >
       <Form
-        {...layout}
-        layout="horizontal"
+        layout="vertical"
         size='small'
         form={form}
         name="new-station-form"
@@ -123,7 +96,6 @@ const NewStationModal = ({
           <Input
             autoFocus={true}
             autoComplete="off"
-            onClick={handleStationDataFieldClick}
           />
         </Form.Item>
 
@@ -135,10 +107,9 @@ const NewStationModal = ({
         >
           <Input
             autoComplete="off"
-            onClick={handleStationDataFieldClick}
           />
         </Form.Item>
-
+{/*
         <Form.Item
           label="Участок ДНЦ"
           name={DNCSECTOR_FIELDS.NAME}
@@ -150,12 +121,12 @@ const NewStationModal = ({
           }
           </Select>
         </Form.Item>
-
+        */}
         <Form.Item>
           <Button htmlType="button" onClick={onReset}>
             Очистить поля
           </Button>
-          <Button htmlType="submit" ref={submitBtn}>
+          <Button htmlType="submit">
             Добавить запись
           </Button>
           <Button htmlType="button" onClick={onCancel}>

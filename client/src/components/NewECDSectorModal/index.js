@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { ECDSECTOR_FIELDS } from '../../constants';
 
@@ -34,19 +34,6 @@ const NewECDSectorModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
-  // Ref для кнопки подтверждения ввода
-  const submitBtnRef = useRef(null);
-
-  // Для полей ввода формы
-  const layout = {
-    labelCol: {
-      span: 8,
-    },
-    wrapperCol: {
-      span: 16,
-    },
-  };
-
 
   /**
    * Чистим поля ввода информации о новом участке.
@@ -54,19 +41,6 @@ const NewECDSectorModal = ({
   const onReset = () => {
     form.resetFields();
   };
-
-
-  /**
-   * При нажатии кнопки Enter на текстовом поле ввода происходит подтверждение
-   * пользователем окончания ввода.
-   *
-   * @param {object} event
-   */
-  const handleECDSectorDataFieldClick = (event) => {
-    if (event.key === 'Enter') {
-      submitBtnRef.current.click();
-    }
-  }
 
 
   /**
@@ -101,8 +75,7 @@ const NewECDSectorModal = ({
       onCancel={onCancel}
     >
       <Form
-        {...layout}
-        layout="horizontal"
+        layout="vertical"
         size='small'
         form={form}
         name="new-ecdsector-form"
@@ -120,7 +93,6 @@ const NewECDSectorModal = ({
           <Input
             autoFocus={true}
             autoComplete="off"
-            onClick={handleECDSectorDataFieldClick}
           />
         </Form.Item>
 
@@ -128,7 +100,7 @@ const NewECDSectorModal = ({
           <Button htmlType="button" onClick={onReset}>
             Очистить поля
           </Button>
-          <Button htmlType="submit" ref={submitBtnRef}>
+          <Button htmlType="submit">
             Добавить запись
           </Button>
           <Button htmlType="button" onClick={onCancel}>

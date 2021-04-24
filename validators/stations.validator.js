@@ -4,12 +4,12 @@ const addStationValidationRules = () => {
   return [
     check('ESRCode')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина ЕСР-кода станции 1 символ'),
+      .isLength({ min: 1, max: 6 })
+      .withMessage('Длина ЕСР-кода станции минимум 1 символ, максимум 6 символов'),
     check('name')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования станции 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования станции минимум 1 символ, максимум 32 символа'),
   ];
 };
 
@@ -29,13 +29,13 @@ const modStationValidationRules = () => {
     check('ESRCode')
       .if(body('ESRCode').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина ЕСР-кода станции 1 символ'),
+      .isLength({ min: 1, max: 6 })
+      .withMessage('Длина ЕСР-кода станции минимум 1 символ, максимум 6 символов'),
     check('name')
       .if(body('name').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования станции 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования станции минимум 1 символ, максимум 32 символа'),
   ];
 };
 

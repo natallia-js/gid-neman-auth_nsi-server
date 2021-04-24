@@ -10,7 +10,7 @@ const addAdjacentDNCSectorsValidationRules = () => {
       .withMessage('Не указан массив id смежных участков ДНЦ')
       .bail()
       .isArray()
-      .withMessage('Массив id смежных участков ДНЦ должен быть массивом')
+      .withMessage('Список id смежных участков ДНЦ должен быть массивом')
   ];
 };
 

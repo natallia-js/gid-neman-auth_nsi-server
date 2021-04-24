@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button } from 'antd';
+import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewECDSectorModal from '../NewECDSectorModal';
 import {
@@ -19,9 +19,13 @@ import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
+import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
 
 import 'antd/dist/antd.css';
 import './styles.scss';
+import '../../assets/styles/tables.scss';
+
+const { Title } = Typography;
 
 
 /**
@@ -386,6 +390,7 @@ const ECDSectorsTable = () => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
+        required: true,
       }),
     };
   });
@@ -406,6 +411,9 @@ const ECDSectorsTable = () => {
           clearAddECDSectorMessages={clearAddECDSectorMessages}
           successSaveMessage={successSaveMessage}
         />
+
+        <Title level={2} className="center top-margin-05">Участки ЭЦД</Title>
+
         <Button
           type="primary"
           style={{
@@ -430,7 +438,6 @@ const ECDSectorsTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
-          scroll={{ x: '100vw', y: '100vh' }}
           onRow={(record) => {
             return {
               onDoubleClick: () => { handleStartEditECDSector(record) },
@@ -493,6 +500,12 @@ const ECDSectorsTable = () => {
               </>
             ),
             rowExpandable: record => true,
+            expandIcon: ({ expanded, onExpand, record }) =>
+              expanded ? (
+                <MinusCircleTwoTone onClick={e => onExpand(record, e)} />
+              ) : (
+                <PlusCircleTwoTone onClick={e => onExpand(record, e)} />
+              ),
           }}
         />
       </Form>

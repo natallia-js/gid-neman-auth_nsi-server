@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button } from 'antd';
+import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewStationModal from '../NewStationModal';
 import {
@@ -20,6 +20,9 @@ import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNC
 import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
 import 'antd/dist/antd.css';
+import '../../assets/styles/tables.scss';
+
+const { Title } = Typography;
 
 
 /**
@@ -300,7 +303,7 @@ const StationsTable = () => {
           return { ...station, ...rowData };
         }
         return station;
-      })
+      });
 
       setTableData(newTableData);
       setEditingKey('');
@@ -355,6 +358,7 @@ const StationsTable = () => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
+        required: true,
       }),
     };
   });
@@ -381,6 +385,9 @@ const StationsTable = () => {
             })
           }
         />
+
+        <Title level={2} className="center top-margin-05">Станции</Title>
+
         <Button
           type="primary"
           style={{
@@ -405,7 +412,6 @@ const StationsTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
-          scroll={{ x: '100vw', y: '100vh' }}
           onRow={(record) => {
             return {
               onDoubleClick: () => { handleStartEditStation(record) },

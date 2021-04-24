@@ -81,6 +81,46 @@ export const ServerAPI = Object.freeze({
 
 // ----------------------------------------
 
+export const APP_FIELDS = Object.freeze({
+  KEY: 'key',
+  SHORT_TITLE: 'shortTitle',
+  TITLE: 'title',
+  CREDENTIALS: 'creds',
+});
+
+export const APP_CRED_FIELDS = Object.freeze({
+  KEY: 'key',
+  ENGL_ABBREVIATION: 'englAbbreviation',
+  DESCRIPTION: 'description',
+});
+
+// ----------------------------------------
+
+export const ROLE_FIELDS = Object.freeze({
+  KEY: 'key',
+  ENGL_ABBREVIATION: 'englAbbreviation',
+  DESCRIPTION: 'description',
+  SUB_ADMIN_CAN_USE: 'subAdminCanUse',
+  APPLICATIONS: 'apps',
+});
+
+// ----------------------------------------
+
+export const USER_FIELDS = Object.freeze({
+  KEY: 'key',
+  LOGIN: 'login',
+  PASSWORD: 'password',
+  NAME: 'name',
+  SURNAME: 'surname',
+  FATHERNAME: 'fathername',
+  POST: 'post',
+  SERVICE: 'service',
+  SECTOR: 'sector',
+  ROLES: 'roles',
+});
+
+// ----------------------------------------
+
 export const STATION_FIELDS = Object.freeze({
   KEY: 'key',
   ESR_CODE: 'ESRCode',

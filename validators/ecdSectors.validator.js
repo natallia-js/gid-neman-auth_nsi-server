@@ -4,8 +4,8 @@ const addECDSectorValidationRules = () => {
   return [
     check('name')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка ЭЦД 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования участка ЭЦД минимум 1 символ, максимум 32 символа'),
   ];
 };
 
@@ -25,8 +25,8 @@ const modECDSectorValidationRules = () => {
     check('name')
       .if(body('name').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка ЭЦД 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования участка ЭЦД минимум 1 символ, максимум 32 символа'),
   ];
 };
 

@@ -1,0 +1,25 @@
+@import '../../assets/styles/vars';
+
+.savable-select-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.select-block {
+  flex: 1 auto;
+}
+
+.btn-block {
+  flex: 0 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-user-select-btn {
+  width: 100%;
+}
+
+.user-made-changes-btn {
+  background-color: var(--unsaved-changes-btn-color);
+}

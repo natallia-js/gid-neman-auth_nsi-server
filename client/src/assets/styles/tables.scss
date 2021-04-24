@@ -1,0 +1,10 @@
+@import './vars';
+
+.expandable-row-content {
+  background-color: var(--expandable-row-content-bg-color);
+  padding: 1rem;
+}
+
+.main-col {
+  font-weight: 600;
+}

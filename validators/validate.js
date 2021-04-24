@@ -11,16 +11,17 @@ module.exports = (req, res, next) => {
 
   // При ошибках валидации переданных пользователем данных возвращаем пользователю сообщения об ошибках
 
-/*  return res.status(UNPROCESSABLE_ENTITY).json({
+  return res.status(UNPROCESSABLE_ENTITY).json({
+    // массив объектов, в которых обязательно должны быть поля param и msg
     errors: errors.array(),
     message: 'Указаны некорректные данные при выполнении действия',
-  }); */
-
+  });
+/*
   const extractedErrors = [];
   errors.array().map(err => extractedErrors.push({ [err.param]: err.msg }));
 
   return res.status(UNPROCESSABLE_ENTITY).json({
     errors: extractedErrors,
     message: 'Указаны некорректные данные при выполнении действия',
-  });
+  });*/
 }

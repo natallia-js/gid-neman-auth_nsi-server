@@ -1,8 +1,10 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { ServerAPI } from '../constants';
+import { Form, Input, Button } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
 import './AuthPage.css';
 
@@ -20,11 +22,8 @@ export const AuthPage = () => {
   // для общения с сервером
   const { loading, request, error, clearError } = useHttp();
 
-  // Параметры, необходимые для входа в систему (используем переменную состояния form)
-  const [form, setForm] = useState({
-    login: '',
-    password: ''
-  });
+  // Ref для кнопки подтверждения ввода
+  const submitBtn = useRef(null);
 
 
   /**
@@ -56,35 +55,14 @@ export const AuthPage = () => {
 
 
   /**
-   * Для того чтобы input'ы стали активными при переходе на страницу авторизации
+   * Обрабатываем запрос на вход пользователя в систему.
    */
-  useEffect(() => {
-    if (window.M) {
-      window.M.updateTextFields();
-    }
-  }, []);
-
-
-  /**
-   * Обрабатываем изменение в одном из текстовых полей ввода
-   * (обновляем значение переменной состояния form)
-   *
-   * @param {object} event
-   */
-  const changeHandler = (event) => {
-    setForm({ ...form, [event.target.name]: event.target.value });
-  }
-
-
-  /**
-   * Обрабатываем запрос на вход пользователя в систему
-   */
-  const loginHandler = async () => {
+  const loginHandler = async (loginData) => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const data = await request(ServerAPI.LOGIN, 'POST', { ...form });
+      const data = await request(ServerAPI.LOGIN, 'POST', { ...loginData });
 
-      // Осуществляем попытку войти в систему
+      // Входим в систему
       auth.login(data.token, data.userId, data.userInfo.service, data.roles, data.credentials);
 
     } catch (e) {
@@ -103,60 +81,76 @@ export const AuthPage = () => {
    */
   const keyPressOnInputHandler = async (event) => {
     if (event.key === 'Enter') {
-      loginHandler();
+      submitBtn.current.click();
     }
   }
 
 
+  /**
+   * Обрабатывает событие нажатия на кнопку входа в систему.
+   */
+   const onFinish = (values) => {
+    loginHandler(values);
+  };
+
+
   // Возвращаем страницу авторизации пользователя
   return (
-    <div className="row">
-      <div className="col s6 offset-s3">
-        <h2>Администрирование аккаунтов ГИД НЕМАН</h2>
-        <div className="card blue-grey darken-1">
-          <div className="card-content white-text">
-            <span className="card-title">Авторизация</span>
-            <div>
-
-              <div className="input-field">
-                <input
-                  placeholder="Введите имя администратора"
-                  id="login"
-                  type="text"
-                  name="login"
-                  className="input"
-                  onChange={changeHandler}
-                  onKeyUp={keyPressOnInputHandler}
-                />
-                <label htmlFor="login">Имя администратора</label>
-              </div>
-
-              <div className="input-field">
-                <input
-                  placeholder="Введите пароль администратора"
-                  id="password"
-                  type="password"
-                  name="password"
-                  className="input"
-                  onChange={changeHandler}
-                  onKeyUp={keyPressOnInputHandler}
-                />
-                <label htmlFor="password">Пароль</label>
-              </div>
-
-            </div>
-          </div>
-          <div className="card-action">
-            <button
-              className="btn yellow darken-4 enterBtn"
-              onClick={loginHandler}
+    <div className="auth-block">
+      <div className="auth-form">
+        <h3>Администрирование аккаунтов и НСИ ГИД НЕМАН</h3>
+        <Form
+          name="normal_login"
+          className="login-form"
+          onFinish={onFinish}
+          layout="vertical"
+        >
+          <Form.Item
+            label="Login администратора"
+            name="login"
+            rules={[
+              {
+                required: true,
+                message: 'Пожалуйста, введите login администратора!',
+              },
+            ]}
+          >
+            <Input
+              prefix={<UserOutlined className="site-form-item-icon" />}
+              placeholder="Введите login администратора"
+              onKeyUp={keyPressOnInputHandler}
+            />
+          </Form.Item>
+          <Form.Item
+            label="Пароль администратора"
+            name="password"
+            rules={[
+              {
+                required: true,
+                message: 'Пожалуйста, введите пароль администратора!',
+              },
+            ]}
+          >
+            <Input
+              prefix={<LockOutlined className="site-form-item-icon" />}
+              type="password"
+              placeholder="Пароль администратора"
+              onKeyUp={keyPressOnInputHandler}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="login-form-button"
+              ref={submitBtn}
               disabled={loading}
             >
               Войти
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Form.Item>
+        </Form>
       </div>
     </div>
-  )
-}
+  );
+};

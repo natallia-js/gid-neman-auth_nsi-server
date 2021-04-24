@@ -4,8 +4,8 @@ const addDNCTrainSectorValidationRules = () => {
   return [
     check('name')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования поездного участка ДНЦ 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования поездного участка ДНЦ минимум 1 символ, максимум 32 символа'),
     check('dncSectorId')
       .exists()
       .withMessage('Не указан id участка ДНЦ для добавления поездного участка ДНЦ'),
@@ -28,8 +28,8 @@ const modDNCTrainSectorValidationRules = () => {
     check('name')
       .if(body('name').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования поездного участка ДНЦ 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования поездного участка ДНЦ минимум 1 символ, максимум 32 символа'),
   ];
 };
 

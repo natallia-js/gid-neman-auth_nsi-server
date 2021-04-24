@@ -5,8 +5,11 @@ import { useAuth } from '../../hooks/auth.hook';
 import { AuthContext } from '../../context/AuthContext';
 import { Loader } from '../Loader/Loader';
 import { Navbar } from '../Navbar/Navbar';
+import { Layout } from 'antd';
 
 import 'materialize-css';
+
+const { Content, Footer } = Layout;
 
 
 /**
@@ -45,10 +48,13 @@ export default function App() {
       userCredentials, authError, clearAuthError
     }}>
       <Router>
-        {isAuthenticated && <Navbar />}
-        <div>
-          {routes}
-        </div>
+        <Layout>
+          {isAuthenticated && <Navbar />}
+          <Content>
+            {routes}
+          </Content>
+          <Footer style={{ textAlign: 'center' }}>Утилита администрирования аккаунтов и НСИ ГИД НЕМАН ©2021 КТЦ БелЖД</Footer>
+        </Layout>
       </Router>
     </AuthContext.Provider>
   )

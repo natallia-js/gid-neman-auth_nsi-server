@@ -226,13 +226,13 @@ router.post(
       // Создаем в БД запись с данными о новой роли
       let role;
       if (_id) {
-        role = new Role({ _id, englAbbreviation, description, subAdminCanUse: !!subAdminCanUse, apps });
+        role = new Role({ _id, englAbbreviation, description, subAdminCanUse, apps });
       } else {
-        role = new Role({ englAbbreviation, description, subAdminCanUse: !!subAdminCanUse, apps });
+        role = new Role({ englAbbreviation, description, subAdminCanUse, apps });
       }
       await role.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', roleId: role._id });
+      res.status(OK).json({ message: 'Информация успешно сохранена', role });
 
     } catch (e) {
       console.log(e);
@@ -561,7 +561,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: 'Информация успешно изменена', role: candidate });
 
     } catch (e) {
       console.log(e);

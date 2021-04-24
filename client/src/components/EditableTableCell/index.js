@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, InputNumber, Select } from 'antd';
+import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 
 import 'antd/dist/antd.css';
 
@@ -14,7 +14,9 @@ const EditableTableCell = ({
   record,
   index,
   children,
+  required,
   stations,
+  data,
   ...restProps
 }) => {
   let inputNode;
@@ -28,9 +30,15 @@ const EditableTableCell = ({
         <Select>
           {
             stations &&
-            stations.map(station => <Option key={station.id} value={station.id}>{station.name}</Option>)
+            stations.map(station =>
+              <Option key={station.id} value={station.id}>
+                {station.name}
+              </Option>)
           }
         </Select>
+      break;
+    case 'boolean':
+      inputNode = <Checkbox defaultChecked={data} />
       break;
     default:
       inputNode = <Input autoComplete="off" />;
@@ -41,10 +49,12 @@ const EditableTableCell = ({
       {editing ? (
         <Form.Item
           name={dataIndex}
+          valuePropName={inputType !== 'boolean' ? 'value' : 'checked'}
           style={{
             margin: 0,
           }}
           rules={[
+            !required ? {} :
             {
               required: true,
               message: `Пожалуйста, введите ${title}!`,

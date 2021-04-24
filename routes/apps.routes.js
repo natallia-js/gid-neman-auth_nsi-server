@@ -112,33 +112,6 @@ router.get(
 
 
 /**
- * Пользовательская функция проверки списка полномочий приложения.
- *
- * @param {array} val - массив полномочий
- */
-const checkCredentials = (val) => {
-  let abbrs = [];
-
-  val.forEach((el) => {
-    if ((typeof el.englAbbreviation !== 'string') || !el.englAbbreviation.length) {
-      throw new Error('Минимальная длина аббревиатуры полномочия приложения 1 символ');
-    }
-    if (typeof el.description !== 'string') {
-      throw new Error('Неверный формат описания полномочия приложения');
-    }
-    if (!abbrs.includes(el.englAbbreviation)) {
-      abbrs.push(el.englAbbreviation);
-    } else {
-      throw new Error('Полномочие с такой аббревиатурой уже существует');
-    }
-  });
-
-  abbrs = null;
-  return true;
-}
-
-
-/**
  * Обработка запроса на добавление нового приложения.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
@@ -198,7 +171,7 @@ router.post(
       }
       await app.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', appId: app._id });
+      res.status(OK).json({ message: 'Информация успешно сохранена', app });
 
     } catch (e) {
       console.log(e);
@@ -283,7 +256,13 @@ router.post(
         }
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', credId: newRecId });
+      res.status(OK).json({ message: 'Информация успешно сохранена', cred:
+        {
+          _id: newRecId,
+          englAbbreviation,
+          description
+        },
+      });
 
     } catch (e) {
       console.log(e);
@@ -528,7 +507,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: 'Информация успешно изменена', app: candidate });
 
     } catch (e) {
       console.log(e);
@@ -546,7 +525,6 @@ router.post(
  * Параметры тела запроса:
  * appId - идентификатор приложения (обязателен),
  * credId - идентификатор полномочия (обязателен),
- * _id - идентификатор полномочия (может отсутствовать, в этом случае будет сгенерирован автоматически),
  * englAbbreviation - аббревиатура полномочия (не обязательна),
  * description - описание полномочия (не обязательно)
  */
@@ -618,7 +596,13 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Информация успешно сохранена',
+        cred: {
+          _id: credId,
+          englAbbreviation,
+          description,
+        }
+      });
 
     } catch (e) {
       console.log(e);

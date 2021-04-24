@@ -10,7 +10,7 @@ const addAdjacentECDSectorsValidationRules = () => {
       .withMessage('Не указан массив id смежных участков ЭЦД')
       .bail()
       .isArray()
-      .withMessage('Массив id смежных участков ЭЦД должен быть массивом')
+      .withMessage('Список id смежных участков ЭЦД должен быть массивом')
   ];
 };
 

@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
 import { NavLink, useHistory } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-
 import { MAIN_ADMIN_ROLE_NAME } from '../../constants';
+import { Layout, Menu } from 'antd';
 
-import './Navbar.css';
+const { Header } = Layout;
 
 
 /**
@@ -29,27 +29,25 @@ export const Navbar = () => {
 
   // Компонент блока основного меню
   return (
-    <nav>
-      <div className="nav-wrapper blue-grey darken-1 navbar">
-        <span className="brand-logo truncate">Аккаунты ГИД НЕМАН</span>
-        <ul id="nav-mobile" className="right hide-on-med-and-down">
-          {
-            auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
-            <li><NavLink to="/apps">Приложения</NavLink></li>
-          }
-          {
-            auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
-            <li><NavLink to="/roles">Роли</NavLink></li>
-          }
-          <li><NavLink to="/users">Пользователи</NavLink></li>
-          <li><NavLink to="/stations">Станции</NavLink></li>
-          <li><NavLink to="/blocks">Перегоны</NavLink></li>
-          <li><NavLink to="/dncSectors">Участки ДНЦ</NavLink></li>
-          <li><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></li>
-          <li><NavLink to="/help">Помощь</NavLink></li>
-          <li><a href="/" onClick={logoutHandler}>Выйти</a></li>
-        </ul>
-      </div>
-    </nav>
-  )
-}
+    <Header>
+      <div className="logo" />
+      <Menu theme="dark" mode="horizontal" defaultSelectedKeys={['2']}>
+        {
+          auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
+          <Menu.Item key="1"><NavLink to="/apps">Приложения</NavLink></Menu.Item>
+        }
+        {
+          auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
+          <Menu.Item key="2"><NavLink to="/roles">Роли</NavLink></Menu.Item>
+        }
+        <Menu.Item key="3"><NavLink to="/users">Пользователи</NavLink></Menu.Item>
+        <Menu.Item key="4"><NavLink to="/stations">Станции</NavLink></Menu.Item>
+        <Menu.Item key="5"><NavLink to="/blocks">Перегоны</NavLink></Menu.Item>
+        <Menu.Item key="6"><NavLink to="/dncSectors">Участки ДНЦ</NavLink></Menu.Item>
+        <Menu.Item key="7"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
+        <Menu.Item key="8"><NavLink to="/help">Помощь</NavLink></Menu.Item>
+        <Menu.Item key="9"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+      </Menu>
+    </Header>
+  );
+};

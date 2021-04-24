@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
-import { DNCSECTOR_FIELDS } from '../../constants';
+import { APP_FIELDS } from '../../constants';
 
 import 'antd/dist/antd.css';
 
@@ -10,24 +10,24 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Компонент модального окна добавления информации о новом участке ДНЦ.
+ * Компонент модального окна добавления информации о новом приложении.
  *
  * @param {object} params - свойства компонента:
  *   isModalVisible,
- *   handleAddNewDNCSectorOk,
- *   handleAddNewDNCSectorCancel,
+ *   handleAddNewAppOk,
+ *   handleAddNewAppCancel,
  *   commonAddErr,
- *   dncSectorFieldsErrs,
- *   clearAddDNCSectorMessages,
+ *   appFieldsErrs,
+ *   clearAddAppMessages,
  *   successSaveMessage,
  */
-const NewDNCSectorModal = ({
+const NewAppModal = ({
   isModalVisible,
-  handleAddNewDNCSectorOk,
-  handleAddNewDNCSectorCancel,
+  handleAddNewAppOk,
+  handleAddNewAppCancel,
   commonAddErr,
-  dncSectorFieldsErrs,
-  clearAddDNCSectorMessages,
+  appFieldsErrs,
+  clearAddAppMessages,
   successSaveMessage,
 }) => {
 
@@ -36,7 +36,7 @@ const NewDNCSectorModal = ({
 
 
   /**
-   * Чистим поля ввода информации о новом участке.
+   * Чистим поля ввода информации о новом приложении.
    */
   const onReset = () => {
     form.resetFields();
@@ -50,8 +50,8 @@ const NewDNCSectorModal = ({
    */
   const onFinish = (values) => {
     // Чистим все сообщения
-    clearAddDNCSectorMessages();
-    handleAddNewDNCSectorOk({ ...values });
+    clearAddAppMessages();
+    handleAddNewAppOk({ ...values });
   };
 
 
@@ -59,17 +59,17 @@ const NewDNCSectorModal = ({
    * Обработка события отмены ввода информации.
    */
   const onCancel = () => {
-    handleAddNewDNCSectorCancel();
+    handleAddNewAppCancel();
     // Чистим поля ввода
     onReset();
     // Чистим все сообщения
-    clearAddDNCSectorMessages();
+    clearAddAppMessages();
   };
 
 
   return (
     <Modal
-      title="Введите информацию о новом участке ДНЦ"
+      title="Введите информацию о новом приложении"
       visible={isModalVisible}
       footer={[]}
       onCancel={onCancel}
@@ -78,21 +78,46 @@ const NewDNCSectorModal = ({
         layout="vertical"
         size='small'
         form={form}
-        name="new-dncsector-form"
+        name="new-app-form"
         onFinish={onFinish}
       >
         { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
         { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
 
         <Form.Item
-          label="Наименование"
-          name={DNCSECTOR_FIELDS.NAME}
-          validateStatus={dncSectorFieldsErrs && dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
-          help={dncSectorFieldsErrs ? dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] : null}
+          label="Аббревиатура"
+          name={APP_FIELDS.SHORT_TITLE}
+          validateStatus={appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE] ? ERR_VALIDATE_STATUS : null}
+          help={appFieldsErrs ? appFieldsErrs[APP_FIELDS.SHORT_TITLE] : null}
+          rules={[
+            {
+              required: true,
+              message: 'Пожалуйста, введите аббревиатуру приложения!',
+            },
+          ]}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
+            placeholder="Введите аббревиатуру приложения"
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Полное наименование"
+          name={APP_FIELDS.TITLE}
+          validateStatus={appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE] ? ERR_VALIDATE_STATUS : null}
+          help={appFieldsErrs ? appFieldsErrs[APP_FIELDS.TITLE] : null}
+          rules={[
+            {
+              required: true,
+              message: 'Пожалуйста, введите полное наименование приложения!',
+            },
+          ]}
+        >
+          <Input
+            autoComplete="off"
+            placeholder="Введите полное наименование приложения"
           />
         </Form.Item>
 
@@ -113,4 +138,4 @@ const NewDNCSectorModal = ({
 };
 
 
-export default NewDNCSectorModal;
+export default NewAppModal;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button } from 'antd';
+import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewBlockModal from '../NewBlockModal';
 import { ServerAPI, BLOCK_FIELDS, STATION_FIELDS } from '../../constants';
@@ -11,7 +11,9 @@ import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFrom
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 
 import 'antd/dist/antd.css';
+import '../../assets/styles/tables.scss';
 
+const { Title } = Typography;
 
 /**
  * Компонент таблицы с информацией о перегонах.
@@ -343,6 +345,7 @@ const BlocksTable = () => {
                    col.dataIndex,
         title: col.title,
         editing: isEditing(record),
+        required: true,
         stations: [BLOCK_FIELDS.STATION1_NAME, BLOCK_FIELDS.STATION2_NAME].includes(col.dataIndex) ?
           (
             stations &&
@@ -377,6 +380,9 @@ const BlocksTable = () => {
             })
           }
         />
+
+        <Title level={2} className="center top-margin-05">Перегоны</Title>
+
         <Button
           type="primary"
           style={{
@@ -401,7 +407,6 @@ const BlocksTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
-          scroll={{ x: '100vw', y: '100vh' }}
           onRow={(record) => {
             return {
               onDoubleClick: () => { handleStartEditBlock(record) },

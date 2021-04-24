@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Modal, Form, Input, Button, Typography, Select } from 'antd';
 import { BLOCK_FIELDS } from '../../constants';
 
@@ -37,19 +37,6 @@ const NewBlockModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
-  // Ref для кнопки подтверждения ввода
-  const submitBtnRef = useRef(null);
-
-  // Для полей ввода формы
-  const layout = {
-    labelCol: {
-      span: 8,
-    },
-    wrapperCol: {
-      span: 16,
-    },
-  };
-
 
   /**
    * Чистим поля ввода информации о новом перегоне.
@@ -57,19 +44,6 @@ const NewBlockModal = ({
   const onReset = () => {
     form.resetFields();
   };
-
-
-  /**
-   * При нажатии кнопки Enter на текстовом поле ввода происходит подтверждение
-   * пользователем окончания ввода.
-   *
-   * @param {object} event
-   */
-  const handleBlockDataFieldClick = (event) => {
-    if (event.key === 'Enter') {
-      submitBtnRef.current.click();
-    }
-  }
 
 
   /**
@@ -104,8 +78,7 @@ const NewBlockModal = ({
       onCancel={onCancel}
     >
       <Form
-        {...layout}
-        layout="horizontal"
+        layout="vertical"
         size='small'
         form={form}
         name="new-block-form"
@@ -123,7 +96,6 @@ const NewBlockModal = ({
           <Input
             autoFocus={true}
             autoComplete="off"
-            onClick={handleBlockDataFieldClick}
           />
         </Form.Item>
 
@@ -159,7 +131,7 @@ const NewBlockModal = ({
           <Button htmlType="button" onClick={onReset}>
             Очистить поля
           </Button>
-          <Button htmlType="submit" ref={submitBtnRef}>
+          <Button htmlType="submit">
             Добавить запись
           </Button>
           <Button htmlType="button" onClick={onCancel}>

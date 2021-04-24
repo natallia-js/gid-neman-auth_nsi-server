@@ -4,8 +4,8 @@ const addBlockValidationRules = () => {
   return [
     check('name')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования перегона 1 символ'),
+      .isLength({ min: 1, max: 64 })
+      .withMessage('Длина наименования перегона минимум 1 символ, максимум 64 символа'),
     check('station1')
       .exists()
       .withMessage('Не определена граничная станция 1 перегона'),
@@ -31,8 +31,8 @@ const modBlockValidationRules = () => {
     check('name')
       .if(body('name').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования перегона 1 символ'),
+      .isLength({ min: 1, max: 64 })
+      .withMessage('Длина наименования перегона минимум 1 символ, максимум 64 символа'),
   ];
 };
 

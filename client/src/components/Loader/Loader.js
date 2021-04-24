@@ -1,20 +1,10 @@
 import React from 'react';
+import { Spin } from 'antd';
 
-import './Loader.css';
-
+import './Loader.scss';
 
 export const Loader = () => (
-  <div className="LoaderDiv">
-    <div className="preloader-wrapper active">
-      <div className="spinner-layer spinner-red-only">
-        <div className="circle-clipper left">
-          <div className="circle" />
-        </div><div className="gap-patch">
-          <div className="circle" />
-        </div><div className="circle-clipper right">
-          <div className="circle" />
-        </div>
-      </div>
-    </div>
+  <div className="loader-block">
+    <Spin />
   </div>
-)
+);

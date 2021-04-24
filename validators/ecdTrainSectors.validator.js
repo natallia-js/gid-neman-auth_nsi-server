@@ -4,8 +4,8 @@ const addECDTrainSectorValidationRules = () => {
   return [
     check('name')
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования поездного участка ЭЦД 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования поездного участка ЭЦД минимум 1 символ, максимум 32 символа'),
     check('ecdSectorId')
       .exists()
       .withMessage('Не указан id участка ЭЦД для добавления поездного участка ЭЦД'),
@@ -28,8 +28,8 @@ const modECDTrainSectorValidationRules = () => {
     check('name')
       .if(body('name').exists())
       .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования поездного участка ЭЦД 1 символ'),
+      .isLength({ min: 1, max: 32 })
+      .withMessage('Длина наименования поездного участка ЭЦД минимум 1 символ, максимум 32 символа'),
   ];
 };
 

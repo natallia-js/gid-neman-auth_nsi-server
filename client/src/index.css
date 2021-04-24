@@ -1,5 +1,9 @@
 @import "~materialize-css/dist/css/materialize.min.css";
 
+html, body {
+  min-width: 80rem;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
