@@ -1,8 +1,6 @@
 import { ROLE_FIELDS } from '../../constants';
 import { Typography, Popconfirm } from 'antd';
 
-import '../../assets/styles/tables.scss';
-
 // Описание столбцов таблицы ролей
 const rolesTableColumns = (props) => {
   const {

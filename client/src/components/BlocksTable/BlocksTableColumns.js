@@ -30,6 +30,7 @@ const blocksTableColumns = (props) => {
         }
         return 0;
       },
+      className: 'main-col',
     },
     {
       title: 'Станция 1',
@@ -55,7 +56,7 @@ const blocksTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEditBlock(record.key)}
+              onClick={() => handleEditBlock(record[BLOCK_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -71,7 +72,7 @@ const blocksTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditBlock(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelBlock(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelBlock(record[BLOCK_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}

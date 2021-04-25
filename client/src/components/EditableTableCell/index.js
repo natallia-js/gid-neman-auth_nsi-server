@@ -1,9 +1,8 @@
 import React from 'react';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 
-import 'antd/dist/antd.css';
-
 const { Option } = Select;
+const ERR_VALIDATE_STATUS = 'error';
 
 
 const EditableTableCell = ({
@@ -17,6 +16,7 @@ const EditableTableCell = ({
   required,
   stations,
   data,
+  errMessage,
   ...restProps
 }) => {
   let inputNode;
@@ -60,6 +60,8 @@ const EditableTableCell = ({
               message: `Пожалуйста, введите ${title}!`,
             },
           ]}
+          validateStatus={errMessage ? ERR_VALIDATE_STATUS : null}
+          help={errMessage ? errMessage : null}
         >
           {inputNode}
         </Form.Item>

@@ -1,5 +1,13 @@
 @import './vars';
 
+.ant-table-thead > tr > th {
+  background-color: #d9d9d9;
+}
+
+.ant-table-row-expand-icon-cell {
+  background-color: #d9d9d9;
+}
+
 .expandable-row-content {
   background-color: var(--expandable-row-content-bg-color);
   padding: 1rem;
@@ -7,4 +15,5 @@
 
 .main-col {
   font-weight: 600;
+  background-color: #b5f5ec;
 }

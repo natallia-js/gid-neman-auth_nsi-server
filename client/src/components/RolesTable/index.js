@@ -12,9 +12,6 @@ import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplic
 import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 
-import 'antd/dist/antd.css';
-import '../../assets/styles/tables.scss';
-
 const { Title } = Typography;
 
 
@@ -48,7 +45,7 @@ const RolesTable = () => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[ROLE_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewRoleModalVisible, setIsAddNewRoleModalVisible] = useState(false);
@@ -56,6 +53,9 @@ const RolesTable = () => {
   // Ошибки добавления информации о новой роли
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [roleFieldsErrs, setRoleFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации о роли
+  const [modRoleFieldsErrs, setModRoleFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения новой роли
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -177,7 +177,17 @@ const RolesTable = () => {
       [ROLE_FIELDS.DESCRIPTION]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[ROLE_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModRoleFieldsErrs(null);
   };
 
 
@@ -185,7 +195,7 @@ const RolesTable = () => {
    * Отменяет редактирование текущей записи таблицы.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -221,10 +231,16 @@ const RolesTable = () => {
       });
 
       setTableData(newTableData);
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModRoleFieldsErrs(errs);
+      }
     }
   }
 
@@ -315,6 +331,7 @@ const RolesTable = () => {
         editing: isEditing(record),
         required: (col.dataIndex !== ROLE_FIELDS.DESCRIPTION),
         data: form.getFieldValue([ROLE_FIELDS.SUB_ADMIN_CAN_USE]),
+        errMessage: modRoleFieldsErrs ? modRoleFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -362,9 +379,14 @@ const RolesTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
+          sticky={true}
           onRow={(record) => {
             return {
-              onDoubleClick: () => { handleStartEditRole(record) },
+              onDoubleClick: () => {
+                if (!editingKey || editingKey !== record[ROLE_FIELDS.KEY]) {
+                  handleStartEditRole(record);
+                }
+              },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
                   handleEditRole(record[ROLE_FIELDS.KEY]);
@@ -422,9 +444,9 @@ const RolesTable = () => {
             rowExpandable: _record => true,
             expandIcon: ({ expanded, onExpand, record }) =>
               expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ),
           }}
         />

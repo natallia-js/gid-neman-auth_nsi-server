@@ -10,9 +10,6 @@ import blocksTableColumns from './BlocksTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 
-import 'antd/dist/antd.css';
-import '../../assets/styles/tables.scss';
-
 const { Title } = Typography;
 
 /**
@@ -44,7 +41,7 @@ const BlocksTable = () => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[BLOCK_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewBlockModalVisible, setIsAddNewBlockModalVisible] = useState(false);
@@ -52,6 +49,9 @@ const BlocksTable = () => {
   // Ошибки добавления информации о новом перегоне
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [blockFieldsErrs, setBlockFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации о перегоне
+  const [modBlockFieldsErrs, setModBlockFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения нового перегона
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -244,7 +244,17 @@ const BlocksTable = () => {
       [BLOCK_FIELDS.STATION2_NAME]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[BLOCK_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModBlockFieldsErrs(null);
   };
 
 
@@ -252,7 +262,7 @@ const BlocksTable = () => {
    * Отменяет редактирование текущей записи таблицы.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -291,10 +301,16 @@ const BlocksTable = () => {
       })
 
       setTableData(newTableData);
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModBlockFieldsErrs(errs);
+      }
     }
   }
 
@@ -353,7 +369,8 @@ const BlocksTable = () => {
               return { id: station[STATION_FIELDS.KEY], name: station[STATION_FIELDS.NAME_AND_CODE] };
             })
           )
-          : null
+          : null,
+        errMessage: modBlockFieldsErrs ? modBlockFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -407,12 +424,17 @@ const BlocksTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
+          sticky={true}
           onRow={(record) => {
             return {
-              onDoubleClick: () => { handleStartEditBlock(record) },
+              onDoubleClick: () => {
+                if (!editingKey || editingKey !== record[BLOCK_FIELDS.KEY]) {
+                  handleStartEditBlock(record);
+                }
+              },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
-                  handleEditBlock(record.key);
+                  handleEditBlock(record[BLOCK_FIELDS.KEY]);
                 }
               }
             };

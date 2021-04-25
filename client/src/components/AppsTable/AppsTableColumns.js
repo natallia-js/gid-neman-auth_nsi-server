@@ -1,8 +1,6 @@
 import { Typography, Popconfirm } from 'antd';
 import { APP_FIELDS } from '../../constants';
 
-import '../../assets/styles/tables.scss';
-
 // Описание столбцов таблицы приложений
 const appsTableColumns = (props) => {
   const {
@@ -62,7 +60,7 @@ const appsTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEditApp(record.key)}
+              onClick={() => handleEditApp(record[APP_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -78,7 +76,7 @@ const appsTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditApp(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelApp(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelApp(record[APP_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}

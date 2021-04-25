@@ -1,21 +1,21 @@
 import React, { useContext, useState } from 'react';
-import EditableTableCell from '../EditableTableCell';
-import dncTrainSectorsTableColumns from './DNCTrainSectorsTableColumns';
-import { TRAIN_SECTOR_FIELDS } from '../../constants';
+import EditableTableCell from '../../EditableTableCell';
+import ecdTrainSectorsTableColumns from './ECDTrainSectorsTableColumns';
+import { TRAIN_SECTOR_FIELDS } from '../../../constants';
 import { Table, Form } from 'antd';
-import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
-import { useHttp } from '../../hooks/http.hook';
-import { ServerAPI, DNCSECTOR_FIELDS } from '../../constants';
-import { AuthContext } from '../../context/AuthContext';
+import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
+import { useHttp } from '../../../hooks/http.hook';
+import { ServerAPI, ECDSECTOR_FIELDS } from '../../../constants';
+import { AuthContext } from '../../../context/AuthContext';
 
 
 /**
- * Компонент таблицы с информацией о поездных участках ДНЦ.
+ * Компонент таблицы с информацией о поездных участках ЭЦД.
  */
-const DNCTrainSectorsTable = (props) => {
+const ECDTrainSectorsTable = (props) => {
   const {
-    currDNCSectorRecord: record, // текущая запись об участке ДНЦ
-    setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ДНЦ
+    currECDSectorRecord: record, // текущая запись об участке ЭЦД
+    setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ЭЦД
   } = props;
 
   // Для редактирования данных таблицы
@@ -25,7 +25,10 @@ const DNCTrainSectorsTable = (props) => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[TRAIN_SECTOR_FIELDS.KEY] === editingKey;
+
+  // Ошибки редактирования информации о поездном участке ЭЦД
+  const [modECDTrainSectorFieldsErrs, setModECDTrainSectorFieldsErrs] = useState(null);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
@@ -38,10 +41,20 @@ const DNCTrainSectorsTable = (props) => {
 
 
   /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModECDTrainSectorFieldsErrs(null);
+  };
+
+
+  /**
    * Отменяет редактирование текущей записи таблицы.
    */
    const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -55,7 +68,7 @@ const DNCTrainSectorsTable = (props) => {
       [TRAIN_SECTOR_FIELDS.NAME]: '',
       ...rec,
     });
-    setEditingKey(rec.key);
+    setEditingKey(rec[TRAIN_SECTOR_FIELDS.KEY]);
   };
 
 
@@ -77,7 +90,7 @@ const DNCTrainSectorsTable = (props) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке
-      const res = await request(ServerAPI.MOD_DNCTRAINSECTORS_DATA, 'POST',
+      const res = await request(ServerAPI.MOD_ECDTRAINSECTORS_DATA, 'POST',
         { id: trainSectorId, ...rowData },
         { Authorization: `Bearer ${auth.token}` }
       );
@@ -85,21 +98,27 @@ const DNCTrainSectorsTable = (props) => {
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
-      setTableDataCallback((value) => value.map((dncSector) => {
-        if (dncSector[DNCSECTOR_FIELDS.KEY] === record[DNCSECTOR_FIELDS.KEY]) {
+      setTableDataCallback((value) => value.map((ecdSector) => {
+        if (ecdSector[ECDSECTOR_FIELDS.KEY] === record[ECDSECTOR_FIELDS.KEY]) {
           return {
-            ...dncSector,
-            [DNCSECTOR_FIELDS.TRAIN_SECTORS]: dncSector[DNCSECTOR_FIELDS.TRAIN_SECTORS].map(el =>
+            ...ecdSector,
+            [ECDSECTOR_FIELDS.TRAIN_SECTORS]: ecdSector[ECDSECTOR_FIELDS.TRAIN_SECTORS].map(el =>
               el[TRAIN_SECTOR_FIELDS.KEY] === trainSectorId ? { ...el, ...rowData } : el),
           };
         }
-        return dncSector;
+        return ecdSector;
       }));
 
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModECDTrainSectorFieldsErrs(errs);
+      }
     }
   };
 
@@ -111,8 +130,8 @@ const DNCTrainSectorsTable = (props) => {
    */
   const handleDel = async (trainSectorId) => {
     try {
-      // Делаем запрос на сервер с целью удаления всей информации об участке ДНЦ
-      const res = await request(ServerAPI.DEL_DNCTRAINSECTORS_DATA, 'POST',
+      // Делаем запрос на сервер с целью удаления всей информации об участке ЭЦД
+      const res = await request(ServerAPI.DEL_ECDTRAINSECTORS_DATA, 'POST',
         { id: trainSectorId },
         { Authorization: `Bearer ${auth.token}` }
       );
@@ -120,15 +139,15 @@ const DNCTrainSectorsTable = (props) => {
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
-      setTableDataCallback((value) => value.map((dncSector) => {
-        if (dncSector[DNCSECTOR_FIELDS.KEY] === record[DNCSECTOR_FIELDS.KEY]) {
+      setTableDataCallback((value) => value.map((ecdSector) => {
+        if (ecdSector[ECDSECTOR_FIELDS.KEY] === record[ECDSECTOR_FIELDS.KEY]) {
           return {
-            ...dncSector,
-            [DNCSECTOR_FIELDS.TRAIN_SECTORS]: dncSector[DNCSECTOR_FIELDS.TRAIN_SECTORS].filter(el =>
+            ...ecdSector,
+            [ECDSECTOR_FIELDS.TRAIN_SECTORS]: ecdSector[ECDSECTOR_FIELDS.TRAIN_SECTORS].filter(el =>
               el[TRAIN_SECTOR_FIELDS.KEY] !== trainSectorId),
           };
         }
-        return dncSector;
+        return ecdSector;
       }));
 
     } catch (e) {
@@ -137,8 +156,8 @@ const DNCTrainSectorsTable = (props) => {
   };
 
 
-  // Описание столбцов таблицы поездных участков ДНЦ
-  const columns = dncTrainSectorsTableColumns({
+  // Описание столбцов таблицы поездных участков ЭЦД
+  const columns = ecdTrainSectorsTableColumns({
     isEditing,
     editingKey,
     handleEdit,
@@ -164,6 +183,8 @@ const DNCTrainSectorsTable = (props) => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
+        required: true,
+        errMessage: modECDTrainSectorFieldsErrs ? modECDTrainSectorFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -182,7 +203,7 @@ const DNCTrainSectorsTable = (props) => {
         scroll={{ y: 200 }}
         dataSource={
           // Хочу, чтобы наименования участков выводились в алфавитном порядке
-          record[DNCSECTOR_FIELDS.TRAIN_SECTORS].sort((a, b) => {
+          record[ECDSECTOR_FIELDS.TRAIN_SECTORS].sort((a, b) => {
             const sectName1 = a[TRAIN_SECTOR_FIELDS.NAME];
             const sectName2 = b[TRAIN_SECTOR_FIELDS.NAME];
             if (sectName1 < sectName2) {
@@ -199,12 +220,17 @@ const DNCTrainSectorsTable = (props) => {
         pagination={{
           onChange: handleCancelMod,
         }}
-        onRow={(rec) => {
+        sticky={true}
+        onRow={(record) => {
           return {
-            onDoubleClick: () => { handleStartEdit(rec) },
+            onDoubleClick: () => {
+              if (!editingKey || editingKey !== record[TRAIN_SECTOR_FIELDS.KEY]) {
+                handleStartEdit(record);
+              }
+            },
             onKeyUp: event => {
               if (event.key === 'Enter') {
-                handleEdit(rec.key);
+                handleEdit(record[TRAIN_SECTOR_FIELDS.KEY]);
               }
             }
           };
@@ -215,4 +241,4 @@ const DNCTrainSectorsTable = (props) => {
 };
 
 
-export default DNCTrainSectorsTable;
+export default ECDTrainSectorsTable;

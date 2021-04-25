@@ -32,7 +32,7 @@ const appCredsTableColumns = (props) => {
       },
     },
     {
-      title: 'Полное наименование полномочия',
+      title: 'Описание полномочия',
       dataIndex: APP_CRED_FIELDS.DESCRIPTION,
       key: APP_CRED_FIELDS.DESCRIPTION,
       width: '40%',

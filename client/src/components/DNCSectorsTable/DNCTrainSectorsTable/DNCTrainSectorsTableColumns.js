@@ -1,9 +1,9 @@
-import { TRAIN_SECTOR_FIELDS } from '../../constants';
+import { TRAIN_SECTOR_FIELDS } from '../../../constants';
 import { Typography, Popconfirm } from 'antd';
 
 
-// Описание столбцов таблицы поездных участков ЭЦД
-const ecdTrainSectorsTableColumns = (props) => {
+// Описание столбцов таблицы поездных участков ДНЦ
+const dncTrainSectorsTableColumns = (props) => {
   const {
     isEditing,
     editingKey,
@@ -42,7 +42,7 @@ const ecdTrainSectorsTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEdit(record.key)}
+              onClick={() => handleEdit(record[TRAIN_SECTOR_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -58,7 +58,7 @@ const ecdTrainSectorsTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEdit(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDel(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDel(record[TRAIN_SECTOR_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}
@@ -76,4 +76,4 @@ const ecdTrainSectorsTableColumns = (props) => {
   ];
 };
 
-export default ecdTrainSectorsTableColumns;
+export default dncTrainSectorsTableColumns;

@@ -8,7 +8,6 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import ECDTrainSectorsTable from './ECDTrainSectorsTable';
 import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
-import 'antd/dist/antd.css';
 import './styles.scss';
 
 

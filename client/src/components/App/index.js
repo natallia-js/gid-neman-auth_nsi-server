@@ -3,11 +3,13 @@ import { BrowserRouter as Router } from 'react-router-dom'
 import { useRoutes } from '../../routes';
 import { useAuth } from '../../hooks/auth.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Loader } from '../Loader/Loader';
-import { Navbar } from '../Navbar/Navbar';
+import { Loader } from '../Loader';
+import { Navbar } from '../Navbar';
 import { Layout } from 'antd';
 
-import 'materialize-css';
+import 'antd/dist/antd.css';
+import '../../assets/styles/modals.scss';
+import '../../assets/styles/tables.scss';
 
 const { Content, Footer } = Layout;
 
@@ -53,7 +55,9 @@ export default function App() {
           <Content>
             {routes}
           </Content>
-          <Footer style={{ textAlign: 'center' }}>Утилита администрирования аккаунтов и НСИ ГИД НЕМАН ©2021 КТЦ БелЖД</Footer>
+          <Footer style={{ textAlign: 'center' }}>
+            Утилита администрирования аккаунтов и НСИ ГИД НЕМАН ©2021 КТЦ БелЖД
+          </Footer>
         </Layout>
       </Router>
     </AuthContext.Provider>

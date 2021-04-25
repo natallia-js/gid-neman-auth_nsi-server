@@ -31,6 +31,7 @@ const ecdSectorsTableColumns = (props) => {
         }
         return 0;
       },
+      className: 'main-col',
     },
     {
       title: 'Операции',
@@ -42,7 +43,7 @@ const ecdSectorsTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEditECDSector(record.key)}
+              onClick={() => handleEditECDSector(record[ECDSECTOR_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -58,7 +59,7 @@ const ecdSectorsTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditECDSector(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelECDSector(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelECDSector(record[ECDSECTOR_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}

@@ -19,9 +19,6 @@ import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorO
 import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
 import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
-import 'antd/dist/antd.css';
-import '../../assets/styles/tables.scss';
-
 const { Title } = Typography;
 
 
@@ -63,7 +60,7 @@ const StationsTable = () => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[STATION_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewStationModalVisible, setIsAddNewStationModalVisible] = useState(false);
@@ -71,6 +68,9 @@ const StationsTable = () => {
   // Ошибки добавления информации о новой станции
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [stationFieldsErrs, setStationFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации о станции
+  const [modStationFieldsErrs, setModStationFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения новой станции
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -174,6 +174,10 @@ const StationsTable = () => {
 
     } catch (e) {
       setTableData(null);
+      // setDNCSectors(null);
+      // setECDSectors(null);
+      // setDNCTrainSectors(null);
+      // setECDTrainSectors(null);
       setLoadDataErr(e.message);
     }
 
@@ -262,7 +266,17 @@ const StationsTable = () => {
       [STATION_FIELDS.NAME]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[STATION_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+  const finishEditing = () => {
+    setEditingKey('');
+    setModStationFieldsErrs(null);
   };
 
 
@@ -270,7 +284,7 @@ const StationsTable = () => {
    * Отменяет редактирование текущей записи таблицы.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -306,10 +320,16 @@ const StationsTable = () => {
       });
 
       setTableData(newTableData);
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModStationFieldsErrs(errs);
+      }
     }
   }
 
@@ -359,6 +379,7 @@ const StationsTable = () => {
         title: col.title,
         editing: isEditing(record),
         required: true,
+        errMessage: modStationFieldsErrs ? modStationFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -412,12 +433,17 @@ const StationsTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
+          sticky={true}
           onRow={(record) => {
             return {
-              onDoubleClick: () => { handleStartEditStation(record) },
+              onDoubleClick: () => {
+                if (!editingKey || editingKey !== record[STATION_FIELDS.KEY]) {
+                  handleStartEditStation(record);
+                }
+              },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
-                  handleEditStation(record.key);
+                  handleEditStation(record[STATION_FIELDS.KEY]);
                 }
               }
             };

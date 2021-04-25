@@ -31,6 +31,7 @@ const dncSectorsTableColumns = (props) => {
         }
         return 0;
       },
+      className: 'main-col',
     },
     {
       title: 'Операции',
@@ -42,7 +43,7 @@ const dncSectorsTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEditDNCSector(record.key)}
+              onClick={() => handleEditDNCSector(record[DNCSECTOR_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -58,7 +59,7 @@ const dncSectorsTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditDNCSector(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelDNCSector(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelDNCSector(record[DNCSECTOR_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}

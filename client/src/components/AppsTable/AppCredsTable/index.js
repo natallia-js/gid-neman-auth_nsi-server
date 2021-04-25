@@ -9,8 +9,6 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.ho
 import appCredsTableColumns from './AppCredsTableColumns';
 import getAppApplicationCredObjFromDBApplicationCredObj from '../../../mappers/getAppApplicationCredObjFromDBApplicationCredObj';
 
-import 'antd/dist/antd.css';
-
 
 /**
  * Компонент таблицы с информацией о полномочиях пользователей в приложении.
@@ -29,7 +27,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[APP_CRED_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewAppCredModalVisible, setIsAddNewAppCredModalVisible] = useState(false);
@@ -37,6 +35,9 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
   // Ошибки добавления информации о новом полномочии
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [appCredFieldsErrs, setAppCredFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации о полномочиях приложения
+  const [modAppCredFieldsErrs, setModAppCredFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения нового полномочия
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -132,7 +133,17 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
       [APP_CRED_FIELDS.DESCRIPTION]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[APP_CRED_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModAppCredFieldsErrs(null);
   };
 
 
@@ -140,7 +151,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
    * Отменяет редактирование текущей записи таблицы.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -182,10 +193,16 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         })
       );
 
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModAppCredFieldsErrs(errs);
+      }
     }
   }
 
@@ -235,6 +252,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         title: col.title,
         editing: isEditing(record),
         required: col.dataIndex !== APP_CRED_FIELDS.DESCRIPTION,
+        errMessage: modAppCredFieldsErrs ? modAppCredFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -275,12 +293,13 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         pagination={{
           onChange: handleCancelMod,
         }}
+        sticky={true}
         onRow={(record) => {
           return {
             onDoubleClick: () => { handleStartEditAppCred(record) },
             onKeyUp: event => {
               if (event.key === 'Enter') {
-                handleEditAppCred(record.key);
+                handleEditAppCred(record[APP_CRED_FIELDS.KEY]);
               }
             }
           };

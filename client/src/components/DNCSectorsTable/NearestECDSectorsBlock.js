@@ -6,7 +6,6 @@ import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 
-import 'antd/dist/antd.css';
 import './styles.scss';
 
 

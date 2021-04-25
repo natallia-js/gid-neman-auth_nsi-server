@@ -21,9 +21,7 @@ import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorO
 import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
 import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
 
-import 'antd/dist/antd.css';
 import './styles.scss';
-import '../../assets/styles/tables.scss';
 
 const { Title } = Typography;
 
@@ -57,7 +55,7 @@ const DNCSectorsTable = () => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[DNCSECTOR_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewDNCSectorModalVisible, setIsAddNewDNCSectorModalVisible] = useState(false);
@@ -65,6 +63,9 @@ const DNCSectorsTable = () => {
   // Ошибки добавления информации о новом участке ДНЦ
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [dncSectorFieldsErrs, setDNCSectorFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации об участке ДНЦ
+  const [modDNCSectorFieldsErrs, setModDNCSectorFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения нового участка ДНЦ
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -279,7 +280,17 @@ const DNCSectorsTable = () => {
       [DNCSECTOR_FIELDS.NAME]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[DNCSECTOR_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModDNCSectorFieldsErrs(null);
   };
 
 
@@ -287,7 +298,7 @@ const DNCSectorsTable = () => {
    * Отменяет редактирование текущей записи таблицы участков ДНЦ.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -324,10 +335,16 @@ const DNCSectorsTable = () => {
         return sector;
       }));
 
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModDNCSectorFieldsErrs(errs);
+      }
     }
   }
 
@@ -390,6 +407,7 @@ const DNCSectorsTable = () => {
         title: col.title,
         editing: isEditing(record),
         required: true,
+        errMessage: modDNCSectorFieldsErrs ? modDNCSectorFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -437,19 +455,24 @@ const DNCSectorsTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
+          sticky={true}
           onRow={(record) => {
             return {
-              onDoubleClick: () => { handleStartEditDNCSector(record) },
+              onDoubleClick: () => {
+                if (!editingKey || editingKey !== record[DNCSECTOR_FIELDS.KEY]) {
+                  handleStartEditDNCSector(record);
+                }
+              },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
-                  handleEditDNCSector(record.key);
+                  handleEditDNCSector(record[DNCSECTOR_FIELDS.KEY]);
                 }
               }
             };
           }}
           expandable={{
             expandedRowRender: record => (
-              <>
+              <div className="expandable-row-content">
                 <div className="adjacent-and-nearest-block">
                   {/*
                     В данном блоке у пользователя будет возможность формировать
@@ -533,14 +556,14 @@ const DNCSectorsTable = () => {
                   currDNCSectorRecord={record}
                   setTableDataCallback={setTableData}
                 />
-              </>
+              </div>
             ),
             rowExpandable: record => true,
             expandIcon: ({ expanded, onExpand, record }) =>
               expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ),
           }}
         />

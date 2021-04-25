@@ -21,6 +21,7 @@ const stationsTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => +a[STATION_FIELDS.ESR_CODE] - +b[STATION_FIELDS.ESR_CODE],
+      className: 'main-col',
     },
     {
       title: 'Название',
@@ -50,7 +51,7 @@ const stationsTableColumns = (props) => {
           <span>
             <a
               href="#!"
-              onClick={() => handleEditStation(record.key)}
+              onClick={() => handleEditStation(record[STATION_FIELDS.KEY])}
               style={{
                 marginRight: 10,
               }}
@@ -66,7 +67,7 @@ const stationsTableColumns = (props) => {
             <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditStation(record)}>
               Редактировать
             </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelStation(record.key)}>
+            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelStation(record[STATION_FIELDS.KEY])}>
               <a
                 href="#!"
                 disabled={editingKey !== ''}

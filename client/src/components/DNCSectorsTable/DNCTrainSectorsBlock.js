@@ -8,7 +8,6 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import DNCTrainSectorsTable from './DNCTrainSectorsTable';
 import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
 
-import 'antd/dist/antd.css';
 import './styles.scss';
 
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Spin } from 'antd';
 
-import './Loader.scss';
+import './styles.scss';
 
 export const Loader = () => (
   <div className="loader-block">

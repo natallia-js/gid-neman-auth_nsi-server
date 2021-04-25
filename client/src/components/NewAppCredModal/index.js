@@ -2,8 +2,6 @@ import React from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { APP_CRED_FIELDS } from '../../constants';
 
-import 'antd/dist/antd.css';
-
 const { Text } = Typography;
 
 const ERR_VALIDATE_STATUS = 'error';
@@ -73,7 +71,7 @@ const NewAppCredModal = ({
     <Modal
       title="Введите информацию о новом полномочии приложения"
       visible={isModalVisible}
-      footer={[]}
+      footer={null}
       onCancel={onCancel}
     >
       <Form
@@ -118,15 +116,17 @@ const NewAppCredModal = ({
         </Form.Item>
 
         <Form.Item>
-          <Button htmlType="button" onClick={onReset}>
-            Очистить поля
-          </Button>
-          <Button htmlType="submit">
-            Добавить запись
-          </Button>
-          <Button htmlType="button" onClick={onCancel}>
-            Отмена
-          </Button>
+          <div className="new-item-modal-btns-block">
+            <Button htmlType="button" onClick={onReset} className="new-item-modal-btn" type="primary">
+              Очистить поля
+            </Button>
+            <Button htmlType="submit" className="new-item-modal-btn" type="primary">
+              Добавить запись
+            </Button>
+            <Button htmlType="button" onClick={onCancel} className="new-item-modal-btn" type="primary">
+              Отмена
+            </Button>
+          </div>
         </Form.Item>
       </Form>
     </Modal>

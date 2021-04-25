@@ -11,9 +11,6 @@ import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplic
 import AppCredsTable from './AppCredsTable';
 import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
 
-import 'antd/dist/antd.css';
-import '../../assets/styles/tables.scss';
-
 const { Title } = Typography;
 
 
@@ -43,7 +40,7 @@ const AppsTable = () => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record.key === editingKey;
+  const isEditing = (record) => record[APP_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewAppModalVisible, setIsAddNewAppModalVisible] = useState(false);
@@ -51,6 +48,9 @@ const AppsTable = () => {
   // Ошибки добавления информации о новом приложении
   const [commonAddErr, setCommonAddErr] = useState(null);
   const [appFieldsErrs, setAppFieldsErrs] = useState(null);
+
+  // Ошибки редактирования информации о приложении
+  const [modAppFieldsErrs, setModAppFieldsErrs] = useState(null);
 
   // Сообщение об успешном окончании процесса сохранения нового приложения
   const [successSaveMessage, setSuccessSaveMessage] = useState(null);
@@ -164,7 +164,17 @@ const AppsTable = () => {
       [APP_FIELDS.TITLE]: '',
       ...record,
     });
-    setEditingKey(record.key);
+    setEditingKey(record[APP_FIELDS.KEY]);
+  };
+
+
+  /**
+   * Действия, выполняемые по окончании процесса редактирования записи
+   * (вне зависимости от результата редактирования).
+   */
+   const finishEditing = () => {
+    setEditingKey('');
+    setModAppFieldsErrs(null);
   };
 
 
@@ -172,7 +182,7 @@ const AppsTable = () => {
    * Отменяет редактирование текущей записи таблицы.
    */
   const handleCancelMod = () => {
-    setEditingKey('');
+    finishEditing();
   };
 
 
@@ -208,10 +218,16 @@ const AppsTable = () => {
       })
 
       setTableData(newTableData);
-      setEditingKey('');
+      finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setModAppFieldsErrs(errs);
+      }
     }
   }
 
@@ -261,6 +277,7 @@ const AppsTable = () => {
         title: col.title,
         editing: isEditing(record),
         required: true,
+        errMessage: modAppFieldsErrs ? modAppFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -308,12 +325,17 @@ const AppsTable = () => {
           pagination={{
             onChange: handleCancelMod,
           }}
+          sticky={true}
           onRow={(record) => {
             return {
-              onDoubleClick: () => { handleStartEditApp(record) },
+              onDoubleClick: () => {
+                if (!editingKey || editingKey !== record[APP_FIELDS.KEY]) {
+                  handleStartEditApp(record);
+                }
+              },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
-                  handleEditApp(record.key);
+                  handleEditApp(record[APP_FIELDS.KEY]);
                 }
               },
             };
@@ -332,9 +354,9 @@ const AppsTable = () => {
             rowExpandable: _record => true,
             expandIcon: ({ expanded, onExpand, record }) =>
               expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} />
+                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
               ),
           }}
         />

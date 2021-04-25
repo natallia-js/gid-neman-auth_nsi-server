@@ -264,11 +264,7 @@ router.post(
       }
       await user.save();
 
-      res.status(OK).json({
-        message: 'Регистрация прошла успешно',
-        hashedPassword,
-        userId: user._id
-      });
+      res.status(OK).json({ message: 'Регистрация прошла успешно', user });
 
     } catch (e) {
       console.log(e.message);
@@ -796,8 +792,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена',
-                             hashedPassword: candidate.password });
+      res.status(OK).json({ message: 'Информация успешно изменена', user: candidate });
 
     } catch (e) {
       console.log(e);
