@@ -10,6 +10,7 @@ function createDNCSectorModel(sequelize) {
     DNCS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     DNCS_Title: {

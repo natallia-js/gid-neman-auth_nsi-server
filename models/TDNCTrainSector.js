@@ -11,6 +11,7 @@ function createDNCTrainSectorModel(sequelize) {
     DNCTS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     DNCTS_Title: {
@@ -20,10 +21,7 @@ function createDNCTrainSectorModel(sequelize) {
     },
     DNCTS_DNCSectorID: {
       type: DataTypes.INTEGER,
-      references: {
-        model: TDNCSector,
-        key: 'DNCS_ID'
-      },
+      allowNull: false,
     }
   }, {
     // Other model options go here
@@ -31,9 +29,20 @@ function createDNCTrainSectorModel(sequelize) {
     timestamps: true, // Create createdAt and updatedAt
     modelName: MODEL_NAME, // We need to choose the model name
   });
+
+  TDNCSector.hasMany(TDNCTrainSector, {
+    foreignKey: 'DNCTS_DNCSectorID',
+    sourceKey: 'DNCS_ID',
+  });
+  TDNCTrainSector.belongsTo(TDNCSector, {
+    foreignKey: 'DNCTS_DNCSectorID',
+    targetKey: 'DNCS_ID',
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  });
 }
 
 module.exports = {
   createDNCTrainSectorModel,
-  TDNCTrainSector
+  TDNCTrainSector,
 };

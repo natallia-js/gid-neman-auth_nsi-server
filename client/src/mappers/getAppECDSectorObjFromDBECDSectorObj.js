@@ -1,4 +1,5 @@
 import { ECDSECTOR_FIELDS } from '../constants';
+import getAppECDTrainSectorFromDBECDTrainSectorObj from './getAppECDTrainSectorFromDBECDTrainSectorObj';
 
 /**
  * Преобразует объект участка ЭЦД, полученный из БД, в объект участка ЭЦД, с которым
@@ -13,7 +14,9 @@ const getAppECDSectorObjFromDBECDSectorObj = (dbECDSectorObj) => {
       [ECDSECTOR_FIELDS.NAME]: dbECDSectorObj.ECDS_Title,
       [ECDSECTOR_FIELDS.ADJACENT_ECDSECTORS]: [],
       [ECDSECTOR_FIELDS.NEAREST_DNCSECTORS]: [],
-      [ECDSECTOR_FIELDS.TRAIN_SECTORS]: [],
+      [ECDSECTOR_FIELDS.TRAIN_SECTORS]: !dbECDSectorObj.TECDTrainSectors ? [] :
+        dbECDSectorObj.TECDTrainSectors.map((trainSect) =>
+          getAppECDTrainSectorFromDBECDTrainSectorObj(trainSect)),
     }
   }
   return null;

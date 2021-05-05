@@ -9,8 +9,10 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import blocksTableColumns from './BlocksTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
+import compareStrings from '../../sorters/compareStrings';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
+
 
 /**
  * Компонент таблицы с информацией о перегонах.
@@ -47,48 +49,18 @@ const BlocksTable = () => {
   const [isAddNewBlockModalVisible, setIsAddNewBlockModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом перегоне
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [blockFieldsErrs, setBlockFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о перегоне
   const [modBlockFieldsErrs, setModBlockFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового перегона
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
 
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
 
-  /**
-   * По заданному идентификатору станции возвращает строку с ее названием и кодом.
-   */
-  const getStationInfoByID = useCallback((id) => {
-    if (!stations) {
-      return id;
-    }
-    const station = stations.find((station) => station[STATION_FIELDS.KEY] === id);
-    if (station) {
-      return station[STATION_FIELDS.NAME_AND_CODE];
-    }
-    return id;
-  }, [stations]);
-
-
-  /**
-   * Преобразует объект перегона, полученный из БД, в объект перегона приложения.
-   *
-   * @param {object} dbBlockObj
-   */
-  const getAppBlockObjFromDBBlockObj_WithAddInfo = useCallback((dbBlockObj) => {
-    if (dbBlockObj) {
-      return {
-        ...getAppBlockObjFromDBBlockObj(dbBlockObj),
-        [BLOCK_FIELDS.STATION1_NAME]: getStationInfoByID(dbBlockObj.Bl_StationID1),
-        [BLOCK_FIELDS.STATION2_NAME]: getStationInfoByID(dbBlockObj.Bl_StationID2),
-      };
-    }
-    return null;
-  }, [getStationInfoByID]);
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -99,24 +71,25 @@ const BlocksTable = () => {
     setDataLoaded(false);
 
     try {
+      // Делаем запрос на сервер с целью получения информации по перегонам
+      let res = await request(ServerAPI.GET_BLOCKS_FULL_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
+      setTableData(tableData);
+
       // Делаем запрос на сервер с целью получения информации по станциям
-      const resStations = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
       // Хочу, чтобы станции в выпадающих списках были отсортированы по алфавиту
-      const stationsData = resStations.map((station) => getAppStationObjFromDBStationObj(station));
-      stationsData.sort((a, b) => {
-        if (a[STATION_FIELDS.NAME] < b[STATION_FIELDS.NAME]) {
-          return -1;
-        }
-        if (a[STATION_FIELDS.NAME] > b[STATION_FIELDS.NAME]) {
-          return 1;
-        }
-        return 0;
-      });
-
+      const stationsData = res.map((station) => getAppStationObjFromDBStationObj(station));
+      stationsData.sort((a, b) =>
+        compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()));
       setStations(stationsData);
+
       setLoadDataErr(null);
 
     } catch (e) {
@@ -126,38 +99,6 @@ const BlocksTable = () => {
 
     setDataLoaded(true);
   }, [auth.token, request]);
-
-
-  /**
-   * После извлечения информации о станциях извлекается информация о перегонах
-   * и устанавлвается в локальное состояние.
-   */
-  useEffect(() => {
-    async function loadBlocks() {
-      setDataLoaded(false);
-
-      try {
-        // Делаем запрос на сервер с целью получения информации по участкам
-        const res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET', null, {
-          Authorization: `Bearer ${auth.token}`
-        });
-
-        const tableData = res.map((block) => getAppBlockObjFromDBBlockObj_WithAddInfo(block));
-
-        setTableData(tableData);
-        setLoadDataErr(null);
-
-      } catch (e) {
-        setTableData(null);
-        setLoadDataErr(e.message);
-      }
-
-      setDataLoaded(true);
-    }
-
-    loadBlocks();
-
-  }, [auth.token, getAppBlockObjFromDBBlockObj_WithAddInfo, request, stations]);
 
 
   /**
@@ -172,9 +113,7 @@ const BlocksTable = () => {
    * Чистит все сообщения добавления информации о перегоне (ошибки и успех).
    */
   const clearAddBlockMessages = () => {
-    setCommonAddErr(null);
     setBlockFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -184,20 +123,22 @@ const BlocksTable = () => {
    * @param {object} block
    */
   const handleAddNewBlock = async (block) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о перегоне
-      const res = await request(ServerAPI.ADD_BLOCK_DATA, 'POST', {...block}, {
+      const res = await request(ServerAPI.ADD_BLOCK_DATA, 'POST', { ...block }, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
-      const newBlock = getAppBlockObjFromDBBlockObj_WithAddInfo(res.block);
+      const newBlock = getAppBlockObjFromDBBlockObj(res.block);
 
       setTableData([...tableData, newBlock]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -205,6 +146,8 @@ const BlocksTable = () => {
         setBlockFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -214,6 +157,8 @@ const BlocksTable = () => {
    * @param {number} blockId
    */
   const handleDelBlock = async (blockId) => {
+    setRecsBeingProcessed((value) => [...value, blockId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о перегоне
       const res = await request(ServerAPI.DEL_BLOCK_DATA, 'POST', { id: blockId }, {
@@ -227,6 +172,8 @@ const BlocksTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== blockId));
   }
 
 
@@ -240,8 +187,6 @@ const BlocksTable = () => {
       [BLOCK_FIELDS.NAME]: '',
       [BLOCK_FIELDS.STATION1]: '',
       [BLOCK_FIELDS.STATION2]: '',
-      [BLOCK_FIELDS.STATION1_NAME]: '',
-      [BLOCK_FIELDS.STATION2_NAME]: '',
       ...record,
     });
     setEditingKey(record[BLOCK_FIELDS.KEY]);
@@ -267,6 +212,33 @@ const BlocksTable = () => {
 
 
   /**
+   * Определяет данные, которые пользователь изменил в результате редактирования записи таблицы.
+   *
+   * @param {object} initialRec - исходные значения полей объекта редактируемой записи таблицы
+   * @param {object} modifiedRec - значения полей объекта редактируемой записи таблицы, которые пользователь отправил на сохранение
+   * @returns - null (если пользователь ничего не менял) либо объект, содержащий лишь измененные значения
+   */
+  const getDataToSave = (initialRec, modifiedRec) => {
+    let dataToSave = {};
+
+    Object.getOwnPropertyNames(modifiedRec).forEach((property) => {
+      if ((property === BLOCK_FIELDS.STATION1) || (property === BLOCK_FIELDS.STATION2)) {
+        if (initialRec[property][STATION_FIELDS.NAME_AND_CODE] !== modifiedRec[property][STATION_FIELDS.NAME_AND_CODE]) {
+          dataToSave[property] = JSON.parse(modifiedRec[property][STATION_FIELDS.NAME_AND_CODE])[STATION_FIELDS.KEY];
+        }
+      } else if (initialRec[property] !== modifiedRec[property]) {
+        dataToSave[property] = modifiedRec[property];
+      }
+    });
+
+    if (Object.getOwnPropertyNames(dataToSave).length === 0) {
+      return null;
+    }
+    return dataToSave;
+  };
+
+
+  /**
    * Редактирует информацию о перегоне в БД.
    *
    * @param {number} blockId
@@ -282,12 +254,21 @@ const BlocksTable = () => {
       return;
     }
 
-    rowData[BLOCK_FIELDS.STATION1_NAME] = getStationInfoByID(rowData[BLOCK_FIELDS.STATION1]);
-    rowData[BLOCK_FIELDS.STATION2_NAME] = getStationInfoByID(rowData[BLOCK_FIELDS.STATION2]);
+    const prevRecData = tableData.find((block) => block[BLOCK_FIELDS.KEY] === blockId);
+    if (!prevRecData) {
+      return;
+    }
+
+    const modifiedData = getDataToSave(prevRecData, rowData);
+    if (!modifiedData) {
+      return;
+    }
+
+    setRecsBeingProcessed((value) => [...value, blockId]);
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о перегоне
-      const res = await request(ServerAPI.MOD_BLOCK_DATA, 'POST', { id: blockId, ...rowData }, {
+      const res = await request(ServerAPI.MOD_BLOCK_DATA, 'POST', { id: blockId, ...modifiedData }, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -295,7 +276,7 @@ const BlocksTable = () => {
 
       const newTableData = tableData.map((block) => {
         if (block[BLOCK_FIELDS.KEY] === blockId) {
-          return { ...block, ...rowData };
+          return { ...block, ...getAppBlockObjFromDBBlockObj(res.block) };
         }
         return block;
       })
@@ -312,6 +293,8 @@ const BlocksTable = () => {
         setModBlockFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== blockId));
   }
 
 
@@ -340,7 +323,8 @@ const BlocksTable = () => {
     handleEditBlock,
     handleCancelMod,
     handleStartEditBlock,
-    handleDelBlock
+    handleDelBlock,
+    recsBeingProcessed,
   });
 
   /**
@@ -355,21 +339,16 @@ const BlocksTable = () => {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: [BLOCK_FIELDS.STATION1_NAME, BLOCK_FIELDS.STATION2_NAME].includes(col.dataIndex) ? 'stationsSelect' : 'text',
-        dataIndex: col.dataIndex === BLOCK_FIELDS.STATION1_NAME ? BLOCK_FIELDS.STATION1 :
-                   col.dataIndex === BLOCK_FIELDS.STATION2_NAME ? BLOCK_FIELDS.STATION2 :
-                   col.dataIndex,
+        inputType: Array.isArray(col.dataIndex) && (col.dataIndex.length === 2) &&
+          [BLOCK_FIELDS.STATION1, BLOCK_FIELDS.STATION2].includes(col.dataIndex[0]) &&
+          (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? 'stationsSelect' : 'text',
+        dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
         required: true,
-        stations: [BLOCK_FIELDS.STATION1_NAME, BLOCK_FIELDS.STATION2_NAME].includes(col.dataIndex) ?
-          (
-            stations &&
-            stations.map(station => {
-              return { id: station[STATION_FIELDS.KEY], name: station[STATION_FIELDS.NAME_AND_CODE] };
-            })
-          )
-          : null,
+        stations: Array.isArray(col.dataIndex) && (col.dataIndex.length === 2) &&
+          [BLOCK_FIELDS.STATION1, BLOCK_FIELDS.STATION2].includes(col.dataIndex[0]) &&
+          (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? stations : null,
         errMessage: modBlockFieldsErrs ? modBlockFieldsErrs[col.dataIndex] : null,
       }),
     };
@@ -379,23 +358,17 @@ const BlocksTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewBlockModal
           isModalVisible={isAddNewBlockModalVisible}
           handleAddNewBlockOk={handleAddNewBlockOk}
           handleAddNewBlockCancel={handleAddNewBlockCancel}
-          commonAddErr={commonAddErr}
           blockFieldsErrs={blockFieldsErrs}
           clearAddBlockMessages={clearAddBlockMessages}
-          successSaveMessage={successSaveMessage}
-          stations={
-            stations &&
-            stations.map(station => {
-              return { id: station[STATION_FIELDS.KEY], name: station[STATION_FIELDS.NAME_AND_CODE] };
-            })
-          }
+          stations={stations}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Перегоны</Title>

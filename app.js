@@ -11,6 +11,10 @@ const { createAdjacentECDSectorModel } = require('./models/TAdjacentECDSector');
 const { createNearestDNCandECDSectorModel } = require('./models/TNearestDNCandECDSector');
 const { createDNCTrainSectorModel } = require('./models/TDNCTrainSector');
 const { createECDTrainSectorModel } = require('./models/TECDTrainSector');
+const { createDNCTrainSectorStationModel } = require('./models/TDNCTrainSectorStation');
+const { createECDTrainSectorStationModel } = require('./models/TECDTrainSectorStation');
+const { createDNCTrainSectorBlockModel } = require('./models/TDNCTrainSectorBlock');
+const { createECDTrainSectorBlockModel } = require('./models/TECDTrainSectorBlock');
 
 // Создаем объект приложения express
 const app = express();
@@ -35,15 +39,19 @@ let sequelize;
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/apps', require('./routes/apps.routes'));
 app.use('/api/roles', require('./routes/roles.routes'));
-app.use('/api/nsi/stations', require('./routes/stations.routes'));
+app.use('/api/nsi/stations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/stations.routes'));
 app.use('/api/nsi/blocks', require('./routes/blocks.routes'));
 app.use('/api/nsi/dncSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncSectors.routes'));
 app.use('/api/nsi/ecdSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdSectors.routes'));
-app.use('/api/nsi/adjacentDNCSectors', require('./routes/adjacentDNCSectors.routes'));
-app.use('/api/nsi/adjacentECDSectors', require('./routes/adjacentECDSectors.routes'));
-app.use('/api/nsi/nearestDNCandECDSectors', require('./routes/nearestDNCandECDSectots.routes'));
+app.use('/api/nsi/adjacentDNCSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/adjacentDNCSectors.routes'));
+app.use('/api/nsi/adjacentECDSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/adjacentECDSectors.routes'));
+app.use('/api/nsi/nearestDNCandECDSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/nearestDNCandECDSectots.routes'));
 app.use('/api/nsi/dncTrainSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncTrainSectors.routes'));
 app.use('/api/nsi/ecdTrainSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectors.routes'));
+app.use('/api/nsi/dncTrainSectorStations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncTrainSectorStations.routes'));
+app.use('/api/nsi/ecdTrainSectorStations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectorStations.routes'));
+app.use('/api/nsi/dncTrainSectorBlocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncTrainSectorBlocks.routes'));
+app.use('/api/nsi/ecdTrainSectorBlocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectorBlocks.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;
@@ -89,7 +97,7 @@ async function start() {
           // удалить соединение из пула после того как оно простаивало
           // (не использовалось) в течение 10 сек
           idle: 10000
-        }
+        },
       }
     );
 
@@ -112,9 +120,13 @@ async function start() {
     createAdjacentDNCSectorModel(sequelize);
     createAdjacentECDSectorModel(sequelize);
     createNearestDNCandECDSectorModel(sequelize);
+    createDNCTrainSectorStationModel(sequelize);
+    createECDTrainSectorStationModel(sequelize);
+    createDNCTrainSectorBlockModel(sequelize);
+    createECDTrainSectorBlockModel(sequelize);
 
     // This creates the tables if they don't exist (and does nothing if they already exist)
-    await sequelize.sync({ alter: true });
+    //await sequelize.sync({ alter: true });
 
     // ----------------------------------------------------
 

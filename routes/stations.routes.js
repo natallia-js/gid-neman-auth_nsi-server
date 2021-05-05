@@ -8,6 +8,10 @@ const {
 } = require('../validators/stations.validator');
 const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
+const { TBlock } = require('../models/TBlock');
+const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
+const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
+const { Op } = require('sequelize');
 
 const router = Router();
 
@@ -43,7 +47,9 @@ router.get(
   checkAuthority,
   async (_req, res) => {
     try {
-      const data = await TStation.findAll({ raw: true });
+      const data = await TStation.findAll({
+        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+      });
       res.status(OK).json(data);
 
     } catch (error) {
@@ -132,16 +138,40 @@ router.post(
   delStationValidationRules(),
   validate,
   async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      // Удаляем в БД запись
-      await TStation.destroy({ where: { St_ID: id } });
+      // Перед удалением самой станции необходимо удалить связанные с нею записи в других таблицах
+      await TBlock.destroy(
+        {
+          where: {
+            [Op.or]: [
+              { Bl_StationID1: id },
+              { Bl_StationID2: id },
+            ],
+          },
+          transaction: t,
+        },
+      );
+      await TDNCTrainSectorStation.destroy({ where: { DNCTSS_StationID: id }, transaction: t });
+      await TECDTrainSectorStation.destroy({ where: { ECDTSS_StationID: id }, transaction: t });
+      await TStation.destroy({ where: { St_ID: id }, transaction: t });
+
+      await t.commit();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (e) {
+      await t.rollback();
       console.log(e);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }

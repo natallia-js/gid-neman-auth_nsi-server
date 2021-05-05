@@ -1,5 +1,8 @@
+import { Typography, Popconfirm, Row, Col } from 'antd';
 import { ROLE_FIELDS } from '../../constants';
-import { Typography, Popconfirm } from 'antd';
+import Loader from '../Loader';
+import compareStrings from '../../sorters/compareStrings';
+
 
 // Описание столбцов таблицы ролей
 const rolesTableColumns = (props) => {
@@ -9,7 +12,8 @@ const rolesTableColumns = (props) => {
     handleEditRole,
     handleCancelMod,
     handleStartEditRole,
-    handleDelRole
+    handleDelRole,
+    recsBeingProcessed,
   } = props;
 
   return [
@@ -20,16 +24,7 @@ const rolesTableColumns = (props) => {
       width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase();
-        const sortB = b[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase(), b[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase()),
       className: 'main-col',
     },
     {
@@ -39,16 +34,7 @@ const rolesTableColumns = (props) => {
       width: '30%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = (a[ROLE_FIELDS.DESCRIPTION] || '').toLowerCase();
-        const sortB = (b[ROLE_FIELDS.DESCRIPTION] || '').toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings((a[ROLE_FIELDS.DESCRIPTION] || '').toLowerCase(), (b[ROLE_FIELDS.DESCRIPTION] || '').toLowerCase()),
     },
     {
       title: 'Доступна администратору нижнего уровня',
@@ -63,41 +49,73 @@ const rolesTableColumns = (props) => {
     {
       title: 'Операции',
       dataIndex: 'operation',
-      fixed: 'right',
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
-          <span>
-            <a
-              href="#!"
-              onClick={() => handleEditRole(record.key)}
-              style={{
-                marginRight: 10,
-              }}
-            >
-              Сохранить
-            </a>
-            <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
-              <a href="#!">Отменить</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <span>
-            <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditRole(record)}>
-              Редактировать
-            </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelRole(record.key)}>
+          <Row>
+            <Col>
               <a
                 href="#!"
-                disabled={editingKey !== ''}
+                onClick={() => handleEditRole(record[ROLE_FIELDS.KEY])}
                 style={{
-                  marginLeft: 10,
+                  marginRight: 10,
+                }}
+                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY])}
+              >
+                Сохранить
+              </a>
+            </Col>
+            <Col>
+              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+                <a
+                  href="#!"
+                  style={{
+                    marginRight: 10,
+                  }}
+                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY])}
+                >
+                  Отменить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
+        ) : (
+          <Row>
+            <Col>
+              <Typography.Link
+                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY]))}
+                onClick={() => handleStartEditRole(record)}
+                style={{
+                  marginRight: 10,
                 }}
               >
-                Удалить
-              </a>
-            </Popconfirm>
-          </span>
+                Редактировать
+              </Typography.Link>
+            </Col>
+            <Col>
+              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelRole(record[ROLE_FIELDS.KEY])}>
+                <a
+                  href="#!"
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY]))}
+                  style={{
+                    marginRight: 10,
+                  }}
+                >
+                  Удалить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
         );
       },
     },

@@ -31,7 +31,7 @@ export const Navbar = () => {
   return (
     <Header>
       <div className="logo" />
-      <Menu theme="dark" mode="horizontal" defaultSelectedKeys={['2']}>
+      <Menu theme="dark" mode="horizontal" selectedKeys={[]}>
         {
           auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
           <Menu.Item key="1"><NavLink to="/apps">Приложения</NavLink></Menu.Item>

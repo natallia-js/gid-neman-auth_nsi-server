@@ -14,19 +14,17 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewUserOk,
  *   handleAddNewUserCancel,
- *   commonAddErr,
  *   userFieldsErrs,
  *   clearAddUserMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewUserModal = ({
   isModalVisible,
   handleAddNewUserOk,
   handleAddNewUserCancel,
-  commonAddErr,
   userFieldsErrs,
   clearAddUserMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -79,9 +77,6 @@ const NewUserModal = ({
         name="new-user-form"
         onFinish={onFinish}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Логин"
           name={USER_FIELDS.LOGIN}
@@ -234,6 +229,8 @@ const NewUserModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

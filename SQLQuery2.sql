@@ -95,50 +95,12 @@ CREATE TABLE TDNCTrainSectors
 go
 
 /* Вносим изменения в таблицу станций */
-ALTER TABLE TStations 
+ALTER TABLE TStations
 ALTER COLUMN St_UNMC NVARCHAR(6) NOT NULL;
 go
 
 ALTER TABLE TStations
 ADD CONSTRAINT XUniqueStationUNMC UNIQUE(St_UNMC);
-
-ALTER TABLE TStations
-ADD St_ECDTrainSectorID int;
-
-ALTER TABLE TStations
-ADD St_DNCTrainSectorID int;
-
-ALTER TABLE TStations
-ADD St_ECDSectorID int;
-
-ALTER TABLE TStations
-ADD St_DNCSectorID int;
-
-ALTER TABLE TStations
-ADD CONSTRAINT XRef_TECDTrainSectorFromStation FOREIGN KEY (St_ECDTrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION;
-
-ALTER TABLE TStations
-ADD CONSTRAINT XRef_TDNCTrainSectorFromStation FOREIGN KEY (St_DNCTrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION;
-
-ALTER TABLE TStations
-ADD CONSTRAINT XRef_TECDSectorFromStation FOREIGN KEY (St_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION;
-
-ALTER TABLE TStations
-ADD CONSTRAINT XRef_TDNCSectorFromStation FOREIGN KEY (St_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION;
-
-ALTER TABLE TStations
-ADD St_DNCTrainSectorPosition tinyint;
-
-ALTER TABLE TStations
-ADD St_ECDTrainSectorPosition tinyint;
 
 /*
 ALTER TABLE TStations
@@ -151,12 +113,48 @@ UPDATE TStations
 SET createdAt = GETDATE(), updatedAt = GETDATE();
 go
 
-ALTER TABLE TStations 
+ALTER TABLE TStations
 ALTER COLUMN createdAt DATETIMEOFFSET NOT NULL;
-ALTER TABLE TStations 
+ALTER TABLE TStations
 ALTER COLUMN updatedAt DATETIMEOFFSET NOT NULL;
 go
 */
+
+/* Принадлежность станций поездным участкам ДНЦ и соответствующим участкам ДНЦ */
+CREATE TABLE TDNCTrainSectorStations
+(
+  DNCTSS_TrainSectorID int NOT NULL,
+  DNCTSS_StationID int NOT NULL,
+  DNCTSS_StationPositionInTrainSector tinyint NOT NULL,
+  DNCTSS_StationBelongsToDNCSector bit NOT NULL,
+  CONSTRAINT XPK_TDNCTrainSectorStations PRIMARY KEY CLUSTERED (DNCTSS_TrainSectorID ASC, DNCTSS_StationID ASC),
+  CONSTRAINT XUniqueStationPositionInDNCTrainSector UNIQUE (DNCTSS_TrainSectorID, DNCTSS_StationPositionInTrainSector),
+  CONSTRAINT XRef_TDNCTrainSectorFromTSStations FOREIGN KEY (DNCTSS_TrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TStationFromDNCTrainSectorStations FOREIGN KEY (DNCTSS_StationID) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Принадлежность станций поездным участкам ЭЦД и соответствующим участкам ЭЦД */
+CREATE TABLE TECDTrainSectorStations
+(
+  ECDTSS_TrainSectorID int NOT NULL,
+  ECDTSS_StationID int NOT NULL,
+  ECDTSS_StationPositionInTrainSector tinyint NOT NULL,
+  ECDTSS_StationBelongsToECDSector bit NOT NULL,
+  CONSTRAINT XPK_TECDTrainSectorStations PRIMARY KEY CLUSTERED (ECDTSS_TrainSectorID ASC, ECDTSS_StationID ASC),
+  CONSTRAINT XUniqueStationPositionInECDTrainSector UNIQUE (ECDTSS_TrainSectorID, ECDTSS_StationPositionInTrainSector),
+  CONSTRAINT XRef_TECDTrainSectorFromTSStations FOREIGN KEY (ECDTSS_TrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TStationFromECDTrainSectorStations FOREIGN KEY (ECDTSS_StationID) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
 
 /* Перегоны межстанционные */
 CREATE TABLE TBlocks
@@ -165,12 +163,6 @@ CREATE TABLE TBlocks
   Bl_Title nvarchar(64) NOT NULL,
   Bl_StationID1 int NOT NULL,
   Bl_StationID2 int NOT NULL,
-  Bl_ECDTrainSectorID int,
-  Bl_DNCTrainSectorID int,
-  Bl_ECDSectorID int,
-  Bl_DNCSectorID int,
-  Bl_DNCTrainSectorPosition tinyint,
-  Bl_ECDTrainSectorPosition tinyint,
   CONSTRAINT XPK_TBlocks PRIMARY KEY CLUSTERED (Bl_ID ASC),
   CONSTRAINT XRef_TStationFromBlock1 FOREIGN KEY (Bl_StationID1) REFERENCES TStations (St_ID)
     ON DELETE NO ACTION
@@ -179,21 +171,46 @@ CREATE TABLE TBlocks
     ON DELETE NO ACTION
 	  ON UPDATE NO ACTION,
   CONSTRAINT XUniqueBlockTitle UNIQUE (Bl_Title),
-  CONSTRAINT XUniqueBlockStations UNIQUE (Bl_StationID1, Bl_StationID2),
-  CONSTRAINT XRef_TECDTrainSectorFromBlock FOREIGN KEY (Bl_ECDTrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
+  CONSTRAINT XUniqueBlockStations UNIQUE (Bl_StationID1, Bl_StationID2)
+)
+go
+
+/* Принадлежность перегонов поездным участкам ДНЦ и соответствующим участкам ДНЦ */
+CREATE TABLE TDNCTrainSectorBlocks
+(
+  DNCTSB_TrainSectorID int NOT NULL,
+  DNCTSB_BlockID int NOT NULL,
+  DNCTSB_BlockPositionInTrainSector tinyint NOT NULL,
+  DNCTSB_BlockBelongsToDNCSector bit NOT NULL,
+  CONSTRAINT XPK_TDNCTrainSectorBlocks PRIMARY KEY CLUSTERED (DNCTSB_TrainSectorID ASC, DNCTSB_BlockID ASC),
+  CONSTRAINT XUniqueBlockPositionInDNCTrainSector UNIQUE (DNCTSB_TrainSectorID, DNCTSB_BlockPositionInTrainSector),
+  CONSTRAINT XRef_TDNCTrainSectorFromTSBlocks FOREIGN KEY (DNCTSB_TrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
     ON DELETE NO ACTION
 	  ON UPDATE NO ACTION,
-  CONSTRAINT XRef_TDNCTrainSectorFromBlock FOREIGN KEY (Bl_DNCTrainSectorID) REFERENCES TDNCTrainSectors (DNCTS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION,
-  CONSTRAINT XRef_TECDSectorFromBlock FOREIGN KEY (Bl_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
-    ON DELETE NO ACTION
-	  ON UPDATE NO ACTION,
-  CONSTRAINT XRef_TDNCSectorFromBlock FOREIGN KEY (Bl_DNCSectorID) REFERENCES TDNCSectors (DNCS_ID)
+  CONSTRAINT XRef_TBlockFromDNCTrainSectorBlocks FOREIGN KEY (DNCTSB_BlockID) REFERENCES TBlocks (Bl_ID)
     ON DELETE NO ACTION
 	  ON UPDATE NO ACTION
 )
 go
+
+/* Принадлежность перегонов поездным участкам ЭЦД и соответствующим участкам ЭЦД */
+CREATE TABLE TECDTrainSectorBlocks
+(
+  ECDTSB_TrainSectorID int NOT NULL,
+  ECDTSB_BlockID int NOT NULL,
+  ECDTSB_BlockPositionInTrainSector tinyint NOT NULL,
+  ECDTSB_BlockBelongsToECDSector bit NOT NULL,
+  CONSTRAINT XPK_TECDTrainSectorBlocks PRIMARY KEY CLUSTERED (ECDTSB_TrainSectorID ASC, ECDTSB_BlockID ASC),
+  CONSTRAINT XUniqueBlockPositionInECDTrainSector UNIQUE (ECDTSB_TrainSectorID, ECDTSB_BlockPositionInTrainSector),
+  CONSTRAINT XRef_TECDTrainSectorFromTSBlocks FOREIGN KEY (ECDTSB_TrainSectorID) REFERENCES TECDTrainSectors (ECDTS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION,
+  CONSTRAINT XRef_TBlockFromECDTrainSectorBlocks FOREIGN KEY (ECDTSB_BlockID) REFERENCES TBlocks (Bl_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
 
 // #546e7a
 // #f57f17

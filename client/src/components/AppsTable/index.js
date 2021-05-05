@@ -9,9 +9,9 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import appsTableColumns from './AppsTableColumns';
 import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplicationObjFromDBApplicationObj';
 import AppCredsTable from './AppCredsTable';
-import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
+import expandIcon from '../ExpandIcon';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -45,17 +45,19 @@ const AppsTable = () => {
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewAppModalVisible, setIsAddNewAppModalVisible] = useState(false);
 
-  // Ошибки добавления информации о новом приложении
-  const [commonAddErr, setCommonAddErr] = useState(null);
+  // Ошибки добавления информации о новом приложении (разложенные по добавляемым полям)
   const [appFieldsErrs, setAppFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о приложении
   const [modAppFieldsErrs, setModAppFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового приложения
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -97,9 +99,7 @@ const AppsTable = () => {
    * Чистит все сообщения добавления информации о приложении (ошибки и успех).
    */
   const clearAddAppMessages = () => {
-    setCommonAddErr(null);
     setAppFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -109,18 +109,20 @@ const AppsTable = () => {
    * @param {object} app
    */
   const handleAddNewApp = async (app) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о приложении
       const res = await request(ServerAPI.ADD_APP_DATA, 'POST', { ...app, credentials: [] }, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableData([...tableData, getAppApplicationObjFromDBApplicationObj(res.app)]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -128,6 +130,8 @@ const AppsTable = () => {
         setAppFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -137,6 +141,8 @@ const AppsTable = () => {
    * @param {number} appId
    */
   const handleDelApp = async (appId) => {
+    setRecsBeingProcessed((value) => [...value, appId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о приложении
       const res = await request(ServerAPI.DEL_APP_DATA, 'POST', { appId }, {
@@ -150,6 +156,8 @@ const AppsTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== appId));
   }
 
 
@@ -202,6 +210,8 @@ const AppsTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, appId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации о приложении
       const res = await request(ServerAPI.MOD_APP_DATA, 'POST', { appId, ...rowData }, {
@@ -229,6 +239,8 @@ const AppsTable = () => {
         setModAppFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== appId));
   }
 
 
@@ -258,6 +270,7 @@ const AppsTable = () => {
     handleCancelMod,
     handleStartEditApp,
     handleDelApp,
+    recsBeingProcessed,
   });
 
   /**
@@ -286,17 +299,16 @@ const AppsTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewAppModal
           isModalVisible={isAddNewAppModalVisible}
           handleAddNewAppOk={handleAddNewAppOk}
           handleAddNewAppCancel={handleAddNewAppCancel}
-          commonAddErr={commonAddErr}
           appFieldsErrs={appFieldsErrs}
           clearAddAppMessages={clearAddAppMessages}
-          successSaveMessage={successSaveMessage}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Приложения ГИД НЕМАН</Title>
@@ -352,12 +364,7 @@ const AppsTable = () => {
               </div>
             ),
             rowExpandable: _record => true,
-            expandIcon: ({ expanded, onExpand, record }) =>
-              expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ),
+            expandIcon: expandIcon,
           }}
         />
       </Form>

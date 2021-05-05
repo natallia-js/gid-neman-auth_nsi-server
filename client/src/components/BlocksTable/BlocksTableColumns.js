@@ -1,5 +1,8 @@
-import { BLOCK_FIELDS } from '../../constants';
-import { Typography, Popconfirm } from 'antd';
+import { Typography, Popconfirm, Row, Col } from 'antd';
+import { BLOCK_FIELDS, STATION_FIELDS } from '../../constants';
+import Loader from '../Loader';
+import compareStrings from '../../sorters/compareStrings';
+
 
 // Описание столбцов таблицы перегонов
 const blocksTableColumns = (props) => {
@@ -9,7 +12,8 @@ const blocksTableColumns = (props) => {
     handleEditBlock,
     handleCancelMod,
     handleStartEditBlock,
-    handleDelBlock
+    handleDelBlock,
+    recsBeingProcessed,
   } = props;
 
   return [
@@ -20,70 +24,93 @@ const blocksTableColumns = (props) => {
       width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[BLOCK_FIELDS.NAME].toLowerCase();
-        const sortB = b[BLOCK_FIELDS.NAME].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()),
       className: 'main-col',
     },
     {
       title: 'Станция 1',
-      dataIndex: BLOCK_FIELDS.STATION1_NAME,
-      key: BLOCK_FIELDS.STATION1_NAME,
+      dataIndex: [BLOCK_FIELDS.STATION1, STATION_FIELDS.NAME_AND_CODE],
+      key: STATION_FIELDS.NAME_AND_CODE,
       width: '20%',
       editable: true,
     },
     {
       title: 'Станция 2',
-      dataIndex: BLOCK_FIELDS.STATION2_NAME,
-      key: BLOCK_FIELDS.STATION2_NAME,
+      dataIndex: [BLOCK_FIELDS.STATION2, STATION_FIELDS.NAME_AND_CODE],
+      key: STATION_FIELDS.NAME_AND_CODE,
       width: '20%',
       editable: true,
     },
     {
       title: 'Операции',
       dataIndex: 'operation',
-      fixed: 'right',
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
-          <span>
-            <a
-              href="#!"
-              onClick={() => handleEditBlock(record[BLOCK_FIELDS.KEY])}
-              style={{
-                marginRight: 10,
-              }}
-            >
-              Сохранить
-            </a>
-            <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
-              <a href="#!">Отменить</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <span>
-            <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditBlock(record)}>
-              Редактировать
-            </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelBlock(record[BLOCK_FIELDS.KEY])}>
+          <Row>
+            <Col>
               <a
                 href="#!"
-                disabled={editingKey !== ''}
+                onClick={() => handleEditBlock(record[BLOCK_FIELDS.KEY])}
                 style={{
-                  marginLeft: 10,
+                  marginRight: 10,
+                }}
+                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY])}
+              >
+                Сохранить
+              </a>
+            </Col>
+            <Col>
+              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+                <a
+                  href="#!"
+                  style={{
+                    marginRight: 10,
+                  }}
+                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY])}
+                >
+                  Отменить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
+        ) : (
+          <Row>
+            <Col>
+              <Typography.Link
+                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY]))}
+                onClick={() => handleStartEditBlock(record)}
+                style={{
+                  marginRight: 10,
                 }}
               >
-                Удалить
-              </a>
-            </Popconfirm>
-          </span>
+                Редактировать
+              </Typography.Link>
+            </Col>
+            <Col>
+              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelBlock(record[BLOCK_FIELDS.KEY])}>
+                <a
+                  href="#!"
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY]))}
+                  style={{
+                    marginRight: 10,
+                  }}
+                >
+                  Удалить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[BLOCK_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
         );
       },
     },

@@ -13,6 +13,7 @@ const { TECDSector } = require('../models/TECDSector');
 const { TECDTrainSector } = require('../models/TECDTrainSector');
 const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
+const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 const { Op } = require('sequelize');
 
 const router = Router();
@@ -49,8 +50,27 @@ router.get(
   checkAuthority,
   async (_req, res) => {
     try {
-      const data = await TECDSector.findAll({ raw: true });
-      res.status(OK).json(data);
+      const data = await TECDSector.findAll({
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        include: [
+          {
+            model: TECDTrainSector,
+            as: 'TECDTrainSectors',
+            attributes: ['ECDTS_ID', 'ECDTS_Title', 'ECDTS_ECDSectorID'],
+            include: [
+              {
+                model: TStation,
+                as: 'TStations',
+              },
+              {
+                model: TBlock,
+                as: 'TBlocks',
+              },
+            ],
+          },
+        ],
+      });
+      res.status(OK).json(data.map(d => d.dataValues));
 
     } catch (error) {
       console.log(error);
@@ -154,15 +174,15 @@ router.post(
 
       // Если не находим, то процесс удаления продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Указанный участок ЭЦД не существует в базе данных' });
       }
 
-      // Перед удалением участка ЭЦД ищем все поездные участки ЭЦД: они будут удалены в процессе
-      // удаления информации об участке ЭЦД, поэтому для станций и перегонов необходимо удалить ссылки
-      // на данные поездные участки
+      // Перед удалением участка ЭЦД ищем все его поездные участки ЭЦД: для соответствующих записей
+      // необходимо удалить информацию из таблицы станций поездных участков ЭЦД
       const ecdTrainSectors = await TECDTrainSector.findAll({ where: { ECDTS_ECDSectorID: id } });
 
-      // Удаляем в БД запись и все связанные с нею записи (порядок имеет значение!)
+      // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
       await TAdjacentECDSector.destroy(
         {
           where: {
@@ -171,24 +191,30 @@ router.post(
               { AECDS_ECDSectorID2: id },
             ],
           },
+          transaction: t,
         },
-        { transaction: t }
       );
-      await TNearestDNCandECDSector.destroy({ where: { NDE_ECDSectorID: id } }, { transaction: t });
+      await TNearestDNCandECDSector.destroy(
+        {
+          where: { NDE_ECDSectorID: id },
+          transaction: t,
+        }
+      );
       if (ecdTrainSectors && ecdTrainSectors.length) {
-        await TStation.update(
-          { St_ECDTrainSectorID: null },
-          { where: { St_ECDTrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) } },
-          { transaction: t }
+        await TECDTrainSectorStation.destroy(
+          {
+            where: { ECDTSS_TrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) },
+            transaction: t,
+          }
         );
-        await TBlock.update(
-          { Bl_ECDTrainSectorID: null },
-          { where: { Bl_ECDTrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) } },
-          { transaction: t }
+        await TECDTrainSector.destroy(
+          {
+            where: { ECDTS_ECDSectorID: id },
+            transaction: t,
+          }
         );
       }
-      await TECDTrainSector.destroy({ where: { ECDTS_ECDSectorID: id } }, { transaction: t });
-      await TECDSector.destroy({ where: { ECDS_ID: id } }, { transaction: t });
+      await TECDSector.destroy({ where: { ECDS_ID: id }, transaction: t });
 
       await t.commit();
 

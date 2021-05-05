@@ -7,8 +7,8 @@ const {
   modBlockValidationRules,
 } = require('../validators/blocks.validator');
 const validate = require('../validators/validate');
-const { TBlock } = require('../models/TBlock');
 const { Op } = require('sequelize');
+const { TBlock } = require('../models/TBlock');
 const { TStation } = require('../models/TStation');
 
 const router = Router();
@@ -18,6 +18,11 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  SUCCESS_DEL_MESS,
+  SUCCESS_MOD_RES,
+  SUCCESS_ADD_MESS,
+  DATA_TO_DEL_NOT_FOUND,
+  DATA_TO_MOD_NOT_FOUND,
 
   GET_ALL_BLOCKS_ACTION,
   MOD_BLOCK_ACTION,
@@ -25,7 +30,42 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех перегонов.
+ * Обрабатывает запрос на получение списка всех перегонов, без вложенной информации о станциях.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/shortData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_BLOCKS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (_req, res) => {
+    try {
+      const data = await TBlock.findAll({
+        raw: true,
+        attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех перегонов, включая вложенные объекты станций.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -45,7 +85,18 @@ router.get(
   checkAuthority,
   async (_req, res) => {
     try {
-      const data = await TBlock.findAll({ raw: true });
+      const data = await TBlock.findAll({
+        attributes: ['Bl_ID', 'Bl_Title'],
+        include: [{
+          model: TStation,
+          as: 'station1',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TStation,
+          as: 'station2',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }],
+      });
       res.status(OK).json(data);
 
     } catch (error) {
@@ -102,8 +153,8 @@ router.post(
           [Op.and]: [
             { Bl_StationID1: station1 },
             { Bl_StationID2: station2 },
-          ]
-        }
+          ],
+        },
       });
 
       // Если находим, то процесс создания продолжать не можем
@@ -117,8 +168,8 @@ router.post(
           [Op.or]: [
             { St_ID: station1 },
             { St_ID: station2 },
-          ]
-        }
+          ],
+        },
       });
       if (
         !stationsToBind ||
@@ -130,7 +181,22 @@ router.post(
       // Создаем в БД запись с данными о новом перегоне
       const block = await TBlock.create({ Bl_Title: name, Bl_StationID1: station1, Bl_StationID2: station2 });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', block });
+      // Возвращаю полную информацию о созданном перегоне, включая информацию о его граничных станциях
+      const dataToReturn = await TBlock.findOne({
+        where: { Bl_ID: block.Bl_ID },
+        attributes: ['Bl_ID', 'Bl_Title'],
+        include: [{
+          model: TStation,
+          as: 'station1',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TStation,
+          as: 'station2',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }],
+      });
+
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, block: dataToReturn });
 
     } catch (e) {
       console.log(e);
@@ -171,9 +237,13 @@ router.post(
       const { id } = req.body;
 
       // Удаляем в БД запись
-      await TBlock.destroy({ where: { Bl_ID: id } });
+      const deletedCount = await TBlock.destroy({ where: { Bl_ID: id } });
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      if (!deletedCount) {
+        return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
+      }
+
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (e) {
       console.log(e);
@@ -247,8 +317,8 @@ router.post(
       if (conditionArr.length) {
         const stationsToBind = await TStation.findAll({
           where: {
-            [Op.or]: conditionArr
-          }
+            [Op.or]: conditionArr,
+          },
         });
         if (
           !stationsToBind ||
@@ -271,13 +341,32 @@ router.post(
         updateFields.Bl_StationID2 = station2;
       }
 
-      await TBlock.update(updateFields, {
+      const updateRes = await TBlock.update(updateFields, {
         where: {
-          Bl_ID: id
-        }
+          Bl_ID: id,
+        },
       });
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      if (!updateRes[0]) {
+        return res.status(ERR).json({ message: DATA_TO_MOD_NOT_FOUND });
+      }
+
+      // Возвращаю полную информацию о созданном перегоне, включая информацию о его граничных станциях
+      const dataToReturn = await TBlock.findOne({
+        where: { Bl_ID: id },
+        attributes: ['Bl_ID', 'Bl_Title'],
+        include: [{
+          model: TStation,
+          as: 'station1',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TStation,
+          as: 'station2',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }],
+      });
+
+      res.status(OK).json({ message: SUCCESS_MOD_RES, block: dataToReturn });
 
     } catch (e) {
       console.log(e);

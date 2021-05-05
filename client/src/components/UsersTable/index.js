@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography, Input } from 'antd';
+import { Table, Form, Button, Typography, Input, Row, Col } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
 import { ServerAPI, USER_FIELDS, ROLE_FIELDS } from '../../constants';
@@ -10,11 +10,9 @@ import usersTableColumns from './UsersTableColumns';
 import getAppUserObjFromDBUserObj from '../../mappers/getAppUserObjFromDBUserObj';
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
-import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
+import expandIcon from '../ExpandIcon';
 
-import './styles.scss';
-
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -42,6 +40,9 @@ const UsersTable = () => {
   // Для редактирования данных таблицы пользователей
   const [form] = Form.useForm();
 
+  // Для редактирования пароля пользователя
+  const [newPwdForm] = Form.useForm();
+
   // Ключ редактируемой записи таблицы
   const [editingKey, setEditingKey] = useState('');
 
@@ -52,18 +53,18 @@ const UsersTable = () => {
   const [isAddNewUserModalVisible, setIsAddNewUserModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом пользователе
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [userFieldsErrs, setUserFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о пользователе
   const [modUserFieldsErrs, setModUserFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового пользователя
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
 
-  const newPasswordRef = useRef(null);
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -116,9 +117,7 @@ const UsersTable = () => {
    * Чистит все сообщения добавления информации о пользователе (ошибки и успех).
    */
   const clearAddUserMessages = () => {
-    setCommonAddErr(null);
     setUserFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -128,20 +127,22 @@ const UsersTable = () => {
    * @param {object} user
    */
   const handleAddNewUser = async (user) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о пользователе
       const res = await request(ServerAPI.ADD_NEW_USER, 'POST', { ...user, roles: [] }, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const newUser = getAppUserObjFromDBUserObj(res.user);
 
       setTableData([...tableData, newUser]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -149,6 +150,8 @@ const UsersTable = () => {
         setUserFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -158,6 +161,8 @@ const UsersTable = () => {
    * @param {number} userId
    */
   const handleDelUser = async (userId) => {
+    setRecsBeingProcessed((value) => [...value, userId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о пользователе
       const res = await request(ServerAPI.DEL_USER, 'POST', { userId }, {
@@ -171,6 +176,8 @@ const UsersTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== userId));
   }
 
 
@@ -228,6 +235,8 @@ const UsersTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, userId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
       const res = await request(ServerAPI.MOD_USER, 'POST', { userId, ...rowData }, {
@@ -255,6 +264,8 @@ const UsersTable = () => {
         setModUserFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== userId));
   };
 
 
@@ -262,13 +273,9 @@ const UsersTable = () => {
    * Редактирует пароль пользователя в БД.
    *
    * @param {number} userId
+   * @param {string} newPassword
    */
-  const handleChangePassword = async (userId) => {
-    if (!newPasswordRef || !newPasswordRef.current) {
-      return;
-    }
-    const newPassword = newPasswordRef.current.state.value;
-
+  const handleChangePassword = async ({ userId, newPassword }) => {
     try {
       const res = await request(ServerAPI.MOD_USER, 'POST',
         { userId, password: newPassword },
@@ -332,6 +339,14 @@ const UsersTable = () => {
   // --------------------------------------------------------------
 
 
+  /**
+   * Обработка события подтверждения пользователем окончания ввода.
+   */
+   const onFinish = (values, userId) => {
+    handleChangePassword({ userId, newPassword: values[USER_FIELDS.PASSWORD] });
+  };
+
+
   // Описание столбцов таблицы пользователей
   const columns = usersTableColumns({
     isEditing,
@@ -340,6 +355,7 @@ const UsersTable = () => {
     handleCancelMod,
     handleStartEditUser,
     handleDelUser,
+    recsBeingProcessed,
   });
 
   /**
@@ -368,17 +384,16 @@ const UsersTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewUserModal
           isModalVisible={isAddNewUserModalVisible}
           handleAddNewUserOk={handleAddNewUserOk}
           handleAddNewUserCancel={handleAddNewUserCancel}
-          commonAddErr={commonAddErr}
           userFieldsErrs={userFieldsErrs}
           clearAddUserMessages={clearAddUserMessages}
-          successSaveMessage={successSaveMessage}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Пользователи</Title>
@@ -425,59 +440,70 @@ const UsersTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
-                <div className="new-password-block">
-                  <p className="new-password-title">Новый пароль:</p>
-                  <Input ref={newPasswordRef}></Input>
-                  <Button
-                    type="primary"
-                    style={{
-                      marginBottom: 16,
-                    }}
-                    onClick={() => handleChangePassword(record[USER_FIELDS.KEY])}
-                  >
-                    Изменить пароль
-                  </Button>
-                </div>
+                <Form
+                  layout="horizontal"
+                  size='small'
+                  form={newPwdForm}
+                  name="new-password-form"
+                  onFinish={(values) => onFinish(values, record[USER_FIELDS.KEY])}
+                >
+                  <Row wrap={false}>
+                    <Col span={6}>
+                      <Form.Item
+                        label="Новый пароль"
+                        name={USER_FIELDS.PASSWORD}
+                      >
+                        <Input
+                          autoComplete="off"
+                          placeholder="Новый пароль пользователя"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={4}>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          Изменить
+                        </Button>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Form>
+
                 <Title level={4}>Роли</Title>
-                  <SavableSelectMultiple
-                    key={`roles${record[USER_FIELDS.KEY]}`}
-                    placeholder="Выберите роли"
-                    options={
-                      (!roleAbbrs || !roleAbbrs.length) ?
-                      [] :
-                      roleAbbrs.map((role) => {
-                        return {
-                          value: role[ROLE_FIELDS.ENGL_ABBREVIATION],
-                        };
-                      })
-                    }
-                    selectedItems={
-                      (!record[USER_FIELDS.ROLES] || !record[USER_FIELDS.ROLES].length ||
-                       !roleAbbrs || !roleAbbrs.length) ?
-                      [] :
-                      roleAbbrs
-                        .filter((role) => record[USER_FIELDS.ROLES].includes(role[ROLE_FIELDS.KEY]))
-                        .map(role => role[ROLE_FIELDS.ENGL_ABBREVIATION])
-                    }
-                    saveChangesCallback={(selectedVals) => {
-                      const roleIds = roleAbbrs
-                        .filter(role => selectedVals.includes(role[ROLE_FIELDS.ENGL_ABBREVIATION]))
-                        .map(role => role[ROLE_FIELDS.KEY]);
-                      handleEditUserRoles({
-                        userId: record[USER_FIELDS.KEY],
-                        rolesIds: roleIds,
-                      });
-                    }}
-                  />
+                <SavableSelectMultiple
+                  key={`roles${record[USER_FIELDS.KEY]}`}
+                  placeholder="Выберите роли"
+                  options={
+                    (!roleAbbrs || !roleAbbrs.length) ?
+                    [] :
+                    roleAbbrs.map((role) => {
+                      return {
+                        value: role[ROLE_FIELDS.ENGL_ABBREVIATION],
+                      };
+                    })
+                  }
+                  selectedItems={
+                    (!record[USER_FIELDS.ROLES] || !record[USER_FIELDS.ROLES].length ||
+                      !roleAbbrs || !roleAbbrs.length) ?
+                    [] :
+                    roleAbbrs
+                      .filter((role) => record[USER_FIELDS.ROLES].includes(role[ROLE_FIELDS.KEY]))
+                      .map(role => role[ROLE_FIELDS.ENGL_ABBREVIATION])
+                  }
+                  saveChangesCallback={(selectedVals) => {
+                    const roleIds = roleAbbrs
+                      .filter(role => selectedVals.includes(role[ROLE_FIELDS.ENGL_ABBREVIATION]))
+                      .map(role => role[ROLE_FIELDS.KEY]);
+                    handleEditUserRoles({
+                      userId: record[USER_FIELDS.KEY],
+                      rolesIds: roleIds,
+                    });
+                  }}
+                />
               </div>
             ),
             rowExpandable: _record => true,
-            expandIcon: ({ expanded, onExpand, record }) =>
-              expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ),
+            expandIcon: expandIcon,
           }}
         />
       </Form>

@@ -18,12 +18,11 @@ import dncSectorsTableColumns from './DNCSectorsTableColumns';
 import DNCTrainSectorsBlock from './DNCTrainSectorsBlock';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
-import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
-import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
+import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
+import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
+import expandIcon from '../ExpandIcon';
 
-import './styles.scss';
-
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -35,6 +34,12 @@ const DNCSectorsTable = () => {
 
   // Информация по участкам ЭЦД (массив объектов)
   const [ecdSectorsData, setECDSectorsData] = useState(null);
+
+  // Информация по станциям (массив объектов)
+  const [stations, setStations] = useState(null);
+
+  // Информация по перегонам (массив объектов)
+  const [blocks, setBlocks] = useState(null);
 
   // Ошибка загрузки данных
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -61,17 +66,19 @@ const DNCSectorsTable = () => {
   const [isAddNewDNCSectorModalVisible, setIsAddNewDNCSectorModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом участке ДНЦ
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [dncSectorFieldsErrs, setDNCSectorFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации об участке ДНЦ
   const [modDNCSectorFieldsErrs, setModDNCSectorFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового участка ДНЦ
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -83,6 +90,9 @@ const DNCSectorsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
+      // (запрос возвратит информацию в виде массива объектов участков ДНЦ; для каждого
+      // объекта участка ДНЦ будет определен массив объектов поездных участков ДНЦ; для
+      // каждого поездного участка ДНЦ будет определен массив объектов соответствующих станций)
       let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
@@ -140,24 +150,30 @@ const DNCSectorsTable = () => {
         }
       });
 
+      setTableData(tableData);
+
       // -------------------
 
-      // Осталось получить информацию о поездных участках ДНЦ
+      // Получаем информацию о всех станциях
 
-      res = await request(ServerAPI.GET_DNCTRAINSECTORS_DATA, 'GET', null, {
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      // Для каждой полученной записи создаем в tableData элемент массива поездных участков ДНЦ
-      // для соответствующего участка ДНЦ
-      res.forEach((data) => {
-        const dncSector = tableData.find((el) => el[DNCSECTOR_FIELDS.KEY] === data.DNCTS_DNCSectorID);
-        if (dncSector) {
-          dncSector[DNCSECTOR_FIELDS.TRAIN_SECTORS].push(getAppDNCTrainSectorFromDBDNCTrainSectorObj(data));
-        }
+      setStations(res.map((station) => getAppStationObjFromDBStationObj(station)));
+
+      // -------------------
+
+      // Получаем информацию о всех перегонах
+
+      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
       });
 
-      setTableData(tableData);
+      setBlocks(res.map((block) => getAppBlockObjFromDBBlockObj(block)));
+
+      // -------------------
+
       setLoadDataErr(null);
 
     } catch (e) {
@@ -182,9 +198,7 @@ const DNCSectorsTable = () => {
    * Чистит все сообщения добавления информации об участке ДНЦ (ошибки и успех).
    */
   const clearAddDNCSectorMessages = () => {
-    setCommonAddErr(null);
     setDNCSectorFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -212,6 +226,8 @@ const DNCSectorsTable = () => {
    * @param {object} sector
    */
   const handleAddNewDNCSector = async (sector) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о новом участке ДНЦ
       const res = await request(ServerAPI.ADD_DNCSECTORS_DATA, 'POST',
@@ -219,14 +235,14 @@ const DNCSectorsTable = () => {
         { Authorization: `Bearer ${auth.token}` }
       );
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
       const newSector = getAppDNCSectorObjFromDBDNCSectorObj(res.sector);
       setTableData((value) => [...value, newSector]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -234,6 +250,8 @@ const DNCSectorsTable = () => {
         setDNCSectorFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -243,6 +261,8 @@ const DNCSectorsTable = () => {
    * @param {number} sectorId
    */
   const handleDelDNCSector = async (sectorId) => {
+    setRecsBeingProcessed((value) => [...value, sectorId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации об участке ДНЦ
       const res = await request(ServerAPI.DEL_DNCSECTORS_DATA, 'POST',
@@ -267,6 +287,8 @@ const DNCSectorsTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== sectorId));
   };
 
 
@@ -318,6 +340,8 @@ const DNCSectorsTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, sectorId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке ДНЦ
       const res = await request(ServerAPI.MOD_DNCSECTORS_DATA, 'POST',
@@ -346,37 +370,9 @@ const DNCSectorsTable = () => {
         setModDNCSectorFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== sectorId));
   }
-
-
-  /**
-   * По заданному id участка ДНЦ возвращает его название.
-   */
-  const getDNCSectorNameById = (id) => {
-    if (!tableData || !tableData.length) {
-      return;
-    }
-    const index = tableData.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === id);
-    if (index > -1) {
-      return tableData[index][DNCSECTOR_FIELDS.NAME];
-    }
-    return null;
-  };
-
-
-  /**
-   * По заданному id участка ЭЦД возвращает его название.
-   */
-   const getECDSectorNameById = (id) => {
-    if (!ecdSectorsData || !ecdSectorsData.length) {
-      return;
-    }
-    const index = ecdSectorsData.findIndex(sector => sector[ECDSECTOR_FIELDS.KEY] === id);
-    if (index > -1) {
-      return ecdSectorsData[index][ECDSECTOR_FIELDS.NAME];
-    }
-    return null;
-  };
 
 
   // Описание столбцов таблицы участков ДНЦ
@@ -386,7 +382,8 @@ const DNCSectorsTable = () => {
     handleEditDNCSector,
     handleCancelMod,
     handleStartEditDNCSector,
-    handleDelDNCSector
+    handleDelDNCSector,
+    recsBeingProcessed,
   });
 
 
@@ -416,17 +413,16 @@ const DNCSectorsTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewDNCSectorModal
           isModalVisible={isAddNewDNCSectorModalVisible}
           handleAddNewDNCSectorOk={handleAddNewDNCSectorOk}
           handleAddNewDNCSectorCancel={handleAddNewDNCSectorCancel}
-          commonAddErr={commonAddErr}
           dncSectorFieldsErrs={dncSectorFieldsErrs}
           clearAddDNCSectorMessages={clearAddDNCSectorMessages}
-          successSaveMessage={successSaveMessage}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Участки ДНЦ</Title>
@@ -473,81 +469,24 @@ const DNCSectorsTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
-                <div className="adjacent-and-nearest-block">
-                  {/*
-                    В данном блоке у пользователя будет возможность формировать
-                    список участков ДНЦ, смежных с текущим
-                  */}
-                  <AdjacentDNCSectorsBlock
-                    currDNCSectorRecord={record}
-                    possibleAdjDNCSectors={
-                      tableData
-                        .filter(el => {
-                          let adjacentSectorsIds =
-                            record[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].map(sect => sect[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
-
-                          // Список выбора смежных участков не должен включать текущие смежные участки и сам текущий участок
-                          return (!adjacentSectorsIds.includes(el[DNCSECTOR_FIELDS.KEY])) &&
-                            el[DNCSECTOR_FIELDS.KEY] !== record[DNCSECTOR_FIELDS.KEY];
-                        })
-                        // Хочу, чтобы наименования участков выводились в алфавитном порядке
-                        .sort((a, b) => {
-                          const sectName1 = a[DNCSECTOR_FIELDS.NAME];
-                          const sectName2 = b[DNCSECTOR_FIELDS.NAME];
-                          if (sectName1 < sectName2) {
-                            return -1;
-                          }
-                          if (sectName1 > sectName2) {
-                            return 1;
-                          }
-                          return 0;
-                        })
-                    }
-                    setTableDataCallback={setTableData}
-                    getDNCSectorNameByIdCallback={getDNCSectorNameById}
-                  />
-                  <NearestECDSectorsBlock
-                    dataSource={
-                      // Хочу, чтобы наименования участков выводились в алфавитном порядке
-                      record[DNCSECTOR_FIELDS.NEAREST_ECDSECTORS].sort((a, b) => {
-                        const sectName1 = getECDSectorNameById(a[NEAREST_SECTOR_FIELDS.SECTOR_ID]);
-                        const sectName2 = getECDSectorNameById(b[NEAREST_SECTOR_FIELDS.SECTOR_ID]);
-                        if (sectName1 < sectName2) {
-                          return -1;
-                        }
-                        if (sectName1 > sectName2) {
-                          return 1;
-                        }
-                        return 0;
-                      })
-                    }
-                    currDNCSectorRecord={record}
-                    possibleNearECDSectors={
-                      ecdSectorsData
-                        .filter(el => {
-                          let nearestECDSectorsIds =
-                            record[DNCSECTOR_FIELDS.NEAREST_ECDSECTORS].map(sect => sect[NEAREST_SECTOR_FIELDS.SECTOR_ID]);
-
-                          // Список выбора ближайших участков ЭЦД не должен включать текущие ближайшие участки ЭЦД
-                          return !nearestECDSectorsIds.includes(el[ECDSECTOR_FIELDS.KEY]);
-                        })
-                        // Хочу, чтобы наименования участков выводились в алфавитном порядке
-                        .sort((a, b) => {
-                          const sectName1 = a[ECDSECTOR_FIELDS.NAME];
-                          const sectName2 = b[ECDSECTOR_FIELDS.NAME];
-                          if (sectName1 < sectName2) {
-                            return -1;
-                          }
-                          if (sectName1 > sectName2) {
-                            return 1;
-                          }
-                          return 0;
-                        })
-                    }
-                    setTableDataCallback={setTableData}
-                    getECDSectorNameByIdCallback={getECDSectorNameById}
-                  />
-                </div>
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список участков ДНЦ, смежных с текущим
+                */}
+                <AdjacentDNCSectorsBlock
+                  dncSector={record}
+                  allDNCSectors={tableData}
+                  setTableDataCallback={setTableData}
+                />
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список участков ЭЦД, ближайших к текущему участку ДНЦ
+                */}
+                <NearestECDSectorsBlock
+                  dncSector={record}
+                  allECDSectors={ecdSectorsData}
+                  setTableDataCallback={setTableData}
+                />
                 {/*
                   В данном блоке у пользователя будет возможность формировать
                   список поездных участков ДНЦ для текущего участка ДНЦ
@@ -555,16 +494,13 @@ const DNCSectorsTable = () => {
                 <DNCTrainSectorsBlock
                   currDNCSectorRecord={record}
                   setTableDataCallback={setTableData}
+                  stations={stations}
+                  blocks={blocks}
                 />
               </div>
             ),
-            rowExpandable: record => true,
-            expandIcon: ({ expanded, onExpand, record }) =>
-              expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ),
+            rowExpandable: _record => true,
+            expandIcon: expandIcon,
           }}
         />
       </Form>

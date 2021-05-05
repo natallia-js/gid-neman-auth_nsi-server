@@ -13,6 +13,7 @@ const { TDNCSector } = require('../models/TDNCSector');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
+const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { Op } = require('sequelize');
 
 const router = Router();
@@ -49,8 +50,27 @@ router.get(
   checkAuthority,
   async (_req, res) => {
     try {
-      const data = await TDNCSector.findAll({ raw: true });
-      res.status(OK).json(data);
+      const data = await TDNCSector.findAll({
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+        include: [
+          {
+            model: TDNCTrainSector,
+            as: 'TDNCTrainSectors',
+            attributes: ['DNCTS_ID', 'DNCTS_Title', 'DNCTS_DNCSectorID'],
+            include: [
+              {
+                model: TStation,
+                as: 'TStations',
+              },
+              {
+                model: TBlock,
+                as: 'TBlocks',
+              },
+            ],
+          },
+        ],
+      });
+      res.status(OK).json(data.map(d => d.dataValues));
 
     } catch (error) {
       console.log(error);
@@ -154,15 +174,15 @@ router.post(
 
       // Если не находим, то процесс удаления продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Указанный участок ДНЦ не существует в базе данных' });
       }
 
-      // Перед удалением участка ДНЦ ищем все поездные участки ДНЦ: они будут удалены в процессе
-      // удаления информации об участке ДНЦ, поэтому для станций и перегонов необходимо удалить ссылки
-      // на данные поездные участки
+      // Перед удалением участка ДНЦ ищем все его поездные участки ДНЦ: для соответствующих записей
+      // необходимо удалить информацию из таблицы станций поездных участков ДНЦ
       const dncTrainSectors = await TDNCTrainSector.findAll({ where: { DNCTS_DNCSectorID: id } });
 
-      // Удаляем в БД запись и все связанные с нею записи (порядок имеет значение!)
+      // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
       await TAdjacentDNCSector.destroy(
         {
           where: {
@@ -171,24 +191,30 @@ router.post(
               { ADNCS_DNCSectorID2: id },
             ],
           },
+          transaction: t,
         },
-        { transaction: t }
       );
-      await TNearestDNCandECDSector.destroy({ where: { NDE_DNCSectorID: id } }, { transaction: t });
+      await TNearestDNCandECDSector.destroy(
+        {
+          where: { NDE_DNCSectorID: id },
+          transaction: t,
+        }
+      );
       if (dncTrainSectors && dncTrainSectors.length) {
-        await TStation.update(
-          { St_DNCTrainSectorID: null },
-          { where: { St_DNCTrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) } },
-          { transaction: t }
+        await TDNCTrainSectorStation.destroy(
+          {
+            where: { DNCTSS_TrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) },
+            transaction: t,
+          }
         );
-        await TBlock.update(
-          { Bl_DNCTrainSectorID: null },
-          { where: { Bl_DNCTrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) } },
-          { transaction: t }
+        await TDNCTrainSector.destroy(
+          {
+            where: { DNCTS_DNCSectorID: id },
+            transaction: t,
+          }
         );
       }
-      await TDNCTrainSector.destroy({ where: { DNCTS_DNCSectorID: id } }, { transaction: t });
-      await TDNCSector.destroy({ where: { DNCS_ID: id } }, { transaction: t });
+      await TDNCSector.destroy({ where: { DNCS_ID: id }, transaction: t });
 
       await t.commit();
 

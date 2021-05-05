@@ -33,25 +33,25 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
   const [isAddNewAppCredModalVisible, setIsAddNewAppCredModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом полномочии
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [appCredFieldsErrs, setAppCredFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о полномочиях приложения
   const [modAppCredFieldsErrs, setModAppCredFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового полномочия
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
    * Чистит все сообщения добавления информации о полномочии (ошибки и успех).
    */
   const clearAddAppCredMessages = () => {
-    setCommonAddErr(null);
     setAppCredFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -61,13 +61,15 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
    * @param {object} cred
    */
   const handleAddNewAppCred = async (cred) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о полномочии
       const res = await request(ServerAPI.ADD_APP_CRED_DATA, 'POST', { appId, ...cred }, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
         value.map((app) => {
@@ -81,7 +83,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
       );
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -89,6 +91,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         setAppCredFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -98,6 +102,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
    * @param {number} credId
    */
   const handleDelAppCred = async (credId) => {
+    setRecsBeingProcessed((value) => [...value, credId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о полномочии
       const res = await request(ServerAPI.DEL_APP_CRED_DATA, 'POST', { appId, credId }, {
@@ -119,6 +125,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== credId));
   }
 
 
@@ -171,6 +179,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, credId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации о полномочии
       const res = await request(ServerAPI.MOD_APP_CRED_DATA, 'POST', { appId, credId, ...rowData }, {
@@ -204,6 +214,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         setModAppCredFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== credId));
   }
 
 
@@ -233,6 +245,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
     handleCancelMod,
     handleStartEditAppCred,
     handleDelAppCred,
+    recsBeingProcessed,
   });
 
   /**
@@ -265,10 +278,9 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         isModalVisible={isAddNewAppCredModalVisible}
         handleAddNewAppCredOk={handleAddNewAppCredOk}
         handleAddNewAppCredCancel={handleAddNewAppCredCancel}
-        commonAddErr={commonAddErr}
         appCredFieldsErrs={appCredFieldsErrs}
         clearAddAppCredMessages={clearAddAppCredMessages}
-        successSaveMessage={successSaveMessage}
+        recsBeingAdded={recsBeingAdded}
       />
       <Button
         type="primary"

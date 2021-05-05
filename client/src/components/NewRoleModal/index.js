@@ -14,19 +14,17 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewRoleOk,
  *   handleAddNewRoleCancel,
- *   commonAddErr,
  *   roleFieldsErrs,
  *   clearAddRoleMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewRoleModal = ({
   isModalVisible,
   handleAddNewRoleOk,
   handleAddNewRoleCancel,
-  commonAddErr,
   roleFieldsErrs,
   clearAddRoleMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -82,9 +80,6 @@ const NewRoleModal = ({
           [ROLE_FIELDS.SUB_ADMIN_CAN_USE]: false,
         }}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Аббревиатура"
           name={ROLE_FIELDS.ENGL_ABBREVIATION}
@@ -146,6 +141,8 @@ const NewRoleModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

@@ -1,12 +1,15 @@
 import React, { useContext, useState } from 'react';
 import EditableTableCell from '../../EditableTableCell';
 import dncTrainSectorsTableColumns from './DNCTrainSectorsTableColumns';
-import { TRAIN_SECTOR_FIELDS } from '../../../constants';
-import { Table, Form } from 'antd';
+import { Table, Form, Row, Col } from 'antd';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { useHttp } from '../../../hooks/http.hook';
-import { ServerAPI, DNCSECTOR_FIELDS } from '../../../constants';
+import { ServerAPI, DNCSECTOR_FIELDS, TRAIN_SECTOR_FIELDS, STATION_FIELDS, BLOCK_FIELDS } from '../../../constants';
 import { AuthContext } from '../../../context/AuthContext';
+import expandIcon from '../../ExpandIcon';
+import DNCTrainSectorStationsBlock from '../DNCTrainSectorStationsBlock';
+import DNCTrainSectorBlocksBlock from '../DNCTrainSectorBlocksBlock';
+import compareStrings from '../../../sorters/compareStrings';
 
 
 /**
@@ -16,6 +19,8 @@ const DNCTrainSectorsTable = (props) => {
   const {
     currDNCSectorRecord: record, // текущая запись об участке ДНЦ
     setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ДНЦ
+    stations, // список всех станций ЖД
+    blocks, // список всех перегонов ЖД
   } = props;
 
   // Для редактирования данных таблицы
@@ -25,7 +30,7 @@ const DNCTrainSectorsTable = (props) => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record[TRAIN_SECTOR_FIELDS.KEY] === editingKey;
+  const isEditing = (rec) => rec[TRAIN_SECTOR_FIELDS.KEY] === editingKey;
 
   // Ошибки редактирования информации о поездном участке ДНЦ
   const [modDNCTrainSectorFieldsErrs, setModDNCTrainSectorFieldsErrs] = useState(null);
@@ -38,6 +43,9 @@ const DNCTrainSectorsTable = (props) => {
 
   // Получаем доступ к контекстным данным авторизации пользователя
   const auth = useContext(AuthContext);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -88,6 +96,8 @@ const DNCTrainSectorsTable = (props) => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, trainSectorId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке
       const res = await request(ServerAPI.MOD_DNCTRAINSECTORS_DATA, 'POST',
@@ -120,6 +130,8 @@ const DNCTrainSectorsTable = (props) => {
         setModDNCTrainSectorFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== trainSectorId));
   };
 
 
@@ -129,6 +141,8 @@ const DNCTrainSectorsTable = (props) => {
    * @param {number} trainSectorId
    */
   const handleDel = async (trainSectorId) => {
+    setRecsBeingProcessed((value) => [...value, trainSectorId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации об участке ДНЦ
       const res = await request(ServerAPI.DEL_DNCTRAINSECTORS_DATA, 'POST',
@@ -153,6 +167,8 @@ const DNCTrainSectorsTable = (props) => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== trainSectorId));
   };
 
 
@@ -164,6 +180,7 @@ const DNCTrainSectorsTable = (props) => {
     handleCancelMod,
     handleStartEdit,
     handleDel,
+    recsBeingProcessed,
   });
 
 
@@ -177,12 +194,12 @@ const DNCTrainSectorsTable = (props) => {
 
     return {
       ...col,
-      onCell: (record) => ({
-        record,
+      onCell: (rec) => ({
+        rec,
         inputType: 'text',
         dataIndex: col.dataIndex,
         title: col.title,
-        editing: isEditing(record),
+        editing: isEditing(rec),
         required: true,
         errMessage: modDNCTrainSectorFieldsErrs ? modDNCTrainSectorFieldsErrs[col.dataIndex] : null,
       }),
@@ -193,27 +210,16 @@ const DNCTrainSectorsTable = (props) => {
   return (
     <Form form={form} component={false}>
       <Table
-        showHeader={false}
         components={{
           body: {
             cell: EditableTableCell
           },
         }}
         bordered
-        scroll={{ y: 200 }}
         dataSource={
           // Хочу, чтобы наименования участков выводились в алфавитном порядке
-          record[DNCSECTOR_FIELDS.TRAIN_SECTORS].sort((a, b) => {
-            const sectName1 = a[TRAIN_SECTOR_FIELDS.NAME];
-            const sectName2 = b[TRAIN_SECTOR_FIELDS.NAME];
-            if (sectName1 < sectName2) {
-              return -1;
-            }
-            if (sectName1 > sectName2) {
-              return 1;
-            }
-            return 0;
-          })
+          record[DNCSECTOR_FIELDS.TRAIN_SECTORS].sort((a, b) =>
+            compareStrings(a[TRAIN_SECTOR_FIELDS.NAME].toLowerCase(), b[TRAIN_SECTOR_FIELDS.NAME].toLowerCase()))
         }
         columns={mergedColumns}
         rowClassName="editable-row"
@@ -221,19 +227,46 @@ const DNCTrainSectorsTable = (props) => {
           onChange: handleCancelMod,
         }}
         sticky={true}
-        onRow={(record) => {
+        onRow={(rec) => {
           return {
             onDoubleClick: () => {
-              if (!editingKey || editingKey !== record[TRAIN_SECTOR_FIELDS.KEY]) {
-                handleStartEdit(record);
+              if (!editingKey || editingKey !== rec[TRAIN_SECTOR_FIELDS.KEY]) {
+                handleStartEdit(rec);
               }
             },
             onKeyUp: event => {
               if (event.key === 'Enter') {
-                handleEdit(record[TRAIN_SECTOR_FIELDS.KEY]);
+                handleEdit(rec[TRAIN_SECTOR_FIELDS.KEY]);
               }
             }
           };
+        }}
+        expandable={{
+          expandedRowRender: rec => (
+            <Row className="expandable-row-content">
+              <Col>
+                <DNCTrainSectorStationsBlock
+                  currTrainSectorRecord={rec}
+                  stations={stations}
+                  setTableDataCallback={setTableDataCallback}
+                />
+                <DNCTrainSectorBlocksBlock
+                  currTrainSectorRecord={rec}
+                  // отображать буду не все перегоны ЖД, а лишь те, которые ограничены станциями,
+                  // выбранными пользователем для текущего поездного участка
+                  blocks={blocks.filter((block) => {
+                    const stationIndex = rec[TRAIN_SECTOR_FIELDS.STATIONS].findIndex((station) =>
+                      station[STATION_FIELDS.KEY] === block[BLOCK_FIELDS.STATION1][STATION_FIELDS.KEY] ||
+                      station[STATION_FIELDS.KEY] === block[BLOCK_FIELDS.STATION2][STATION_FIELDS.KEY]);
+                    return stationIndex > -1;
+                  })}
+                  setTableDataCallback={setTableDataCallback}
+                />
+              </Col>
+            </Row>
+          ),
+          rowExpandable: _record => true,
+          expandIcon: expandIcon,
         }}
       />
     </Form>

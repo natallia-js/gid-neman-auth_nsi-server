@@ -1,9 +1,5 @@
 const { DataTypes, Model } = require('sequelize');
 const { TStation } = require('./TStation');
-const { TDNCTrainSector } = require('./TDNCTrainSector');
-const { TECDTrainSector } = require('./TECDTrainSector');
-const { TECDSector } = require('./TECDSector');
-const { TDNCSector } = require('./TDNCSector');
 
 const MODEL_NAME = 'TBlock';
 const UNIQUE_BLOCK_TITLE_CONSTRAINT_NAME = 'XUniqueBlockTitle';
@@ -16,6 +12,7 @@ function createBlockModel(sequelize) {
     Bl_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     Bl_Title: {
@@ -27,69 +24,44 @@ function createBlockModel(sequelize) {
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: UNIQUE_BLOCK_STATIONS_CONSTRAINT_NAME,
-      references: {
-        model: TStation,
-        key: 'St_ID'
-      },
     },
     Bl_StationID2: {
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: UNIQUE_BLOCK_STATIONS_CONSTRAINT_NAME,
-      references: {
-        model: TStation,
-        key: 'St_ID'
-      },
     },
-    Bl_ECDTrainSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TECDTrainSector,
-        key: 'ECDTS_ID'
-      },
-    },
-    Bl_DNCTrainSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TDNCTrainSector,
-        key: 'DNCTS_ID'
-      },
-    },
-    Bl_DNCTrainSectorPosition: {
-      type: DataTypes.TINYINT,
-      allowNull: true,
-    },
-    Bl_ECDTrainSectorPosition: {
-      type: DataTypes.TINYINT,
-      allowNull: true,
-    },
-    Bl_ECDSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TECDSector,
-        key: 'ECDS_ID',
-      },
-    },
-    Bl_DNCSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TDNCSector,
-        key: 'DNCS_ID',
-      },
-    }
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance
     timestamps: true, // Create createdAt and updatedAt
     modelName: MODEL_NAME, // We need to choose the model name
   });
+
+  TStation.hasMany(TBlock, {
+    foreignKey: 'Bl_StationID1',
+    sourceKey: 'St_ID',
+  });
+  TStation.hasMany(TBlock, {
+    foreignKey: 'Bl_StationID2',
+    sourceKey: 'St_ID',
+  });
+  TBlock.belongsTo(TStation, {
+    as: 'station1',
+    foreignKey: 'Bl_StationID1',
+    targetKey: 'St_ID',
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  });
+  TBlock.belongsTo(TStation, {
+    as: 'station2',
+    foreignKey: 'Bl_StationID2',
+    targetKey: 'St_ID',
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  });
 }
 
 module.exports = {
   createBlockModel,
-  TBlock
+  TBlock,
 };

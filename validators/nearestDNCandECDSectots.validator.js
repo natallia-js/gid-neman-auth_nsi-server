@@ -39,8 +39,38 @@ const delNearestDNCOrECDValidationRules = () => {
   ];
 };
 
+const changeNearestECDSectorsValidationRules = () => {
+  return [
+    check('sectorId')
+      .exists()
+      .withMessage('Не определен id участка ДНЦ'),
+    check('nearestECDSectIds')
+      .exists()
+      .withMessage('Не указан массив id ближайших участков ЭЦД')
+      .bail()
+      .isArray()
+      .withMessage('Список id ближайших участков ЭЦД должен быть массивом'),
+  ];
+};
+
+const changeNearestDNCSectorsValidationRules = () => {
+  return [
+    check('sectorId')
+      .exists()
+      .withMessage('Не определен id участка ЭЦД'),
+    check('nearestDNCSectIds')
+      .exists()
+      .withMessage('Не указан массив id ближайших участков ДНЦ')
+      .bail()
+      .isArray()
+      .withMessage('Список id ближайших участков ДНЦ должен быть массивом'),
+  ];
+};
+
 module.exports = {
   addECDToDNCValidationRules,
   addDNCToECDValidationRules,
   delNearestDNCOrECDValidationRules,
+  changeNearestECDSectorsValidationRules,
+  changeNearestDNCSectorsValidationRules,
 };

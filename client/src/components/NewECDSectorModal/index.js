@@ -14,19 +14,17 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewECDSectorOk,
  *   handleAddNewECDSectorCancel,
- *   commonAddErr,
  *   ecdSectorFieldsErrs,
  *   clearAddECDSectorMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewECDSectorModal = ({
   isModalVisible,
   handleAddNewECDSectorOk,
   handleAddNewECDSectorCancel,
-  commonAddErr,
   ecdSectorFieldsErrs,
   clearAddECDSectorMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -79,14 +77,17 @@ const NewECDSectorModal = ({
         name="new-ecdsector-form"
         onFinish={onFinish}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Наименование"
           name={ECDSECTOR_FIELDS.NAME}
           validateStatus={ecdSectorFieldsErrs && ecdSectorFieldsErrs[ECDSECTOR_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
           help={ecdSectorFieldsErrs ? ecdSectorFieldsErrs[ECDSECTOR_FIELDS.NAME] : null}
+          rules={[
+            {
+              required: true,
+              message: 'Пожалуйста, введите наименование участка!',
+            },
+          ]}
         >
           <Input
             autoFocus={true}
@@ -107,6 +108,8 @@ const NewECDSectorModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

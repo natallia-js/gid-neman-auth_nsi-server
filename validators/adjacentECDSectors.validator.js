@@ -25,7 +25,22 @@ const delAdjacentECDSectorValidationRules = () => {
   ];
 };
 
+const changeAdjacentSectorsValidationRules = () => {
+  return [
+    check('sectorId')
+      .exists()
+      .withMessage('Не определен id участка'),
+    check('adjacentSectIds')
+      .exists()
+      .withMessage('Не указан массив id смежных участков')
+      .bail()
+      .isArray()
+      .withMessage('Список id смежных участков должен быть массивом'),
+  ];
+};
+
 module.exports = {
   addAdjacentECDSectorsValidationRules,
   delAdjacentECDSectorValidationRules,
+  changeAdjacentSectorsValidationRules,
 };

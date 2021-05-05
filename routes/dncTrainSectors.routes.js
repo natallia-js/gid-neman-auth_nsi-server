@@ -8,8 +8,7 @@ const {
 } = require('../validators/dncTrainSectors.validator');
 const validate = require('../validators/validate');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
-const { TStation } = require('../models/TStation');
-const { TBlock } = require('../models/TBlock');
+const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 
 const router = Router();
 
@@ -19,41 +18,8 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
 
-  GET_ALL_DNCSECTORS_ACTION,
   MOD_DNCSECTOR_ACTION,
 } = require('../constants');
-
-
-/**
- * Обрабатывает запрос на получение списка всех поездных участков ДНЦ.
- *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- */
-router.get(
-  '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_DNCSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
-  async (_req, res) => {
-    try {
-      const data = await TDNCTrainSector.findAll({ raw: true });
-      res.status(OK).json(data);
-
-    } catch (error) {
-      console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
-    }
-  }
-);
 
 
 /**
@@ -146,27 +112,10 @@ router.post(
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCTrainSector.findOne({ where: { DNCTS_ID: id } });
-
-      // Если не находим, то процесс удаления продолжать не можем
-      if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанный поездной участок ДНЦ не существует в базе данных' });
-      }
-
-      // Перед удалением поездного участка ДНЦ, для всех станций и перегонов, привязанных к нему,
-      // необходимо удалить ссылки на данный поездной участок
-      await TStation.update(
-        { St_DNCTrainSectorID: null },
-        { where: { St_DNCTrainSectorID: id } },
-        { transaction: t }
-      );
-      await TBlock.update(
-        { Bl_DNCTrainSectorID: null },
-        { where: { Bl_DNCTrainSectorID: id } },
-        { transaction: t }
-      );
-      await TDNCTrainSector.destroy({ where: { DNCTS_ID: id } }, { transaction: t });
+      // Перед удалением поездного участка ДНЦ необходимо удалить все соответствующие записи
+      // в таблице станций поездных участков
+      await TDNCTrainSectorStation.destroy({ where: { DNCTSS_TrainSectorID: id }, transaction: t });
+      await TDNCTrainSector.destroy({ where: { DNCTS_ID: id }, transaction: t });
 
       await t.commit();
 

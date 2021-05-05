@@ -11,18 +11,24 @@ function createNearestDNCandECDSectorModel(sequelize) {
     NDE_ECDSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TECDSector,
-        key: 'ECDS_ID'
+        key: 'ECDS_ID',
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
     NDE_DNCSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TDNCSector,
-        key: 'DNCS_ID'
+        key: 'DNCS_ID',
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   }, {
     // Other model options go here

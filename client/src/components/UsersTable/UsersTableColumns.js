@@ -1,5 +1,8 @@
+import { Typography, Popconfirm, Row, Col } from 'antd';
 import { USER_FIELDS } from '../../constants';
-import { Typography, Popconfirm } from 'antd';
+import Loader from '../Loader';
+import compareStrings from '../../sorters/compareStrings';
+
 
 // Описание столбцов таблицы пользователей
 const usersTableColumns = (props) => {
@@ -10,6 +13,7 @@ const usersTableColumns = (props) => {
     handleCancelMod,
     handleStartEditUser,
     handleDelUser,
+    recsBeingProcessed,
   } = props;
 
   return [
@@ -20,16 +24,7 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.LOGIN].toLowerCase();
-        const sortB = b[USER_FIELDS.LOGIN].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.LOGIN].toLowerCase(), b[USER_FIELDS.LOGIN].toLowerCase()),
       className: 'main-col',
     },
     {
@@ -39,16 +34,7 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.NAME].toLowerCase();
-        const sortB = b[USER_FIELDS.NAME].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.NAME].toLowerCase(), b[USER_FIELDS.NAME].toLowerCase()),
     },
     {
       title: 'Отчество',
@@ -57,16 +43,7 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.FATHERNAME].toLowerCase();
-        const sortB = b[USER_FIELDS.FATHERNAME].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.FATHERNAME].toLowerCase(), b[USER_FIELDS.FATHERNAME].toLowerCase()),
     },
     {
       title: 'Фамилия',
@@ -75,16 +52,7 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.SURNAME].toLowerCase();
-        const sortB = b[USER_FIELDS.SURNAME].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.SURNAME].toLowerCase(), b[USER_FIELDS.SURNAME].toLowerCase()),
     },
     {
       title: 'Должность',
@@ -93,16 +61,7 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.POST].toLowerCase();
-        const sortB = b[USER_FIELDS.POST].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.POST].toLowerCase(), b[USER_FIELDS.POST].toLowerCase()),
     },
     {
       title: 'Служба',
@@ -111,16 +70,7 @@ const usersTableColumns = (props) => {
       width: '5%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.SERVICE].toLowerCase();
-        const sortB = b[USER_FIELDS.SERVICE].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.SERVICE].toLowerCase(), b[USER_FIELDS.SERVICE].toLowerCase()),
     },
     {
       title: 'Участок',
@@ -129,55 +79,78 @@ const usersTableColumns = (props) => {
       width: '15%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[USER_FIELDS.SECTOR].toLowerCase();
-        const sortB = b[USER_FIELDS.SECTOR].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(a[USER_FIELDS.SECTOR].toLowerCase(), b[USER_FIELDS.SECTOR].toLowerCase()),
     },
     {
       title: 'Операции',
       dataIndex: 'operation',
-      fixed: 'right',
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
-          <span>
-            <a
-              href="#!"
-              onClick={() => handleEditUser(record[USER_FIELDS.KEY])}
-              style={{
-                marginRight: 10,
-              }}
-            >
-              Сохранить
-            </a>
-            <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
-              <a href="#!">Отменить</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <span>
-            <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditUser(record)}>
-              Редактировать
-            </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelUser(record[USER_FIELDS.KEY])}>
+          <Row>
+            <Col>
               <a
                 href="#!"
-                disabled={editingKey !== ''}
+                onClick={() => handleEditUser(record[USER_FIELDS.KEY])}
                 style={{
-                  marginLeft: 10,
+                  marginRight: 10,
+                }}
+                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY])}
+              >
+                Сохранить
+              </a>
+            </Col>
+            <Col>
+              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+                <a
+                  href="#!"
+                  style={{
+                    marginRight: 10,
+                  }}
+                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY])}
+                >
+                  Отменить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
+        ) : (
+          <Row>
+            <Col>
+              <Typography.Link
+                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]))}
+                onClick={() => handleStartEditUser(record)}
+                style={{
+                  marginRight: 10,
                 }}
               >
-                Удалить
-              </a>
-            </Popconfirm>
-          </span>
+                Редактировать
+              </Typography.Link>
+            </Col>
+            <Col>
+              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelUser(record[USER_FIELDS.KEY])}>
+                <a
+                  href="#!"
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]))}
+                  style={{
+                    marginRight: 10,
+                  }}
+                >
+                  Удалить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
         );
       },
     },

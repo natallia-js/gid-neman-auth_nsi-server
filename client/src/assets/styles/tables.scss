@@ -1,11 +1,11 @@
 @import './vars';
 
 .ant-table-thead > tr > th {
-  background-color: #d9d9d9;
+  background-color: var(--table-head-bg-color);
 }
 
 .ant-table-row-expand-icon-cell {
-  background-color: #d9d9d9;
+  background-color: var(--table-head-bg-color);
 }
 
 .expandable-row-content {
@@ -14,6 +14,11 @@
 }
 
 .main-col {
-  font-weight: 600;
-  background-color: #b5f5ec;
+  font-weight: var(--main-table-column-font-weight);
+  background-color: var(--main-table-column-bg-color);
+}
+
+.main-sub-col {
+  font-weight: var(--main-table-column-font-weight);
+  background-color: var(--main-subtable-column-bg-color);
 }

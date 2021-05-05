@@ -10,18 +10,24 @@ function createAdjacentECDSectorModel(sequelize) {
     AECDS_ECDSectorID1: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TECDSector,
-        key: 'ECDS_ID'
+        key: 'ECDS_ID',
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
     AECDS_ECDSectorID2: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TECDSector,
         key: 'ECDS_ID'
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   }, {
     // Other model options go here

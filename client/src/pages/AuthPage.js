@@ -3,10 +3,12 @@ import { useHttp } from '../hooks/http.hook';
 import { useMessage } from '../hooks/message.hook';
 import { AuthContext } from '../context/AuthContext';
 import { ServerAPI } from '../constants';
-import { Form, Input, Button } from 'antd';
+import { Form, Input, Button, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
-import './AuthPage.css';
+import './AuthPage.scss';
+
+const { Title } = Typography;
 
 
 /**
@@ -98,7 +100,7 @@ export const AuthPage = () => {
   return (
     <div className="auth-block">
       <div className="auth-form">
-        <h3>Администрирование аккаунтов и НСИ ГИД НЕМАН</h3>
+        <Title level={2}>Администрирование аккаунтов и НСИ ГИД НЕМАН</Title>
         <Form
           name="normal_login"
           className="login-form"

@@ -18,12 +18,11 @@ import ecdSectorsTableColumns from './ECDSectorsTableColumns';
 import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
-import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
+import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
+import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
+import expandIcon from '../ExpandIcon';
 
-import './styles.scss';
-
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -35,6 +34,12 @@ const ECDSectorsTable = () => {
 
   // Информация по участкам ДНЦ (массив объектов)
   const [dncSectorsData, setDNCSectorsData] = useState(null);
+
+  // Информация по станциям (массив объектов)
+  const [stations, setStations] = useState(null);
+
+  // Информация по перегонам (массив объектов)
+  const [blocks, setBlocks] = useState(null);
 
   // Ошибка загрузки данных
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -61,17 +66,19 @@ const ECDSectorsTable = () => {
   const [isAddNewECDSectorModalVisible, setIsAddNewECDSectorModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом участке ЭЦД
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [ecdSectorFieldsErrs, setECDSectorFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации об участке ЭЦД
   const [modECDSectorFieldsErrs, setModECDSectorFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения нового участка ЭЦД
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -83,6 +90,9 @@ const ECDSectorsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
+      // (запрос возвратит информацию в виде массива объектов участков ЭЦД; для каждого
+      // объекта участка ЭЦД будет определен массив объектов поездных участков ЭЦД; для
+      // каждого поездного участка ЭЦД будет определен массив объектов соответствующих станций)
       let res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
@@ -140,24 +150,30 @@ const ECDSectorsTable = () => {
         }
       });
 
+      setTableData(tableData);
+
       // -------------------
 
-      // Осталось получить информацию о поездных участках ЭЦД
+      // Получаем информацию о всех станциях
 
-      res = await request(ServerAPI.GET_ECDTRAINSECTORS_DATA, 'GET', null, {
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      // Для каждой полученной записи создаем в tableData элемент массива поездных участков ЭЦД
-      // для соответствующего участка ЭЦД
-      res.forEach((data) => {
-        const ecdSector = tableData.find((el) => el[ECDSECTOR_FIELDS.KEY] === data.ECDTS_ECDSectorID);
-        if (ecdSector) {
-          ecdSector[ECDSECTOR_FIELDS.TRAIN_SECTORS].push(getAppECDTrainSectorFromDBECDTrainSectorObj(data));
-        }
+      setStations(res.map((station) => getAppStationObjFromDBStationObj(station)));
+
+      // -------------------
+
+      // Получаем информацию о всех перегонах
+
+      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
       });
 
-      setTableData(tableData);
+      setBlocks(res.map((block) => getAppBlockObjFromDBBlockObj(block)));
+
+      // -------------------
+
       setLoadDataErr(null);
 
     } catch (e) {
@@ -182,9 +198,7 @@ const ECDSectorsTable = () => {
    * Чистит все сообщения добавления информации об участке ЭЦД (ошибки и успех).
    */
   const clearAddECDSectorMessages = () => {
-    setCommonAddErr(null);
     setECDSectorFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -212,6 +226,8 @@ const ECDSectorsTable = () => {
    * @param {object} sector
    */
   const handleAddNewECDSector = async (sector) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о новом участке ЭЦД
       const res = await request(ServerAPI.ADD_ECDSECTORS_DATA, 'POST',
@@ -219,14 +235,14 @@ const ECDSectorsTable = () => {
         { Authorization: `Bearer ${auth.token}` }
       );
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
       const newSector = getAppECDSectorObjFromDBECDSectorObj(res.sector);
       setTableData((value) => [...value, newSector]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -234,6 +250,8 @@ const ECDSectorsTable = () => {
         setECDSectorFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -243,6 +261,8 @@ const ECDSectorsTable = () => {
    * @param {number} sectorId
    */
   const handleDelECDSector = async (sectorId) => {
+    setRecsBeingProcessed((value) => [...value, sectorId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации об участке ЭЦД
       const res = await request(ServerAPI.DEL_ECDSECTORS_DATA, 'POST',
@@ -267,6 +287,8 @@ const ECDSectorsTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== sectorId));
   }
 
 
@@ -318,6 +340,8 @@ const ECDSectorsTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, sectorId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке ЭЦД
       const res = await request(ServerAPI.MOD_ECDSECTORS_DATA, 'POST',
@@ -347,37 +371,9 @@ const ECDSectorsTable = () => {
         setModECDSectorFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== sectorId));
   }
-
-
-  /**
-   * По заданному id участка ЭЦД возвращает его название.
-   */
-  const getECDSectorNameById = (id) => {
-    if (!tableData || !tableData.length) {
-      return;
-    }
-    const index = tableData.findIndex(sector => sector[ECDSECTOR_FIELDS.KEY] === id);
-    if (index > -1) {
-      return tableData[index][ECDSECTOR_FIELDS.NAME];
-    }
-    return null;
-  };
-
-
-  /**
-   * По заданному id участка ДНЦ возвращает его название.
-   */
-   const getDNCSectorNameById = (id) => {
-    if (!dncSectorsData || !dncSectorsData.length) {
-      return;
-    }
-    const index = dncSectorsData.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === id);
-    if (index > -1) {
-      return dncSectorsData[index][DNCSECTOR_FIELDS.NAME];
-    }
-    return null;
-  };
 
 
   // Описание столбцов таблицы участков ЭЦД
@@ -387,7 +383,8 @@ const ECDSectorsTable = () => {
     handleEditECDSector,
     handleCancelMod,
     handleStartEditECDSector,
-    handleDelECDSector
+    handleDelECDSector,
+    recsBeingProcessed,
   });
 
 
@@ -417,17 +414,16 @@ const ECDSectorsTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewECDSectorModal
           isModalVisible={isAddNewECDSectorModalVisible}
           handleAddNewECDSectorOk={handleAddNewECDSectorOk}
           handleAddNewECDSectorCancel={handleAddNewECDSectorCancel}
-          commonAddErr={commonAddErr}
           ecdSectorFieldsErrs={ecdSectorFieldsErrs}
           clearAddECDSectorMessages={clearAddECDSectorMessages}
-          successSaveMessage={successSaveMessage}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Участки ЭЦД</Title>
@@ -474,44 +470,24 @@ const ECDSectorsTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
-                <div className="adjacent-and-nearest-block">
-                  {/*
-                    В данном блоке у пользователя будет возможность формировать
-                    список участков ЭЦД, смежных с текущим
-                  */}
-                  <AdjacentECDSectorsBlock
-                    currECDSectorRecord={record}
-                    possibleAdjECDSectors={
-                      tableData
-                        .filter(el => {
-                          let adjacentSectorsIds =
-                            record[ECDSECTOR_FIELDS.ADJACENT_ECDSECTORS].map(sect => sect[ADJACENT_ECDSECTOR_FIELDS.SECTOR_ID]);
-
-                          // Список выбора смежных участков не должен включать текущие смежные участки и сам текущий участок
-                          return (!adjacentSectorsIds.includes(el[ECDSECTOR_FIELDS.KEY])) &&
-                            el[ECDSECTOR_FIELDS.KEY] !== record[ECDSECTOR_FIELDS.KEY];
-                        })
-                    }
-                    setTableDataCallback={setTableData}
-                    getECDSectorNameByIdCallback={getECDSectorNameById}
-                  />
-                  <NearestDNCSectorsBlock
-                    dataSource={record[ECDSECTOR_FIELDS.NEAREST_DNCSECTORS]}
-                    currECDSectorRecord={record}
-                    possibleNearDNCSectors={
-                      dncSectorsData
-                        .filter(el => {
-                          let nearestDNCSectorsIds =
-                            record[ECDSECTOR_FIELDS.NEAREST_DNCSECTORS].map(sect => sect[NEAREST_SECTOR_FIELDS.SECTOR_ID]);
-
-                          // Список выбора ближайших участков ДНЦ не должен включать текущие ближайшие участки ДНЦ
-                          return !nearestDNCSectorsIds.includes(el[DNCSECTOR_FIELDS.KEY]);
-                        })
-                    }
-                    setTableDataCallback={setTableData}
-                    getDNCSectorNameByIdCallback={getDNCSectorNameById}
-                  />
-                </div>
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список участков ЭЦД, смежных с текущим
+                */}
+                <AdjacentECDSectorsBlock
+                  ecdSector={record}
+                  allECDSectors={tableData}
+                  setTableDataCallback={setTableData}
+                />
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список участков ДНЦ, ближайших к текущему участку ЭЦД
+                */}
+                <NearestDNCSectorsBlock
+                  ecdSector={record}
+                  allDNCSectors={dncSectorsData}
+                  setTableDataCallback={setTableData}
+                />
                 {/*
                   В данном блоке у пользователя будет возможность формировать
                   список поездных участков ЭЦД для текущего участка ЭЦД
@@ -519,16 +495,13 @@ const ECDSectorsTable = () => {
                 <ECDTrainSectorsBlock
                   currECDSectorRecord={record}
                   setTableDataCallback={setTableData}
+                  stations={stations}
+                  blocks={blocks}
                 />
               </div>
             ),
             rowExpandable: _record => true,
-            expandIcon: ({ expanded, onExpand, record }) =>
-              expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ),
+            expandIcon: expandIcon,
           }}
         />
       </Form>

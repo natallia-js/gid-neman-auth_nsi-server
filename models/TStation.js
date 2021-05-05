@@ -1,8 +1,4 @@
 const { DataTypes, Model } = require('sequelize');
-const { TDNCTrainSector } = require('./TDNCTrainSector');
-const { TECDTrainSector } = require('./TECDTrainSector');
-const { TECDSector } = require('./TECDSector');
-const { TDNCSector } = require('./TDNCSector');
 
 const MODEL_NAME = 'TStation';
 const UNIQUE_STATION_UNMC_CONSTRAINT_NAME = 'XUniqueStationUNMC';
@@ -14,6 +10,7 @@ function createStationModel(sequelize) {
     St_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     St_UNMC: {
@@ -25,46 +22,6 @@ function createStationModel(sequelize) {
       type: DataTypes.STRING(32),
       allowNull: false,
     },
-    St_ECDTrainSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TECDTrainSector,
-        key: 'ECDTS_ID'
-      },
-    },
-    St_DNCTrainSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TDNCTrainSector,
-        key: 'DNCTS_ID'
-      },
-    },
-    St_ECDTrainSectorPosition: {
-      type: DataTypes.TINYINT,
-      allowNull: true,
-    },
-    St_DNCTrainSectorPosition: {
-      type: DataTypes.TINYINT,
-      allowNull: true,
-    },
-    St_ECDSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TECDSector,
-        key: 'ECDS_ID',
-      },
-    },
-    St_DNCSectorID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: TDNCSector,
-        key: 'DNCS_ID',
-      },
-    },
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance
@@ -75,5 +32,5 @@ function createStationModel(sequelize) {
 
 module.exports = {
   createStationModel,
-  TStation
+  TStation,
 };

@@ -1,4 +1,5 @@
 import { DNCSECTOR_FIELDS } from '../constants';
+import getAppDNCTrainSectorFromDBDNCTrainSectorObj from './getAppDNCTrainSectorFromDBDNCTrainSectorObj';
 
 /**
  * Преобразует объект участка ДНЦ, полученный из БД, в объект участка ДНЦ, с которым
@@ -13,7 +14,9 @@ const getAppDNCSectorObjFromDBDNCSectorObj = (dbDNCSectorObj) => {
       [DNCSECTOR_FIELDS.NAME]: dbDNCSectorObj.DNCS_Title,
       [DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]: [],
       [DNCSECTOR_FIELDS.NEAREST_ECDSECTORS]: [],
-      [DNCSECTOR_FIELDS.TRAIN_SECTORS]: [],
+      [DNCSECTOR_FIELDS.TRAIN_SECTORS]: !dbDNCSectorObj.TDNCTrainSectors ? [] :
+        dbDNCSectorObj.TDNCTrainSectors.map((trainSect) =>
+          getAppDNCTrainSectorFromDBDNCTrainSectorObj(trainSect)),
     };
   }
   return null;

@@ -5,6 +5,8 @@ const {
   addECDToDNCValidationRules,
   addDNCToECDValidationRules,
   delNearestDNCOrECDValidationRules,
+  changeNearestECDSectorsValidationRules,
+  changeNearestDNCSectorsValidationRules,
 } = require('../validators/nearestDNCandECDSectots.validator');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
@@ -48,7 +50,9 @@ router.get(
   checkAuthority,
   async (_req, res) => {
     try {
-      const data = await TNearestDNCandECDSector.findAll({ raw: true });
+      const data = await TNearestDNCandECDSector.findAll({
+        attributes: ['NDE_ECDSectorID', 'NDE_DNCSectorID'],
+      });
       res.status(OK).json(data);
 
     } catch (error) {
@@ -244,6 +248,204 @@ router.post(
 
     } catch (e) {
       console.log(e);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на изменение списка ближайших участков ЭЦД для данного участка ДНЦ.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - идентификатор участка ДНЦ (обязателен),
+ * nearestECDSectIds - массив идентификаторов участков ЭЦД, которые необходимо связать с данным участком ДНЦ
+ *                     (обязателен; если нет ближайших участков ЭЦД, то массив должен быть пустым)
+ */
+ router.post(
+  '/changeNearestECDSectors',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_DNCSECTOR_ACTION, MOD_ECDSECTOR_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  changeNearestECDSectorsValidationRules(),
+  validate,
+  async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции установления близости к участкам ЭЦД не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { sectorId, nearestECDSectIds } = req.body;
+
+      // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
+      const candidate = await TDNCSector.findOne({ where: { DNCS_ID: sectorId } });
+
+      // Если не находим, то процесс изменения списка ближайших участков продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Участок ДНЦ не найден' });
+      }
+
+      if (nearestECDSectIds && nearestECDSectIds.length) {
+        // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным участком ДНЦ
+        const ecdSectors = await TECDSector.findAll({ where: { ECDS_ID: nearestECDSectIds } });
+
+        if (!ecdSectors || ecdSectors.length !== nearestECDSectIds.length) {
+          return res.status(ERR).json({ message: 'Не все ближайшие участки ЭЦД найдены в базе' });
+        }
+
+        // Для каждого ближайшего участка ЭЦД ищем в БД связь с текущим участком ДНЦ.
+        // Если находим, то связь повторно не устанавливаем. Если не находим, то устанавливаем связь.
+        for (let id of nearestECDSectIds) {
+          const antiCandidate = await TNearestDNCandECDSector.findOne({
+            where: {
+             NDE_ECDSectorID: id,
+             NDE_DNCSectorID: sectorId,
+            },
+          });
+
+          if (!antiCandidate) {
+            await TNearestDNCandECDSector.create({
+              NDE_ECDSectorID: id,
+              NDE_DNCSectorID: sectorId,
+            }, { transaction: t });
+          }
+        }
+      }
+
+      // Удаляю связь близости с теми участками ЭЦД, которых нет в nearestECDSectIds
+      await TNearestDNCandECDSector.destroy({
+        where: {
+          [Op.and]: [
+            { NDE_ECDSectorID: { [Op.notIn]: nearestECDSectIds } },
+            { NDE_DNCSectorID: sectorId },
+          ]
+        },
+        transaction: t,
+      });
+
+      await t.commit();
+
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
+
+    } catch (e) {
+      console.log(e);
+      await t.rollback();
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на изменение списка ближайших участков ДНЦ для данного участка ЭЦД.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - идентификатор участка ЭЦД (обязателен),
+ * nearestDNCSectIds - массив идентификаторов участков ДНЦ, которые необходимо связать с данным участком ЭЦД
+ *                     (обязателен; если нет ближайших участков ДНЦ, то массив должен быть пустым)
+ */
+ router.post(
+  '/changeNearestDNCSectors',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_DNCSECTOR_ACTION, MOD_ECDSECTOR_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  changeNearestDNCSectorsValidationRules(),
+  validate,
+  async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции установления близости к участкам ДНЦ не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { sectorId, nearestDNCSectIds } = req.body;
+
+      // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
+      const candidate = await TECDSector.findOne({ where: { ECDS_ID: sectorId } });
+
+      // Если не находим, то процесс изменения списка ближайших участков продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Участок ЭЦД не найден' });
+      }
+
+      if (nearestDNCSectIds && nearestDNCSectIds.length) {
+        // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным участком ЭЦД
+        const dncSectors = await TDNCSector.findAll({ where: { DNCS_ID: nearestDNCSectIds } });
+
+        if (!dncSectors || dncSectors.length !== nearestDNCSectIds.length) {
+          return res.status(ERR).json({ message: 'Не все ближайшие участки ДНЦ найдены в базе' });
+        }
+
+        // Для каждого ближайшего участка ДНЦ ищем в БД связь с текущим участком ЭЦД.
+        // Если находим, то связь повторно не устанавливаем. Если не находим, то устанавливаем связь.
+        for (let id of nearestDNCSectIds) {
+          const antiCandidate = await TNearestDNCandECDSector.findOne({
+            where: {
+             NDE_ECDSectorID: sectorId,
+             NDE_DNCSectorID: id,
+            },
+          });
+
+          if (!antiCandidate) {
+            await TNearestDNCandECDSector.create({
+              NDE_ECDSectorID: sectorId,
+              NDE_DNCSectorID: id,
+            }, { transaction: t });
+          }
+        }
+      }
+
+      // Удаляю связь близости с теми участками ДНЦ, которых нет в nearestDNCSectIds
+      await TNearestDNCandECDSector.destroy({
+        where: {
+          [Op.and]: [
+            { NDE_ECDSectorID: sectorId },
+            { NDE_DNCSectorID: { [Op.notIn]: nearestDNCSectIds } },
+          ]
+        },
+        transaction: t,
+      });
+
+      await t.commit();
+
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
+
+    } catch (e) {
+      console.log(e);
+      await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
     }
   }

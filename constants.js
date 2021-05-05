@@ -9,6 +9,11 @@ const PROJECT_CONSTANTS = Object.freeze({
   UNKNOWN_ERR_MESS: 'Что-то пошло не так, попробуйте снова',
   UNAUTHORIZED_ERR_MESS: 'Пользователь не имеет права на выполнение данного действия',
   CREDENTIALS_ERR_MESS: 'Не (верно) определены полномочия, которые необходимо проверить у пользователя',
+  SUCCESS_ADD_MESS: 'Информация успешно сохранена',
+  SUCCESS_MOD_RES: 'Информация успешно изменена',
+  SUCCESS_DEL_MESS: 'Информация успешно удалена',
+  DATA_TO_DEL_NOT_FOUND: 'Информация, которую требуется удалить, отсутствует в базе',
+  DATA_TO_MOD_NOT_FOUND: 'Информация, которую требуется отредактировать, отсутствует в базе',
 
   MAIN_ADMIN_ROLE_NAME: 'GID_NEMAN_ADMIN',
   MAIN_ADMIN_ROLE_DESCRIPTION: 'Главный администратор ГИД Неман',
@@ -23,7 +28,6 @@ const PROJECT_CONSTANTS = Object.freeze({
 
   ALL_PERMISSIONS: 'ALL',
 });
-
 
 const AUTH_NSI_UTIL_CREDENTIALS = Object.freeze({
   GET_ALL_APPS_ACTION: 'GET_ALL_APPS_ACTION',

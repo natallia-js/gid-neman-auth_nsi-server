@@ -1,5 +1,8 @@
-import { Typography, Popconfirm } from 'antd';
+import { Typography, Popconfirm, Row, Col } from 'antd';
 import { APP_CRED_FIELDS } from '../../../constants';
+import Loader from '../../Loader';
+import compareStrings from '../../../sorters/compareStrings';
+
 
 // Описание столбцов таблицы полномочий пользователей в приложении
 const appCredsTableColumns = (props) => {
@@ -9,7 +12,8 @@ const appCredsTableColumns = (props) => {
     handleEditAppCred,
     handleCancelMod,
     handleStartEditAppCred,
-    handleDelAppCred
+    handleDelAppCred,
+    recsBeingProcessed,
   } = props;
 
   return [
@@ -20,16 +24,8 @@ const appCredsTableColumns = (props) => {
       width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = a[APP_CRED_FIELDS.ENGL_ABBREVIATION].toLowerCase();
-        const sortB = b[APP_CRED_FIELDS.ENGL_ABBREVIATION].toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(
+        a[APP_CRED_FIELDS.ENGL_ABBREVIATION].toLowerCase(), b[APP_CRED_FIELDS.ENGL_ABBREVIATION].toLowerCase()),
     },
     {
       title: 'Описание полномочия',
@@ -38,55 +34,79 @@ const appCredsTableColumns = (props) => {
       width: '40%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => {
-        const sortA = (a[APP_CRED_FIELDS.DESCRIPTION] || '').toLowerCase();
-        const sortB = (b[APP_CRED_FIELDS.DESCRIPTION] || '').toLowerCase();
-        if (sortA < sortB) {
-          return -1;
-        } else if (sortA > sortB) {
-          return 1;
-        }
-        return 0;
-      },
+      sorter: (a, b) => compareStrings(
+        (a[APP_CRED_FIELDS.DESCRIPTION] || '').toLowerCase(), (b[APP_CRED_FIELDS.DESCRIPTION] || '').toLowerCase()),
     },
     {
       title: 'Операции',
       dataIndex: 'operation',
-      fixed: 'right',
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
-          <span>
-            <a
-              href="#!"
-              onClick={() => handleEditAppCred(record.key)}
-              style={{
-                marginRight: 10,
-              }}
-            >
-              Сохранить
-            </a>
-            <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
-              <a href="#!">Отменить</a>
-            </Popconfirm>
-          </span>
-        ) : (
-          <span>
-            <Typography.Link disabled={editingKey !== ''} onClick={() => handleStartEditAppCred(record)}>
-              Редактировать
-            </Typography.Link>
-            <Popconfirm title="Удалить запись?" onConfirm={() => handleDelAppCred(record.key)}>
+          <Row>
+            <Col>
               <a
                 href="#!"
-                disabled={editingKey !== ''}
+                onClick={() => handleEditAppCred(record[APP_CRED_FIELDS.KEY])}
                 style={{
-                  marginLeft: 10,
+                  marginRight: 10,
+                }}
+                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY])}
+              >
+                Сохранить
+              </a>
+            </Col>
+            <Col>
+              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+                <a
+                  href="#!"
+                  style={{
+                    marginRight: 10,
+                  }}
+                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY])}
+                >
+                  Отменить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
+        ) : (
+          <Row>
+            <Col>
+              <Typography.Link
+                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY]))}
+                onClick={() => handleStartEditAppCred(record)}
+                style={{
+                  marginRight: 10,
                 }}
               >
-                Удалить
-              </a>
-            </Popconfirm>
-          </span>
+                Редактировать
+              </Typography.Link>
+            </Col>
+            <Col>
+              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelAppCred(record[APP_CRED_FIELDS.KEY])}>
+                <a
+                  href="#!"
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY]))}
+                  style={{
+                    marginRight: 10,
+                  }}
+                >
+                  Удалить
+                </a>
+              </Popconfirm>
+            </Col>
+            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY]) &&
+              <Col>
+                <Loader />
+              </Col>
+            }
+          </Row>
         );
       },
     },

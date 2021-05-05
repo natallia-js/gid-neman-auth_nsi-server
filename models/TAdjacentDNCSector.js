@@ -10,18 +10,24 @@ function createAdjacentDNCSectorModel(sequelize) {
     ADNCS_DNCSectorID1: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TDNCSector,
-        key: 'DNCS_ID'
+        key: 'DNCS_ID',
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
     ADNCS_DNCSectorID2: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       references: {
         model: TDNCSector,
-        key: 'DNCS_ID'
+        key: 'DNCS_ID',
       },
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   }, {
     // Other model options go here

@@ -14,19 +14,17 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewAppOk,
  *   handleAddNewAppCancel,
- *   commonAddErr,
  *   appFieldsErrs,
  *   clearAddAppMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewAppModal = ({
   isModalVisible,
   handleAddNewAppOk,
   handleAddNewAppCancel,
-  commonAddErr,
   appFieldsErrs,
   clearAddAppMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -79,9 +77,6 @@ const NewAppModal = ({
         name="new-app-form"
         onFinish={onFinish}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Аббревиатура"
           name={APP_FIELDS.SHORT_TITLE}
@@ -132,6 +127,8 @@ const NewAppModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

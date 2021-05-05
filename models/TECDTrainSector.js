@@ -11,6 +11,7 @@ function createECDTrainSectorModel(sequelize) {
     ECDTS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     ECDTS_Title: {
@@ -20,10 +21,7 @@ function createECDTrainSectorModel(sequelize) {
     },
     ECDTS_ECDSectorID: {
       type: DataTypes.INTEGER,
-      references: {
-        model: TECDSector,
-        key: 'ECDS_ID'
-      },
+      allowNull: false,
     }
   }, {
     // Other model options go here
@@ -31,9 +29,20 @@ function createECDTrainSectorModel(sequelize) {
     timestamps: true, // Create createdAt and updatedAt
     modelName: MODEL_NAME, // We need to choose the model name
   });
+
+  TECDSector.hasMany(TECDTrainSector, {
+    foreignKey: 'ECDTS_ECDSectorID',
+    sourceKey: 'ECDS_ID',
+  });
+  TECDTrainSector.belongsTo(TECDSector, {
+    foreignKey: 'ECDTS_ECDSectorID',
+    targetKey: 'ECDS_ID',
+    onDelete: 'NO ACTION',
+    onUpdate: 'NO ACTION',
+  });
 }
 
 module.exports = {
   createECDTrainSectorModel,
-  TECDTrainSector
+  TECDTrainSector,
 };

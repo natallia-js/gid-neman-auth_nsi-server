@@ -1,13 +1,12 @@
-import React, { useContext, useState } from 'react';
-import { List, Button, Tooltip, Checkbox } from 'antd';
+import React, { useContext } from 'react';
+import { Typography, Row, Col } from 'antd';
 import { ServerAPI, DNCSECTOR_FIELDS, ADJACENT_DNCSECTOR_FIELDS } from '../../constants';
-import { CaretLeftOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
+import SavableSelectMultiple from '../SavableSelectMultiple';
 
-import 'antd/dist/antd.css';
-import './styles.scss';
+const { Title } = Typography;
 
 
 /**
@@ -16,10 +15,9 @@ import './styles.scss';
  */
 const AdjacentDNCSectorsBlock = (props) => {
   const {
-    currDNCSectorRecord: record, // текущая запись об участке ДНЦ
-    possibleAdjDNCSectors, // источник данных об участках ДНЦ, которые не являются смежными с текущим участком
-    setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ДНЦ
-    getDNCSectorNameByIdCallback, // функция, возвращающая наименование участка ДНЦ по его id
+    dncSector, // объект текущего участка ДНЦ
+    allDNCSectors, // массив объектов всех участков ДНЦ
+    setTableDataCallback, // функция, позволяющая внести изменения в массив объектов участков ДНЦ (изменить состояние)
   } = props;
 
   // Пользовательский хук для получения информации от сервера
@@ -31,97 +29,86 @@ const AdjacentDNCSectorsBlock = (props) => {
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
 
-  // Пары ключ-значение, где ключ - id участка, значение - массив id тех записей в списке
-  // участков ДНЦ для связывания с текущим, которые выделены пользователем
-  const [checkedPossibleAdjacentSectors, setCheckedPossibleAdjacentSectors] = useState(new Map());
-
 
   /**
-   * Позволяет удалить связь смежности между участками с идентификаторами sectorId и adjSectorId.
+   * По заданному id участка ДНЦ возвращает его название.
    */
-   const delAdjacentDNCSector = async (sectorId, adjSectorId) => {
-    try {
-      // Делаем запрос на сервер с целью удаления информации о смежных участках ДНЦ
-      const res = await request(ServerAPI.DEL_ADJACENTDNCSECTORS_DATA, 'POST',
-        { sectorID1: sectorId, sectorID2: adjSectorId },
-        { Authorization: `Bearer ${auth.token}`
-      });
-
-      message(MESSAGE_TYPES.SUCCESS, res.message);
-
-      // Обновляем локальное состояние (необходимо обновить смежность для двух участков ДНЦ)
-      setTableDataCallback(value => {
-        let updatedValue = [...value]; // сюда поместим то, что вернем
-
-        const sector1Index = updatedValue.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === sectorId);
-        const sector2Index = updatedValue.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === adjSectorId);
-
-        updatedValue[sector1Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS] =
-          updatedValue[sector1Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].filter(el =>
-            el[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID] !== adjSectorId);
-
-        updatedValue[sector2Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS] =
-          updatedValue[sector2Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].filter(el =>
-            el[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID] !== sectorId);
-
-        return updatedValue;
-      });
-    } catch (e) {
-      message(MESSAGE_TYPES.ERROR, e.message);
+   const getDNCSectorNameById = (id) => {
+    if (!allDNCSectors || !allDNCSectors.length) {
+      return null;
     }
+    const index = allDNCSectors.findIndex((sector) => sector[DNCSECTOR_FIELDS.KEY] === id);
+    if (index > -1) {
+      return allDNCSectors[index][DNCSECTOR_FIELDS.NAME];
+    }
+    return null;
   };
 
 
   /**
-   * Для данного участка ДНЦ устанавливает в БД смежный(-е) участок(-ки).
-   *
-   * @param {number} sectorId
+   * Отправляет на сервер запрос по изменению списка смежных участков текущего участка ДНЦ.
    */
-   const setAdjacentDNCSectors = async (sectorId) => {
-    // Смотрим, какие участки выделены пользователем для добавления в список смежных участков
-    // для участка с id = sectorId
-    const selectedAdjacentSectors = checkedPossibleAdjacentSectors.get(sectorId);
-    if (!selectedAdjacentSectors || !selectedAdjacentSectors.length) {
-      return; // ничего не выделено
-    }
+  const handleModAdjacentDNCSectList = async (newAdjacentDNCSectList) => {
+    const currDNCSectorKey = dncSector[DNCSECTOR_FIELDS.KEY];
 
     try {
-      // Делаем запрос на сервер с целью добавления информации о смежных участках ДНЦ
-      const res = await request(ServerAPI.ADD_ADJACENTDNCSECTORS_DATA, 'POST',
-        { sectorID: sectorId, adjSectorIDs: selectedAdjacentSectors },
+      // Делаем запрос на сервер с целью редактирования информации о смежных участках ДНЦ
+      const res = await request(ServerAPI.MOD_ADJACENTDNCSECTORS_DATA, 'POST',
+        { sectorId: currDNCSectorKey, adjacentSectIds: newAdjacentDNCSectList },
         { Authorization: `Bearer ${auth.token}` }
       );
 
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
-      // После успешного добавления информации на сервере удаляем временную информацию об участках ДНЦ,
-      // выделенных пользователем для связывания с текущим участком
-      checkedPossibleAdjacentSectors.delete(sectorId);
-      setCheckedPossibleAdjacentSectors(checkedPossibleAdjacentSectors)
+      // Формируем массив id участков ДНЦ, связь смежности с которыми была удалена для текущего участка ДНЦ
+      const deletedAdjSectorsIds = dncSector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]
+        .filter((adjSectInfo) => !newAdjacentDNCSectList.includes(adjSectInfo[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]))
+        .map((adjSectInfo) => adjSectInfo[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
 
-      // Положительный ответ сервера содержит массив id тех участков ДНЦ (finalAdjSectIds),
-      // которые сервер сохранил в БД как смежные для участка с id = sectorId.
-      // Для каждого полученного id создаем в tableData связи между участками с id и sectorId
-      setTableDataCallback(value => {
-        let updatedValue = [...value]; // сюда поместим то, что вернем
-        const sector1Index = updatedValue.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === sectorId);
-
-        res.finalAdjSectIds.forEach(adjSectId => {
-          const sector2Index = updatedValue.findIndex(sector => sector[DNCSECTOR_FIELDS.KEY] === adjSectId);
-
-          // Обновляем массив смежных участков у участка с id = sectorId
-          updatedValue[sector1Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].push({
-            [ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]: adjSectId,
-          });
-
-          // Обновляем массив смежных участков у участка с id = adjSectId
-          updatedValue[sector2Index][DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].push({
-            [ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]: sectorId,
-          });
-        });
-
-        return updatedValue;
-      });
+      // Меняем локальное состояние (вносим изменения в массив объектов участков ДНЦ)
+      setTableDataCallback((value) => value.map((sector) => {
+        // Для того участка, для которого пользователь непосредственно изменил список смежных участков, полностью
+        // переписываем массив смежных участков
+        if (sector[DNCSECTOR_FIELDS.KEY] === currDNCSectorKey) {
+          return {
+            ...sector,
+            [DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]: newAdjacentDNCSectList.map((id) => {
+              return {
+                [ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]: id,
+              };
+            }),
+          };
+        }
+        // Для участка, который пользователь в результате редактирования списка смежных участков
+        // объявил смежным к текущему участку ДНЦ, добавляем текущий участок ДНЦ в список смежных
+        // (если его еще там нет)
+        if (newAdjacentDNCSectList.includes(sector[DNCSECTOR_FIELDS.KEY])) {
+          const adjSectIds = sector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]
+            .map((sector) => sector[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
+          if (!adjSectIds.includes(currDNCSectorKey)) {
+            return {
+              ...sector,
+              [DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]: [
+                ...sector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS],
+                {
+                  [ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]: currDNCSectorKey,
+                },
+              ],
+            };
+          }
+        } else if (deletedAdjSectorsIds.includes(sector[DNCSECTOR_FIELDS.KEY])) {
+          // Если же участок ДНЦ в результате действий пользователя перестал быть смежным к текущему
+          // участку ДНЦ, то из списка смежных к нему участков удаляем текущий участок ДНЦ
+          return {
+            ...sector,
+            [DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS]:
+              sector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].filter((sector) =>
+                sector[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID] !== currDNCSectorKey),
+          };
+        }
+        // Остальные участки оставляем как есть
+        return sector;
+      }));
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -130,128 +117,39 @@ const AdjacentDNCSectorsBlock = (props) => {
 
 
   return (
-    <div className="transfer-list-block">
-      {/*
-        В данном столбце формируем список участков ДНЦ, смежных с текущим
-      */}
-      <div className="transfer-list-sub-block">
-        <p className="transfer-list-title">Смежные участки ДНЦ</p>
-        <div className="transfer-list-list-block">
-          <List
-            size="small"
-            itemLayout="horizontal"
-            dataSource={
-              // Хочу, чтобы наименования участков выводились в алфавитном порядке
-              record[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].sort((a, b) => {
-                const sectName1 = getDNCSectorNameByIdCallback(a[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
-                const sectName2 = getDNCSectorNameByIdCallback(b[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID]);
-                if (sectName1 < sectName2) {
-                  return -1;
-                }
-                if (sectName1 > sectName2) {
-                  return 1;
-                }
-                return 0;
+    <Row>
+      <Col span={24}>
+        <Title level={4}>Смежные участки ДНЦ</Title>
+        <SavableSelectMultiple
+          placeholder="Выберите смежные участки ДНЦ"
+          options={
+            (!allDNCSectors || !allDNCSectors.length) ?
+            [] :
+            // Из общего списка исключаем текущий участок
+            allDNCSectors
+              .filter((sector) => sector[DNCSECTOR_FIELDS.KEY] !== dncSector[DNCSECTOR_FIELDS.KEY])
+              .map((sector) => {
+                return {
+                  value: sector[DNCSECTOR_FIELDS.NAME],
+                };
               })
-            }
-            renderItem={item => (
-              <List.Item>
-                <div className="transfer-list-list-item">
-                  <div className="transfer-list-del-btn">
-                    <Tooltip title="Удалить">
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        icon={<DeleteOutlined />}
-                        onClick={() =>
-                          delAdjacentDNCSector(record[DNCSECTOR_FIELDS.KEY], item[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID])
-                        }
-                      />
-                    </Tooltip>
-                  </div>
-                  <div>
-                    {getDNCSectorNameByIdCallback(item[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID])}
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </div>
-      </div>
-      {/*
-        В данном столбце помещаем кнопку для перемещения участка ДНЦ из списка потенциальных
-        кандидатов на смежность в список участков ДНЦ, смежных по отношению к текущему
-      */}
-      <div className="transfer-list-transfer-block">
-        <Tooltip title="Переместить в список смежных участков">
-          <Button
-            type="primary"
-            shape="circle"
-            icon={<CaretLeftOutlined />}
-            onClick={() => setAdjacentDNCSectors(record[DNCSECTOR_FIELDS.KEY])}
-          />
-        </Tooltip>
-      </div>
-      {/*
-        В данном столбце формируем список участков ДНЦ - потенциальных кандидатов стать смежными
-        по отношению к текущему
-      */}
-      <div className="transfer-list-sub-block">
-        <p className="transfer-list-title">Выберите смежные участки ДНЦ</p>
-        <div className="transfer-list-list-block">
-          <List
-            size="small"
-            itemLayout="horizontal"
-            dataSource={possibleAdjDNCSectors}
-            renderItem={item => (
-              <List.Item>
-                <div className="transfer-list-list-item">
-                  <div className="transfer-list-del-btn">
-                    <Checkbox
-                      checked={
-                        checkedPossibleAdjacentSectors.get(record[DNCSECTOR_FIELDS.KEY]) &&
-                        checkedPossibleAdjacentSectors.get(record[DNCSECTOR_FIELDS.KEY]).includes(item[DNCSECTOR_FIELDS.KEY])
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          // по id участка ДНЦ извлекаю список id соответствующих выделенных записей
-                          // в списке участков ДНЦ для связывания с текущим
-                          let checkedArr = checkedPossibleAdjacentSectors.get(record[DNCSECTOR_FIELDS.KEY]);
-                          if (!checkedArr) {
-                            checkedArr = [];
-                          }
-                          // добавляю в данный список id выделяемой записи
-                          checkedArr.push(item[DNCSECTOR_FIELDS.KEY]);
-                          // и сохраняю
-                          setCheckedPossibleAdjacentSectors(map =>
-                            new Map([...map, [record[DNCSECTOR_FIELDS.KEY], checkedArr]])
-                          );
-                        } else {
-                          // по id участка ДНЦ извлекаю список id соответствующих выделенных записей
-                          // в списке участков ДНЦ для связывания с текущим
-                          let checkedArr = checkedPossibleAdjacentSectors.get(record[DNCSECTOR_FIELDS.KEY]);
-                          if (checkedArr) {
-                            // удаляю из данного списка id записи, с которой снимается выделение, и сохраняю
-                            setCheckedPossibleAdjacentSectors((map) =>
-                              new Map(map).set(record[DNCSECTOR_FIELDS.KEY],
-                                checkedArr.filter(el => el !== item[DNCSECTOR_FIELDS.KEY]))
-                            );
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                  <div>
-                    {item[DNCSECTOR_FIELDS.NAME]}
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </div>
-      </div>
-    </div>
+          }
+          selectedItems={
+            !dncSector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS] ? [] :
+              dncSector[DNCSECTOR_FIELDS.ADJACENT_DNCSECTORS].map((sector) =>
+                getDNCSectorNameById(sector[ADJACENT_DNCSECTOR_FIELDS.SECTOR_ID])
+          )}
+          saveChangesCallback={(selectedVals) => {
+            const dncSectIds = allDNCSectors
+              .filter((sector) => selectedVals.includes(sector[DNCSECTOR_FIELDS.NAME]))
+              .map((sector) => sector[DNCSECTOR_FIELDS.KEY]);
+            handleModAdjacentDNCSectList(dncSectIds);
+          }}
+        />
+      </Col>
+    </Row>
   );
 };
 
- export default AdjacentDNCSectorsBlock;
+
+export default AdjacentDNCSectorsBlock;

@@ -6,20 +6,13 @@ import EditableTableCell from '../EditableTableCell';
 import NewStationModal from '../NewStationModal';
 import {
   ServerAPI,
-  DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
   STATION_FIELDS,
-  TRAIN_SECTOR_FIELDS,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import stationsTableColumns from './StationsTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
-import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
-import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
-import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -28,18 +21,6 @@ const { Title } = Typography;
 const StationsTable = () => {
   // Информация по станциям (массив объектов)
   const [tableData, setTableData] = useState(null);
-
-  // Информация по участкам ДНЦ
-  const [dncSectors, setDNCSectors] = useState(null);
-
-  // Информация по участкам ЭЦД
-  const [ecdSectors, setECDSectors] = useState(null);
-
-  // Информация по поездным участкам ДНЦ
-  const [dncTrainSectors, setDNCTrainSectors] = useState(null);
-
-  // Информация по поездным участкам ЭЦД
-  const [ecdTrainSectors, setECDTrainSectors] = useState(null);
 
   // Ошибка загрузки данных о станциях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -66,16 +47,18 @@ const StationsTable = () => {
   const [isAddNewStationModalVisible, setIsAddNewStationModalVisible] = useState(false);
 
   // Ошибки добавления информации о новой станции
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [stationFieldsErrs, setStationFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о станции
   const [modStationFieldsErrs, setModStationFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения новой станции
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -93,91 +76,11 @@ const StationsTable = () => {
 
       const tableData = res.map((station) => getAppStationObjFromDBStationObj(station));
 
-      // ---------------------------------
-
-      // Теперь получаем информацию по всем участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
-      const dncSectorsData = res.map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector));
-      setDNCSectors(dncSectorsData);
-
-      res.forEach((data) => {
-        const sector = getAppDNCSectorObjFromDBDNCSectorObj(data);
-        tableData.forEach((station) => {
-          if (station[STATION_FIELDS.DNC_SECTOR_ID] === sector[DNCSECTOR_FIELDS.KEY]) {
-            station[STATION_FIELDS.DNC_SECTOR_NAME] = sector[DNCSECTOR_FIELDS.NAME];
-          }
-        });
-      });
-
-      // ---------------------------------
-
-      // Получаем инфорацию по всем участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
-      const ecdSectorsData = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
-      setECDSectors(ecdSectorsData);
-
-      res.forEach((data) => {
-        const sector = getAppECDSectorObjFromDBECDSectorObj(data);
-        tableData.forEach((station) => {
-          if (station[STATION_FIELDS.ECD_SECTOR_ID] === sector[ECDSECTOR_FIELDS.KEY]) {
-            station[STATION_FIELDS.ECD_SECTOR_NAME] = sector[ECDSECTOR_FIELDS.NAME];
-          }
-        });
-      });
-
-      // ---------------------------------
-
-      // Получаем информацию по всем поездным участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCTRAINSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
-      const dncTrainSectorsData = res.map((sector) => getAppDNCTrainSectorFromDBDNCTrainSectorObj(sector));
-      setDNCTrainSectors(dncTrainSectorsData);
-
-      res.forEach((data) => {
-        const sector = getAppDNCTrainSectorFromDBDNCTrainSectorObj(data);
-        tableData.forEach((station) => {
-          if (station[STATION_FIELDS.DNC_TRAINSECTOR_ID] === sector[TRAIN_SECTOR_FIELDS.KEY]) {
-            station[STATION_FIELDS.DNC_TRAINSECTOR_NAME] = sector[TRAIN_SECTOR_FIELDS.NAME];
-          }
-        });
-      });
-
-      // ---------------------------------
-
-      // Получаем информацию по всем поездным участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDTRAINSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
-      const ecdTrainSectorsData = res.map((sector) => getAppECDTrainSectorFromDBECDTrainSectorObj(sector));
-      setECDTrainSectors(ecdTrainSectorsData);
-
-      res.forEach((data) => {
-        const sector = getAppECDTrainSectorFromDBECDTrainSectorObj(data);
-        tableData.forEach((station) => {
-          if (station[STATION_FIELDS.ECD_TRAINSECTOR_ID] === sector[TRAIN_SECTOR_FIELDS.KEY]) {
-            station[STATION_FIELDS.ECD_TRAINSECTOR_NAME] = sector[TRAIN_SECTOR_FIELDS.NAME];
-          }
-        });
-      });
-
       setTableData(tableData);
       setLoadDataErr(null);
 
     } catch (e) {
       setTableData(null);
-      // setDNCSectors(null);
-      // setECDSectors(null);
-      // setDNCTrainSectors(null);
-      // setECDTrainSectors(null);
       setLoadDataErr(e.message);
     }
 
@@ -197,9 +100,7 @@ const StationsTable = () => {
    * Чистит все сообщения добавления информации о станции (ошибки и успех).
    */
   const clearAddStationMessages = () => {
-    setCommonAddErr(null);
     setStationFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -209,20 +110,22 @@ const StationsTable = () => {
    * @param {object} station
    */
   const handleAddNewStation = async (station) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о станции
       const res = await request(ServerAPI.ADD_STATION_DATA, 'POST', {...station}, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const newStation = getAppStationObjFromDBStationObj(res.station);
 
       setTableData([...tableData, newStation]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -230,6 +133,8 @@ const StationsTable = () => {
         setStationFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -239,6 +144,8 @@ const StationsTable = () => {
    * @param {number} stationId
    */
   const handleDelStation = async (stationId) => {
+    setRecsBeingProcessed((value) => [...value, stationId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о станции
       const res = await request(ServerAPI.DEL_STATION_DATA, 'POST', { id: stationId }, {
@@ -252,6 +159,8 @@ const StationsTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== stationId));
   }
 
 
@@ -304,6 +213,8 @@ const StationsTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, stationId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации о станции
       const res = await request(ServerAPI.MOD_STATION_DATA, 'POST', { id: stationId, ...rowData }, {
@@ -331,6 +242,8 @@ const StationsTable = () => {
         setModStationFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== stationId));
   }
 
 
@@ -359,7 +272,8 @@ const StationsTable = () => {
     handleEditStation,
     handleCancelMod,
     handleStartEditStation,
-    handleDelStation
+    handleDelStation,
+    recsBeingProcessed,
   });
 
   /**
@@ -388,23 +302,16 @@ const StationsTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewStationModal
           isModalVisible={isAddNewStationModalVisible}
           handleAddNewStationOk={handleAddNewStationOk}
           handleAddNewStationCancel={handleAddNewStationCancel}
-          commonAddErr={commonAddErr}
           stationFieldsErrs={stationFieldsErrs}
           clearAddStationMessages={clearAddStationMessages}
-          successSaveMessage={successSaveMessage}
-          dncSectors={
-            dncSectors &&
-            dncSectors.map(sector => {
-              return { id: sector[DNCSECTOR_FIELDS.KEY], name: sector[DNCSECTOR_FIELDS.NAME] };
-            })
-          }
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Станции</Title>

@@ -10,6 +10,7 @@ function createECDSectorModel(sequelize) {
     ECDS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      allowNull: false,
       autoIncrement: true,
     },
     ECDS_Title: {

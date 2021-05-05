@@ -9,10 +9,10 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import rolesTableColumns from './RolesTableColumns';
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
 import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplicationObjFromDBApplicationObj';
-import { PlusCircleTwoTone, MinusCircleTwoTone } from '@ant-design/icons';
 import SavableSelectMultiple from '../SavableSelectMultiple';
+import expandIcon from '../ExpandIcon';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 
 /**
@@ -51,16 +51,18 @@ const RolesTable = () => {
   const [isAddNewRoleModalVisible, setIsAddNewRoleModalVisible] = useState(false);
 
   // Ошибки добавления информации о новой роли
-  const [commonAddErr, setCommonAddErr] = useState(null);
   const [roleFieldsErrs, setRoleFieldsErrs] = useState(null);
 
   // Ошибки редактирования информации о роли
   const [modRoleFieldsErrs, setModRoleFieldsErrs] = useState(null);
 
-  // Сообщение об успешном окончании процесса сохранения новой роли
-  const [successSaveMessage, setSuccessSaveMessage] = useState(null);
-
   const message = useCustomMessage();
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
+
+  // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
+  const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
 
   /**
@@ -110,9 +112,7 @@ const RolesTable = () => {
    * Чистит все сообщения добавления информации о роли (ошибки и успех).
    */
   const clearAddRoleMessages = () => {
-    setCommonAddErr(null);
     setRoleFieldsErrs(null);
-    setSuccessSaveMessage(null);
   }
 
 
@@ -122,18 +122,20 @@ const RolesTable = () => {
    * @param {object} role
    */
   const handleAddNewRole = async (role) => {
+    setRecsBeingAdded((value) => value + 1);
+
     try {
       // Делаем запрос на сервер с целью добавления информации о роли
       const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, apps: [] }, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      setSuccessSaveMessage(res.message);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableData([...tableData, getAppRoleObjFromDBRoleObj(res.role)]);
 
     } catch (e) {
-      setCommonAddErr(e.message);
+      message(MESSAGE_TYPES.ERROR, e.message);
 
       if (e.errors) {
         const errs = {};
@@ -141,6 +143,8 @@ const RolesTable = () => {
         setRoleFieldsErrs(errs);
       }
     }
+
+    setRecsBeingAdded((value) => value - 1);
   }
 
 
@@ -150,6 +154,8 @@ const RolesTable = () => {
    * @param {number} roleId
    */
   const handleDelRole = async (roleId) => {
+    setRecsBeingProcessed((value) => [...value, roleId]);
+
     try {
       // Делаем запрос на сервер с целью удаления всей информации о роли
       const res = await request(ServerAPI.DEL_ROLE_DATA, 'POST', { roleId }, {
@@ -163,6 +169,8 @@ const RolesTable = () => {
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== roleId));
   }
 
 
@@ -215,6 +223,8 @@ const RolesTable = () => {
       return;
     }
 
+    setRecsBeingProcessed((value) => [...value, roleId]);
+
     try {
       // Делаем запрос на сервер с целью редактирования информации о роли
       const res = await request(ServerAPI.MOD_ROLE_DATA, 'POST', { roleId, ...rowData }, {
@@ -242,6 +252,8 @@ const RolesTable = () => {
         setModRoleFieldsErrs(errs);
       }
     }
+
+    setRecsBeingProcessed((value) => value.filter((id) => id !== roleId));
   }
 
 
@@ -311,6 +323,7 @@ const RolesTable = () => {
     handleCancelMod,
     handleStartEditRole,
     handleDelRole,
+    recsBeingProcessed,
   });
 
   /**
@@ -340,17 +353,16 @@ const RolesTable = () => {
   return (
     <>
     {
-      loadDataErr ? <p className="errMess">{loadDataErr}</p> :
+      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewRoleModal
           isModalVisible={isAddNewRoleModalVisible}
           handleAddNewRoleOk={handleAddNewRoleOk}
           handleAddNewRoleCancel={handleAddNewRoleCancel}
-          commonAddErr={commonAddErr}
           roleFieldsErrs={roleFieldsErrs}
           clearAddRoleMessages={clearAddRoleMessages}
-          successSaveMessage={successSaveMessage}
+          recsBeingAdded={recsBeingAdded}
         />
 
         <Title level={2} className="center top-margin-05">Роли ГИД НЕМАН</Title>
@@ -442,12 +454,7 @@ const RolesTable = () => {
               </div>
             ),
             rowExpandable: _record => true,
-            expandIcon: ({ expanded, onExpand, record }) =>
-              expanded ? (
-                <MinusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ) : (
-                <PlusCircleTwoTone onClick={e => onExpand(record, e)} style={{ fontSize: '1rem' }} />
-              ),
+            expandIcon: expandIcon,
           }}
         />
       </Form>

@@ -8,8 +8,7 @@ const {
 } = require('../validators/ecdTrainSectors.validator');
 const validate = require('../validators/validate');
 const { TECDTrainSector } = require('../models/TECDTrainSector');
-const { TStation } = require('../models/TStation');
-const { TBlock } = require('../models/TBlock');
+const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 
 const router = Router();
 
@@ -19,41 +18,8 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
 
-  GET_ALL_ECDSECTORS_ACTION,
   MOD_ECDSECTOR_ACTION,
 } = require('../constants');
-
-
-/**
- * Обрабатывает запрос на получение списка всех поездных участков ЭЦД.
- *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- */
-router.get(
-  '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
-  async (_req, res) => {
-    try {
-      const data = await TECDTrainSector.findAll({ raw: true });
-      res.status(OK).json(data);
-
-    } catch (error) {
-      console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
-    }
-  }
-);
 
 
 /**
@@ -92,7 +58,7 @@ router.post(
 
       // Если находим, то процесс создания продолжать не можем
       if (antiCandidate) {
-        return res.status(ERR).json({ message: 'Поездной участок ECD с таким наименованием уже существует' });
+        return res.status(ERR).json({ message: 'Поездной участок ЭЦД с таким наименованием уже существует' });
       }
 
       // Создаем в БД запись с данными о новом поездном участке ЭЦД
@@ -146,27 +112,10 @@ router.post(
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      // Ищем в БД поездной участок ЭЦД, id которого совпадает с переданным пользователем
-      const candidate = await TECDTrainSector.findOne({ where: { ECDTS_ID: id } });
-
-      // Если не находим, то процесс удаления продолжать не можем
-      if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанный поездной участок ЭЦД не существует в базе данных' });
-      }
-
-      // Перед удалением поездного участка ЭЦД, для всех станций и перегонов, привязанных к нему,
-      // необходимо удалить ссылки на данный поездной участок
-      await TStation.update(
-        { St_ECDTrainSectorID: null },
-        { where: { St_ECDTrainSectorID: id } },
-        { transaction: t }
-      );
-      await TBlock.update(
-        { Bl_ECDTrainSectorID: null },
-        { where: { Bl_ECDTrainSectorID: id } },
-        { transaction: t }
-      );
-      await TECDTrainSector.destroy({ where: { ECDTS_ID: id } }, { transaction: t });
+      // Перед удалением поездного участка ЭЦД необходимо удалить все соответствующие записи
+      // в таблице станций поездных участков
+      await TECDTrainSectorStation.destroy({ where: { ECDTSS_TrainSectorID: id }, transaction: t });
+      await TECDTrainSector.destroy({ where: { ECDTS_ID: id }, transaction: t });
 
       await t.commit();
 

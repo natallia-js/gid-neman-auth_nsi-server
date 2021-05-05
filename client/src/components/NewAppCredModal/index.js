@@ -15,20 +15,18 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewAppCredOk,
  *   handleAddNewAppCredCancel,
- *   commonAddErr,
  *   appCredFieldsErrs,
  *   clearAddAppCredMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewAppCredModal = ({
   appId,
   isModalVisible,
   handleAddNewAppCredOk,
   handleAddNewAppCredCancel,
-  commonAddErr,
   appCredFieldsErrs,
   clearAddAppCredMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -69,7 +67,7 @@ const NewAppCredModal = ({
 
   return (
     <Modal
-      title="Введите информацию о новом полномочии приложения"
+      title="Введите информацию о новом полномочии в приложении"
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
@@ -81,9 +79,6 @@ const NewAppCredModal = ({
         name={`new-app-cred-form${appId}`}
         onFinish={onFinish}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Аббревиатура"
           name={APP_CRED_FIELDS.ENGL_ABBREVIATION}
@@ -128,6 +123,8 @@ const NewAppCredModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

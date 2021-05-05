@@ -3,13 +3,15 @@ import { BrowserRouter as Router } from 'react-router-dom'
 import { useRoutes } from '../../routes';
 import { useAuth } from '../../hooks/auth.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Loader } from '../Loader';
+import Loader from '../Loader';
 import { Navbar } from '../Navbar';
 import { Layout } from 'antd';
 
 import 'antd/dist/antd.css';
 import '../../assets/styles/modals.scss';
 import '../../assets/styles/tables.scss';
+import '../../assets/styles/text.scss';
+import '../../assets/styles/lists.scss';
 
 const { Content, Footer } = Layout;
 

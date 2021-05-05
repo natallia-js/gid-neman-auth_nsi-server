@@ -14,19 +14,17 @@ const ERR_VALIDATE_STATUS = 'error';
  *   isModalVisible,
  *   handleAddNewDNCSectorOk,
  *   handleAddNewDNCSectorCancel,
- *   commonAddErr,
  *   dncSectorFieldsErrs,
  *   clearAddDNCSectorMessages,
- *   successSaveMessage,
+ *   recsBeingAdded,
  */
 const NewDNCSectorModal = ({
   isModalVisible,
   handleAddNewDNCSectorOk,
   handleAddNewDNCSectorCancel,
-  commonAddErr,
   dncSectorFieldsErrs,
   clearAddDNCSectorMessages,
-  successSaveMessage,
+  recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
@@ -79,14 +77,17 @@ const NewDNCSectorModal = ({
         name="new-dncsector-form"
         onFinish={onFinish}
       >
-        { successSaveMessage && <Text type="success">{successSaveMessage}</Text>}
-        { commonAddErr && <Text type="danger">{commonAddErr}</Text> }
-
         <Form.Item
           label="Наименование"
           name={DNCSECTOR_FIELDS.NAME}
           validateStatus={dncSectorFieldsErrs && dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
           help={dncSectorFieldsErrs ? dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] : null}
+          rules={[
+            {
+              required: true,
+              message: 'Пожалуйста, введите наименование участка!',
+            },
+          ]}
         >
           <Input
             autoFocus={true}
@@ -107,6 +108,8 @@ const NewDNCSectorModal = ({
             </Button>
           </div>
         </Form.Item>
+
+        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );

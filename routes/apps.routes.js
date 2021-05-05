@@ -256,13 +256,11 @@ router.post(
         }
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', cred:
-        {
-          _id: newRecId,
-          englAbbreviation,
-          description
-        },
-      });
+      res.status(OK).json({ message: 'Информация успешно сохранена', cred: {
+        _id: newRecId,
+        englAbbreviation,
+        description,
+      }});
 
     } catch (e) {
       console.log(e);
@@ -397,6 +395,7 @@ router.post(
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
       }
 
@@ -405,6 +404,7 @@ router.post(
       candidate.credentials = candidate.credentials.filter((cred) => String(cred._id) !== String(credId));
 
       if (prevCredLen === candidate.credentials.length) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное полномочие не определено для данного приложения в базе данных' });
       }
 

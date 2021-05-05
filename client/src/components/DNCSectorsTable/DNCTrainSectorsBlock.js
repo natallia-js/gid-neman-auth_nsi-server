@@ -1,14 +1,14 @@
-import React, { useContext, useRef } from 'react';
-import { Button, Form, Input, Tooltip } from 'antd';
+import React, { useContext, useState } from 'react';
+import { Button, Form, Input, Typography, Row, Col } from 'antd';
 import { ServerAPI, DNCSECTOR_FIELDS, TRAIN_SECTOR_FIELDS } from '../../constants';
-import { PlusOutlined } from '@ant-design/icons';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import DNCTrainSectorsTable from './DNCTrainSectorsTable';
 import getAppDNCTrainSectorFromDBDNCTrainSectorObj from '../../mappers/getAppDNCTrainSectorFromDBDNCTrainSectorObj';
 
-import './styles.scss';
+const { Text, Title } = Typography;
+const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
@@ -19,6 +19,8 @@ const DNCTrainSectorsBlock = (props) => {
   const {
     currDNCSectorRecord: record, // текущая запись об участке ДНЦ
     setTableDataCallback, // функция, позволяющая внести изменения в исходный массив объектов участков ДНЦ
+    stations, // список всех станций ЖД
+    blocks, // список всех перегонов ЖД
   } = props;
 
   // Пользовательский хук для получения информации от сервера
@@ -30,63 +32,60 @@ const DNCTrainSectorsBlock = (props) => {
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
 
-  // ссылка на input, где задается наименование нового поездного участка
-  const newSectorTitleInputRef = useRef(null);
-
-  // Ref для кнопки подтверждения ввода
-  const submitBtnRef = useRef(null);
-
   // Сюда помещается информация, содержащаяся в поле ввода формы
   const [form] = Form.useForm();
+
+  // Ошибки добавления информации о новом поездном участке
+  const [trainSectorFieldsErrs, setTrainSectorFieldsErrs] = useState(null);
+
+  // количество запущенных процессов добавления записей на сервере
+  const [recsBeingAdded, setRecsBeingAdded] = useState(0);
 
 
   /**
    * Добавление нового поездного участка для текущего участка ДНЦ в БД.
    */
-  const handleAdd = async () => {
-    if (newSectorTitleInputRef && newSectorTitleInputRef.current) {
-      try {
-        // Делаем запрос на сервер с целью добавления информации о новом участке
-        const res = await request(ServerAPI.ADD_DNCTRAINSECTORS_DATA, 'POST',
-          {
-            name: newSectorTitleInputRef.current.state.value,
-            dncSectorId: record[DNCSECTOR_FIELDS.KEY],
-          },
-          { Authorization: `Bearer ${auth.token}` }
-        );
+  const handleAdd = async (newSectorTitle) => {
+    setRecsBeingAdded((value) => value + 1);
 
-        message(MESSAGE_TYPES.SUCCESS, res.message);
+    try {
+      // Делаем запрос на сервер с целью добавления информации о новом участке
+      const res = await request(ServerAPI.ADD_DNCTRAINSECTORS_DATA, 'POST',
+        {
+          name: newSectorTitle,
+          dncSectorId: record[DNCSECTOR_FIELDS.KEY],
+        },
+        { Authorization: `Bearer ${auth.token}` }
+      );
 
-        // Обновляем локальное состояние
-        const newSector = getAppDNCTrainSectorFromDBDNCTrainSectorObj(res.sector);
+      message(MESSAGE_TYPES.SUCCESS, res.message);
 
-        setTableDataCallback((value) => value.map((dncSector) => {
-          if (dncSector[DNCSECTOR_FIELDS.KEY] === record[DNCSECTOR_FIELDS.KEY]) {
-            return {
-              ...dncSector,
-              [DNCSECTOR_FIELDS.TRAIN_SECTORS]: [...dncSector[DNCSECTOR_FIELDS.TRAIN_SECTORS], newSector],
-            };
-          }
-          return dncSector;
-        }));
+      // Обновляем локальное состояние
+      const newSector = getAppDNCTrainSectorFromDBDNCTrainSectorObj(res.sector);
 
-      } catch (e) {
-        message(MESSAGE_TYPES.ERROR, e.message);
+      setTableDataCallback((value) => value.map((dncSector) => {
+        if (dncSector[DNCSECTOR_FIELDS.KEY] === record[DNCSECTOR_FIELDS.KEY]) {
+          return {
+            ...dncSector,
+            [DNCSECTOR_FIELDS.TRAIN_SECTORS]: [...dncSector[DNCSECTOR_FIELDS.TRAIN_SECTORS], newSector],
+          };
+        }
+        return dncSector;
+      }));
+
+      setTrainSectorFieldsErrs(null);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setTrainSectorFieldsErrs(errs);
       }
     }
-  };
 
-
-  /**
-   * При нажатии кнопки Enter на текстовом поле ввода происходит подтверждение
-   * пользователем окончания ввода.
-   *
-   * @param {object} event
-   */
-  const handleTrainSectorDataFieldClick = (event) => {
-    if (event.key === 'Enter') {
-      submitBtnRef.current.click();
-    }
+    setRecsBeingAdded((value) => value - 1);
   };
 
 
@@ -94,52 +93,72 @@ const DNCTrainSectorsBlock = (props) => {
    * Обработка события подтверждения пользователем окончания ввода.
    */
    const onFinish = (values) => {
-    handleAdd({ ...values });
+    handleAdd(values[TRAIN_SECTOR_FIELDS.NAME]);
   };
 
 
   return (
-    <div className="train-sectors-block">
-      {/*
-        В данном столбце формируем список поездных участков ДНЦ текущего участка ДНЦ
-      */}
-      <div className="train-sectors-info-sub-block">
-        <p className="train-sectors-title">Поездные участки ДНЦ</p>
-        <Form
-          layout="horizontal"
-          size='small'
-          form={form}
-          name="new-dnctrainsector-form"
-          onFinish={onFinish}
-        >
-          <Form.Item
-            name={TRAIN_SECTOR_FIELDS.NAME}
+    <>
+      <Row>
+        <Col>
+        <Title level={4}>Поездные участки ДНЦ</Title>
+        </Col>
+      </Row>
+      <Row>
+        <Col span={8}>
+          <Form
+            layout="horizontal"
+            size='small'
+            form={form}
+            name="new-dnctrainsector-form"
+            onFinish={onFinish}
           >
-            <Input
-              autoComplete="off"
-              onClick={handleTrainSectorDataFieldClick}
-              placeholder="Название добавляемого участка"
-              ref={newSectorTitleInputRef}
-              addonAfter={
-                <Tooltip title="Добавить поездной участок">
-                  <Button
-                    htmlType="submit"
-                    shape="circle"
-                    icon={<PlusOutlined />}
-                    ref={submitBtnRef}
+            <Row wrap={false}>
+              <Col flex="auto">
+                <Form.Item
+                  label="Добавить участок"
+                  name={TRAIN_SECTOR_FIELDS.NAME}
+                  validateStatus={trainSectorFieldsErrs && trainSectorFieldsErrs[TRAIN_SECTOR_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
+                  help={trainSectorFieldsErrs ? trainSectorFieldsErrs[TRAIN_SECTOR_FIELDS.NAME] : null}
+                >
+                  <Input
+                    autoComplete="off"
+                    placeholder="Название добавляемого участка"
                   />
-                </Tooltip>
-              }
-            />
-          </Form.Item>
-        </Form>
-        <DNCTrainSectorsTable
-          currDNCSectorRecord={record}
-          setTableDataCallback={setTableDataCallback}
-        />
-      </div>
-    </div>
+                </Form.Item>
+              </Col>
+              <Col>
+                <Form.Item>
+                  <Button type="primary" htmlType="submit">
+                    Добавить
+                  </Button>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
+        </Col>
+      </Row>
+      {/*
+        Формируем список поездных участков ДНЦ текущего участка ДНЦ
+      */}
+      <Row>
+        <Col>
+          <DNCTrainSectorsTable
+            currDNCSectorRecord={record}
+            setTableDataCallback={setTableDataCallback}
+            stations={stations}
+            blocks={blocks}
+          />
+        </Col>
+      </Row>
+    </>
   );
 };
 
- export default DNCTrainSectorsBlock;
+
+export default DNCTrainSectorsBlock;

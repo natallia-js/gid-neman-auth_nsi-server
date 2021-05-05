@@ -4,21 +4,28 @@ import { STATION_FIELDS } from '../constants';
  * Преобразует объект станции, полученный из БД, в объект станции приложения.
  *
  * @param {object} dbStationObj
+ * @param {boolean} getTrainSectorInfo
  */
-const getAppStationObjFromDBStationObj = (dbStationObj) => {
-  if (dbStationObj) {
-    return {
-      [STATION_FIELDS.KEY]: dbStationObj.St_ID,
-      [STATION_FIELDS.ESR_CODE]: dbStationObj.St_UNMC,
-      [STATION_FIELDS.NAME]: dbStationObj.St_Title,
-      [STATION_FIELDS.NAME_AND_CODE]: `${dbStationObj.St_Title} (${dbStationObj.St_UNMC})`,
-      [STATION_FIELDS.DNC_SECTOR_ID]: dbStationObj.St_DNCSectorID,
-      [STATION_FIELDS.ECD_SECTOR_ID]: dbStationObj.St_ECDSectorID,
-      [STATION_FIELDS.DNC_TRAINSECTOR_ID]: dbStationObj.St_DNCTrainSectorID,
-      [STATION_FIELDS.ECD_TRAINSECTOR_ID]: dbStationObj.St_ECDTrainSectorID,
+const getAppStationObjFromDBStationObj = (dbStationObj, getTrainSectorInfo = false) => {
+  if (!dbStationObj) {
+    return null;
+  }
+  const appStationObj = {
+    [STATION_FIELDS.KEY]: dbStationObj.St_ID,
+    [STATION_FIELDS.ESR_CODE]: dbStationObj.St_UNMC,
+    [STATION_FIELDS.NAME]: dbStationObj.St_Title,
+    [STATION_FIELDS.NAME_AND_CODE]: `${dbStationObj.St_Title} (${dbStationObj.St_UNMC})`,
+  }
+  if (getTrainSectorInfo) {
+    if (dbStationObj.TDNCTrainSectorStation) {
+      appStationObj[STATION_FIELDS.POS_IN_TRAIN_SECTOR] = dbStationObj.TDNCTrainSectorStation.DNCTSS_StationPositionInTrainSector;
+      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = dbStationObj.TDNCTrainSectorStation.DNCTSS_StationBelongsToDNCSector;
+    } else if (dbStationObj.TECDTrainSectorStation) {
+      appStationObj[STATION_FIELDS.POS_IN_TRAIN_SECTOR] = dbStationObj.TECDTrainSectorStation.ECDTSS_StationPositionInTrainSector;
+      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = dbStationObj.TECDTrainSectorStation.ECDTSS_StationBelongsToECDSector;
     }
   }
-  return null;
+  return appStationObj;
 };
 
 export default getAppStationObjFromDBStationObj;
