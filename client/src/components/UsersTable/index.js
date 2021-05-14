@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography, Input, Row, Col } from 'antd';
+import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
-import { ServerAPI, USER_FIELDS, ROLE_FIELDS } from '../../constants';
+import { ServerAPI, USER_FIELDS, ROLE_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import usersTableColumns from './UsersTableColumns';
 import getAppUserObjFromDBUserObj from '../../mappers/getAppUserObjFromDBUserObj';
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
+import getAppServiceObjFromDBServiceObj from '../../mappers/getAppServiceObjFromDBServiceObj';
+import getAppPostObjFromDBPostObj from '../../mappers/getAppPostObjFromDBPostObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
+import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
+import compareStrings from '../../sorters/compareStrings';
+import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 
 const { Text, Title } = Typography;
 
@@ -24,6 +29,12 @@ const UsersTable = () => {
 
   // Массив объектов, каждый из которых содержит id роли и ее аббревиатуру
   const [roleAbbrs, setRoleAbbrs] = useState(null);
+
+  // Массив объектов служб
+  const [services, setServices] = useState(null);
+
+  // Массив объектов должностей
+  const [posts, setPosts] = useState(null);
 
   // Ошибка загрузки данных о пользователях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -39,9 +50,6 @@ const UsersTable = () => {
 
   // Для редактирования данных таблицы пользователей
   const [form] = Form.useForm();
-
-  // Для редактирования пароля пользователя
-  const [newPwdForm] = Form.useForm();
 
   // Ключ редактируемой записи таблицы
   const [editingKey, setEditingKey] = useState('');
@@ -66,6 +74,9 @@ const UsersTable = () => {
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
+  // Для сортировки данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchProps();
+
 
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
@@ -81,6 +92,7 @@ const UsersTable = () => {
       });
 
       const tableData = res.map((user) => getAppUserObjFromDBUserObj(user));
+      setTableData(tableData);
 
       // ---------------------------------
 
@@ -90,14 +102,49 @@ const UsersTable = () => {
       });
 
       const rolesData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
-
-      setTableData(tableData);
       setRoleAbbrs(rolesData);
+
+      // ---------------------------------
+
+      // Делаем запрос на сервер с целью получения информации по службам
+      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      // Хочу, чтобы службы в выпадающих списках были отсортированы по алфавиту
+      const servicesData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
+      servicesData.sort((a, b) =>
+        compareStrings(a[SERVICE_FIELDS.ABBREV].toLowerCase(), b[SERVICE_FIELDS.ABBREV].toLowerCase()));
+      // Поскольку поле наименования службы не является обязательным, в начало списка служб добавляю пустой элемент
+      servicesData.unshift({
+        [SERVICE_FIELDS.KEY]: null,
+        [SERVICE_FIELDS.ABBREV]: null,
+        [SERVICE_FIELDS.TITLE]: null,
+      });
+      setServices(servicesData);
+
+      // ---------------------------------
+
+      // Делаем запрос на сервер с целью получения информации по должностям
+      res = await request(ServerAPI.GET_POSTS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      // Хочу, чтобы должности в выпадающих списках были отсортированы по алфавиту
+      const postsData = res.map((post) => getAppPostObjFromDBPostObj(post));
+      postsData.sort((a, b) =>
+        compareStrings(a[POST_FIELDS.ABBREV].toLowerCase(), b[POST_FIELDS.ABBREV].toLowerCase()));
+      setPosts(postsData);
+
+      // ---------------------------------
+
       setLoadDataErr(null);
 
     } catch (e) {
       setTableData(null);
       setRoleAbbrs(null);
+      setServices(null);
+      setPosts(null);
       setLoadDataErr(e.message);
     }
 
@@ -270,27 +317,6 @@ const UsersTable = () => {
 
 
   /**
-   * Редактирует пароль пользователя в БД.
-   *
-   * @param {number} userId
-   * @param {string} newPassword
-   */
-  const handleChangePassword = async ({ userId, newPassword }) => {
-    try {
-      const res = await request(ServerAPI.MOD_USER, 'POST',
-        { userId, password: newPassword },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
-      message(MESSAGE_TYPES.SUCCESS, res.message);
-
-    } catch (e) {
-      message(MESSAGE_TYPES.ERROR, e.message);
-    }
-  };
-
-
-  /**
    * Редактирует информацию о ролях пользователя в БД.
    *
    * @param {number} userId
@@ -339,14 +365,6 @@ const UsersTable = () => {
   // --------------------------------------------------------------
 
 
-  /**
-   * Обработка события подтверждения пользователем окончания ввода.
-   */
-   const onFinish = (values, userId) => {
-    handleChangePassword({ userId, newPassword: values[USER_FIELDS.PASSWORD] });
-  };
-
-
   // Описание столбцов таблицы пользователей
   const columns = usersTableColumns({
     isEditing,
@@ -356,6 +374,7 @@ const UsersTable = () => {
     handleStartEditUser,
     handleDelUser,
     recsBeingProcessed,
+    getColumnSearchProps,
   });
 
   /**
@@ -370,11 +389,14 @@ const UsersTable = () => {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: 'text',
+        inputType: col.dataIndex === USER_FIELDS.SERVICE ? 'servicesSelect' :
+                   col.dataIndex === USER_FIELDS.POST ? 'postsSelect' : 'text',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: (col.dataIndex !== USER_FIELDS.FATHERNAME),
+        required: (col.dataIndex !== USER_FIELDS.FATHERNAME) && (col.dataIndex !== USER_FIELDS.SERVICE),
+        services: col.dataIndex === USER_FIELDS.SERVICE ? services : null,
+        posts: col.dataIndex === USER_FIELDS.POST ? posts : null,
         errMessage: modUserFieldsErrs ? modUserFieldsErrs[col.dataIndex] : null,
       }),
     };
@@ -393,6 +415,8 @@ const UsersTable = () => {
           handleAddNewUserCancel={handleAddNewUserCancel}
           userFieldsErrs={userFieldsErrs}
           clearAddUserMessages={clearAddUserMessages}
+          services={services}
+          posts={posts}
           recsBeingAdded={recsBeingAdded}
         />
 
@@ -440,34 +464,9 @@ const UsersTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
-                <Form
-                  layout="horizontal"
-                  size='small'
-                  form={newPwdForm}
-                  name="new-password-form"
-                  onFinish={(values) => onFinish(values, record[USER_FIELDS.KEY])}
-                >
-                  <Row wrap={false}>
-                    <Col span={6}>
-                      <Form.Item
-                        label="Новый пароль"
-                        name={USER_FIELDS.PASSWORD}
-                      >
-                        <Input
-                          autoComplete="off"
-                          placeholder="Новый пароль пользователя"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Изменить
-                        </Button>
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                </Form>
+                <ChangePasswordBlock
+                  userId={record[USER_FIELDS.KEY]}
+                />
 
                 <Title level={4}>Роли</Title>
                 <SavableSelectMultiple

@@ -9,6 +9,8 @@ import { BlocksPage } from './pages/BlocksPage';
 import { StationsPage } from './pages/StationsPage';
 import { DNCSectorsPage } from './pages/DNCSectorsPage';
 import { ECDSectorsPage } from './pages/ECDSectorsPage';
+import { ServicesPage } from './pages/ServicesPage';
+import { PostsPage } from './pages/PostsPage';
 
 import {
   MAIN_ADMIN_ROLE_NAME,
@@ -35,6 +37,12 @@ export const useRoutes = (isAuthenticated, userRoles) => {
           </Route>
           <Route path="/roles" exact>
             <RolesPage />
+          </Route>
+          <Route path="/services" exact>
+            <ServicesPage/>
+          </Route>
+          <Route path="/posts" exact>
+            <PostsPage/>
           </Route>
           <Route path="/users" exact>
             <UsersPage />

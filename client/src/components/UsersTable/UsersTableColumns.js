@@ -14,6 +14,7 @@ const usersTableColumns = (props) => {
     handleStartEditUser,
     handleDelUser,
     recsBeingProcessed,
+    getColumnSearchProps,
   } = props;
 
   return [
@@ -26,6 +27,7 @@ const usersTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[USER_FIELDS.LOGIN].toLowerCase(), b[USER_FIELDS.LOGIN].toLowerCase()),
       className: 'main-col',
+      ...getColumnSearchProps(USER_FIELDS.LOGIN),
     },
     {
       title: 'Имя',
@@ -35,6 +37,7 @@ const usersTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[USER_FIELDS.NAME].toLowerCase(), b[USER_FIELDS.NAME].toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.NAME),
     },
     {
       title: 'Отчество',
@@ -43,7 +46,8 @@ const usersTableColumns = (props) => {
       width: '10%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => compareStrings(a[USER_FIELDS.FATHERNAME].toLowerCase(), b[USER_FIELDS.FATHERNAME].toLowerCase()),
+      sorter: (a, b) => compareStrings((a[USER_FIELDS.FATHERNAME] || '').toLowerCase(), (b[USER_FIELDS.FATHERNAME] || '').toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.FATHERNAME),
     },
     {
       title: 'Фамилия',
@@ -53,6 +57,17 @@ const usersTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[USER_FIELDS.SURNAME].toLowerCase(), b[USER_FIELDS.SURNAME].toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.SURNAME),
+    },
+    {
+      title: 'Служба',
+      dataIndex: USER_FIELDS.SERVICE,
+      key: USER_FIELDS.SERVICE,
+      width: '10%',
+      editable: true,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => compareStrings((a[USER_FIELDS.SERVICE] || '').toLowerCase(), (b[USER_FIELDS.SERVICE] || '').toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.SERVICE),
     },
     {
       title: 'Должность',
@@ -62,15 +77,7 @@ const usersTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[USER_FIELDS.POST].toLowerCase(), b[USER_FIELDS.POST].toLowerCase()),
-    },
-    {
-      title: 'Служба',
-      dataIndex: USER_FIELDS.SERVICE,
-      key: USER_FIELDS.SERVICE,
-      width: '5%',
-      editable: true,
-      sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => compareStrings(a[USER_FIELDS.SERVICE].toLowerCase(), b[USER_FIELDS.SERVICE].toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.POST),
     },
     {
       title: 'Участок',
@@ -80,6 +87,7 @@ const usersTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[USER_FIELDS.SECTOR].toLowerCase(), b[USER_FIELDS.SECTOR].toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.SECTOR),
     },
     {
       title: 'Операции',

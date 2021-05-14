@@ -40,13 +40,15 @@ export const Navbar = () => {
           auth.userRoles && auth.userRoles.includes(MAIN_ADMIN_ROLE_NAME) &&
           <Menu.Item key="2"><NavLink to="/roles">Роли</NavLink></Menu.Item>
         }
-        <Menu.Item key="3"><NavLink to="/users">Пользователи</NavLink></Menu.Item>
-        <Menu.Item key="4"><NavLink to="/stations">Станции</NavLink></Menu.Item>
-        <Menu.Item key="5"><NavLink to="/blocks">Перегоны</NavLink></Menu.Item>
-        <Menu.Item key="6"><NavLink to="/dncSectors">Участки ДНЦ</NavLink></Menu.Item>
-        <Menu.Item key="7"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
-        <Menu.Item key="8"><NavLink to="/help">Помощь</NavLink></Menu.Item>
-        <Menu.Item key="9"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+        <Menu.Item key="3"><NavLink to="/services">Службы</NavLink></Menu.Item>
+        <Menu.Item key="4"><NavLink to="/posts">Должности</NavLink></Menu.Item>
+        <Menu.Item key="5"><NavLink to="/users">Пользователи</NavLink></Menu.Item>
+        <Menu.Item key="6"><NavLink to="/stations">Станции</NavLink></Menu.Item>
+        <Menu.Item key="7"><NavLink to="/blocks">Перегоны</NavLink></Menu.Item>
+        <Menu.Item key="8"><NavLink to="/dncSectors">Участки ДНЦ</NavLink></Menu.Item>
+        <Menu.Item key="9"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
+        <Menu.Item key="10"><NavLink to="/help">Помощь</NavLink></Menu.Item>
+        <Menu.Item key="11"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
       </Menu>
     </Header>
   );

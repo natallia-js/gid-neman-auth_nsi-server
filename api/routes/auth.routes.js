@@ -123,9 +123,9 @@ router.put(
       res.status(OK).json({ message: 'Регистрация прошла успешно',
                              userId: user._id });
 
-    } catch (e) {
-      console.log(e.message);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error.message);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -168,9 +168,9 @@ router.get(
 
       res.status(OK).json(data);
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -205,6 +205,7 @@ const checkRoleExists = async (roleId) => {
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (обязательна),
  * sector - наименование участка (обязательно),
+ * service - наименование службы (необязательно),
  * post - должность (обязательна),
  * roles - массив ролей (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
  *         каждый элемент массива - строка с id роли
@@ -256,19 +257,30 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, 12);
 
       // Создаем в БД нового пользователя
+      const userObj = {
+        login,
+        password: hashedPassword,
+        name,
+        fatherName,
+        surname,
+        post,
+        service: service || null,
+        sector,
+        roles,
+      };
       let user;
       if (_id) {
-        user = new User({ _id, login, password: hashedPassword, name, fatherName, surname, post, service, sector, roles });
+        user = new User({ _id, ...userObj });
       } else {
-        user = new User({ login, password: hashedPassword, name, fatherName, surname, post, service, sector, roles });
+        user = new User(userObj);
       }
       await user.save();
 
       res.status(OK).json({ message: 'Регистрация прошла успешно', user });
 
-    } catch (e) {
-      console.log(e.message);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error.message);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -349,9 +361,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -530,9 +542,9 @@ router.post(
         credentials: appsCredentials
       });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -592,9 +604,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -668,9 +680,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -718,15 +730,16 @@ router.post(
     const serviceName = req.user.service;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, login, password, name, fatherName, surname, post, service, sector, roles } = req.body;
+      // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
+      // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
+      const { userId, login, password, service, roles } = req.body;
 
       if ((serviceName !== ALL_PERMISSIONS) && service && (service !== serviceName)) {
         return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
       }
 
       // Ищем в БД пользователя, id которого совпадает с переданным
-      const candidate = await User.findById(userId);
+      let candidate = await User.findById(userId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
@@ -757,46 +770,21 @@ router.post(
         }
       }
 
-      let hashedPassword;
+      // Редактируем поля объекта перед его сохранением в БД
+      if (req.body.hasOwnProperty('password')) {
+        req.body.password = await bcrypt.hash(password, 12);
+      }
+      delete req.body.userId;
+      candidate = Object.assign(candidate, req.body);
 
       // Редактируем в БД запись
-      if (login) {
-        candidate.login = login;
-      }
-      if (password) {
-        // Получаем хеш заданного пользователем пароля
-        hashedPassword = await bcrypt.hash(password, 12);
-        candidate.password = hashedPassword;
-      }
-      if (name) {
-        candidate.name = name;
-      }
-      if (fatherName || fatherName === '') {
-        candidate.fatherName = fatherName;
-      }
-      if (surname) {
-        candidate.surname = surname;
-      }
-      if (post) {
-        candidate.post = post;
-      }
-      if (service) {
-        candidate.service = service;
-      }
-      if (sector) {
-        candidate.sector = sector;
-      }
-      if (roles) {
-        candidate.roles = roles;
-      }
-
       await candidate.save();
 
       res.status(OK).json({ message: 'Информация успешно изменена', user: candidate });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

@@ -58,7 +58,7 @@ const {
 
     } catch (error) {
       console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -101,7 +101,7 @@ router.get(
 
     } catch (error) {
       console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -198,9 +198,9 @@ router.post(
 
       res.status(OK).json({ message: SUCCESS_ADD_MESS, block: dataToReturn });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -245,9 +245,9 @@ router.post(
 
       res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -331,13 +331,13 @@ router.post(
       // Редактируем в БД запись
       const updateFields = {};
 
-      if (name || (name === '')) {
+      if (req.body.hasOwnProperty('name')) {
         updateFields.Bl_Title = name;
       }
-      if (station1) {
+      if (req.body.hasOwnProperty('station1')) {
         updateFields.Bl_StationID1 = station1;
       }
-      if (station2) {
+      if (req.body.hasOwnProperty('station2')) {
         updateFields.Bl_StationID2 = station2;
       }
 
@@ -368,9 +368,9 @@ router.post(
 
       res.status(OK).json({ message: SUCCESS_MOD_RES, block: dataToReturn });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

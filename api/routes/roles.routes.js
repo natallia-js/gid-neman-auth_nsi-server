@@ -68,9 +68,9 @@ router.get(
 
       res.status(OK).json(data);
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -114,9 +114,9 @@ router.get(
 
       res.status(OK).json(data);
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -234,9 +234,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена', role });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -314,9 +314,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -387,9 +387,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -461,12 +461,12 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
+    } catch (error) {
+      console.log(error);
 
       await session.abortTransaction();
 
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
       session.endSession();
@@ -519,7 +519,7 @@ router.post(
       const { roleId, englAbbreviation, description, subAdminCanUse, apps } = req.body;
 
       // Ищем в БД роль, id которой совпадает с переданным пользователем
-      const candidate = await Role.findById(roleId);
+      let candidate = await Role.findById(roleId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
@@ -548,24 +548,15 @@ router.post(
       }
 
       // Редактируем в БД запись
-      if (englAbbreviation || (englAbbreviation === '')) {
-        candidate.englAbbreviation = englAbbreviation;
-      }
-      if (description || (description === '')) {
-        candidate.description = description;
-      }
-      candidate.subAdminCanUse = subAdminCanUse;
-      if (apps) {
-        candidate.apps = apps;
-      }
-
+      delete req.body.roleId;
+      candidate = Object.assign(candidate, req.body);
       await candidate.save();
 
       res.status(OK).json({ message: 'Информация успешно изменена', role: candidate });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

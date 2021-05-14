@@ -14,6 +14,7 @@ const stationsTableColumns = (props) => {
     handleStartEditStation,
     handleDelStation,
     recsBeingProcessed,
+    getColumnSearchProps,
   } = props;
 
   return [
@@ -26,6 +27,7 @@ const stationsTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => +a[STATION_FIELDS.ESR_CODE] - +b[STATION_FIELDS.ESR_CODE],
       className: 'main-col',
+      ...getColumnSearchProps(STATION_FIELDS.ESR_CODE),
     },
     {
       title: 'Название',
@@ -35,6 +37,7 @@ const stationsTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()),
+      ...getColumnSearchProps(STATION_FIELDS.NAME),
     },
     {
       title: 'Операции',

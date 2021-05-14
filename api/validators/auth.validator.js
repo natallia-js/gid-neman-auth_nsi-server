@@ -30,9 +30,8 @@ const registerValidationRules = () => {
       .isLength({ min: 1 })
       .withMessage('Минимальная длина должности 1 символ'),
     check('service')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования службы 1 символ'),
+      .if(body('service').exists())
+      .trim(),
     check('sector')
       .trim()
       .isLength({ min: 1 })
@@ -116,9 +115,7 @@ const modUserValidationRules = () => {
       .withMessage('Минимальная длина должности 1 символ'),
     check('service')
       .if(body('service').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования службы 1 символ'),
+      .trim(),
     check('sector')
       .if(body('sector').exists())
       .trim()

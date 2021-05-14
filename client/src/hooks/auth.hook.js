@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   LOCALSTORAGE_NAME,
   MAIN_ADMIN_ROLE_NAME,
-  SUB_ADMIN_ROLE_NAME } from '../constants';
+  SUB_ADMIN_ROLE_NAME
+} from '../constants';
 
 
 /**

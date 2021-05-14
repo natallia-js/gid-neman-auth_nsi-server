@@ -2,7 +2,6 @@
   "port": 5000,
   "jwtSecret": "secret jwt key",
   "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
-  "baseUrl": "http://localhost:5000",
   "CentralConfigDB": {
     "host": "localhost",
     "dialect": "mssql",

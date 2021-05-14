@@ -16,7 +16,7 @@ const schema = new Schema({
   // должность
   post: { type: String, required: true },
   // служба
-  service: { type: String, required: true },
+  service: { type: String, required: false },
   // участок работы
   sector: { type: String, required: true },
   // список id's ролей ГИД НЕМАН

@@ -62,9 +62,9 @@ router.get(
 
       res.status(OK).json(data);
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -103,9 +103,9 @@ router.get(
 
       res.status(OK).json(data);
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -173,9 +173,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена', app });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -262,9 +262,9 @@ router.post(
         description,
       }});
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -336,12 +336,12 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
+    } catch (error) {
+      console.log(error);
 
       await session.abortTransaction();
 
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
       session.endSession();
@@ -420,12 +420,12 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
+    } catch (error) {
+      console.log(error);
 
       await session.abortTransaction();
 
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
       session.endSession();
@@ -473,11 +473,12 @@ router.post(
     }
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { appId, shortTitle, title, credentials } = req.body;
+      // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
+      // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
+      const { appId, shortTitle } = req.body;
 
       // Ищем в БД приложение, id которого совпадает с переданным пользователем
-      const candidate = await App.findById(appId);
+      let candidate = await App.findById(appId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
@@ -495,23 +496,15 @@ router.post(
       }
 
       // Редактируем в БД запись
-      if (shortTitle || (shortTitle === '')) {
-        candidate.shortTitle = shortTitle;
-      }
-      if (title || (title === '')) {
-        candidate.title = title;
-      }
-      if (credentials) {
-        candidate.credentials = credentials;
-      }
-
+      delete req.body.appId;
+      candidate = Object.assign(candidate, req.body);
       await candidate.save();
 
       res.status(OK).json({ message: 'Информация успешно изменена', app: candidate });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -579,12 +572,9 @@ router.post(
         if (String(cred._id) === String(credId)) {
           found = true;
 
-          if (englAbbreviation) {
-            cred.englAbbreviation = englAbbreviation;
-          }
-          if (description || (description === '')) {
-            cred.description = description;
-          }
+          delete req.body.appId;
+          delete req.body.credId;
+          cred = Object.assign(cred, req.body);
 
           break;
         }
@@ -604,9 +594,9 @@ router.post(
         }
       });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

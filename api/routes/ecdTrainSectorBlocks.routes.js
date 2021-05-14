@@ -156,10 +156,10 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно обновлена', trainSectorBlocks });
 
-    } catch (e) {
+    } catch (error) {
       await t.rollback();
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -205,9 +205,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -262,10 +262,10 @@ router.post(
       // Далее, смело редактируем (если что - СУБД не даст ошибиться)
       const updateFields = {};
 
-      if (posInTrainSector || (posInTrainSector === 0)) {
+      if (req.body.hasOwnProperty('posInTrainSector')) {
         updateFields.ECDTSB_BlockPositionInTrainSector = posInTrainSector;
       }
-      if (belongsToSector || (belongsToSector === 0)) {
+      if (req.body.hasOwnProperty('belongsToSector')) {
         updateFields.ECDTSB_BlockBelongsToECDSector = belongsToSector;
       }
 
@@ -278,9 +278,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

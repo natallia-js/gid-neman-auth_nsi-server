@@ -178,6 +178,9 @@ const DNCSectorsTable = () => {
 
     } catch (e) {
       setTableData(null);
+      setECDSectorsData(null);
+      setStations(null);
+      setBlocks(null);
       setLoadDataErr(e.message);
       return;
     }

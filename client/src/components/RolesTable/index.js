@@ -78,16 +78,21 @@ const RolesTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
+      const tableData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
+      setTableData(tableData);
+
+      // -------------------
+
       // Получаем также необходимую информацию по приложениям
       const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const tableData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
       const appsTableData = appsData.map((app) => getAppApplicationObjFromDBApplicationObj(app));
-
-      setTableData(tableData);
       setAppCredAbbrs(appsTableData);
+
+      // -------------------
+
       setLoadDataErr(null);
 
     } catch (e) {

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, Form, Input, Button, Typography } from 'antd';
-import { USER_FIELDS } from '../../constants';
+import { Modal, Form, Input, Button, Typography, Select } from 'antd';
+import { USER_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
 
+const { Option } = Select;
 const { Text } = Typography;
 
 const ERR_VALIDATE_STATUS = 'error';
@@ -16,6 +17,8 @@ const ERR_VALIDATE_STATUS = 'error';
  *   handleAddNewUserCancel,
  *   userFieldsErrs,
  *   clearAddUserMessages,
+ *   services,
+ *   posts,
  *   recsBeingAdded,
  */
 const NewUserModal = ({
@@ -24,6 +27,8 @@ const NewUserModal = ({
   handleAddNewUserCancel,
   userFieldsErrs,
   clearAddUserMessages,
+  services,
+  posts,
   recsBeingAdded,
 }) => {
 
@@ -163,6 +168,27 @@ const NewUserModal = ({
         </Form.Item>
 
         <Form.Item
+          label="Служба"
+          name={USER_FIELDS.SERVICE}
+          validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.SERVICE] ? ERR_VALIDATE_STATUS : null}
+          help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.SERVICE] : null}
+        >
+          <Select>
+          {
+            services &&
+            services.map(service =>
+              <Option
+                key={service[SERVICE_FIELDS.ABBREV]}
+                value={service[SERVICE_FIELDS.ABBREV]}
+              >
+                {service[SERVICE_FIELDS.ABBREV]}
+              </Option>
+            )
+          }
+          </Select>
+        </Form.Item>
+
+        <Form.Item
           label="Должность"
           name={USER_FIELDS.POST}
           validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.POST] ? ERR_VALIDATE_STATUS : null}
@@ -170,36 +196,27 @@ const NewUserModal = ({
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите должность!',
+              message: 'Пожалуйста, выберите должность!',
             },
           ]}
         >
-          <Input
-            placeholder="Введите должность"
-            autoComplete="off"
-          />
+          <Select>
+          {
+            posts &&
+            posts.map(post =>
+              <Option
+                key={post[POST_FIELDS.ABBREV]}
+                value={post[POST_FIELDS.ABBREV]}
+              >
+                {post[POST_FIELDS.ABBREV]}
+              </Option>
+            )
+          }
+          </Select>
         </Form.Item>
 
         <Form.Item
-          label="Служба"
-          name={USER_FIELDS.SERVICE}
-          validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.SERVICE] ? ERR_VALIDATE_STATUS : null}
-          help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.SERVICE] : null}
-          rules={[
-            {
-              required: true,
-              message: 'Пожалуйста, введите наименование службы!',
-            },
-          ]}
-        >
-          <Input
-            placeholder="Введите наименование службы"
-            autoComplete="off"
-          />
-        </Form.Item>
-
-        <Form.Item
-          label="Участок"
+          label="Полигон работы"
           name={USER_FIELDS.SECTOR}
           validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.SECTOR] ? ERR_VALIDATE_STATUS : null}
           help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.SECTOR] : null}

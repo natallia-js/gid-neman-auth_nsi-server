@@ -1,6 +1,26 @@
 use CentralConfigDB;
 GO
 
+CREATE TABLE TServices
+(
+  S_ID int IDENTITY (1,1),
+  S_Abbrev nvarchar(8) NOT NULL,
+  S_Title nvarchar(32) NOT NULL,
+  CONSTRAINT XPK_TServices PRIMARY KEY CLUSTERED (S_ID ASC),
+  CONSTRAINT XUniqueServiceAbbrev UNIQUE(S_Abbrev)
+)
+go
+
+CREATE TABLE TPosts
+(
+  P_ID int IDENTITY (1,1),
+  P_Abbrev nvarchar(8) NOT NULL,
+  P_Title nvarchar(32) NOT NULL,
+  CONSTRAINT XPK_TPosts PRIMARY KEY CLUSTERED (P_ID ASC),
+  CONSTRAINT XUniquePostAbbrev UNIQUE(P_Abbrev)
+)
+go
+
 /* Диспетчерские круги (участки ЭЦД) */
 CREATE TABLE TECDSectors
 (

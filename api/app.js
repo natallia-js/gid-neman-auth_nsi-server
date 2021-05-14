@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const config = require('config');
 const mongoose = require('mongoose');
 const Sequelize = require('sequelize');
@@ -15,6 +16,8 @@ const { createDNCTrainSectorStationModel } = require('./models/TDNCTrainSectorSt
 const { createECDTrainSectorStationModel } = require('./models/TECDTrainSectorStation');
 const { createDNCTrainSectorBlockModel } = require('./models/TDNCTrainSectorBlock');
 const { createECDTrainSectorBlockModel } = require('./models/TECDTrainSectorBlock');
+const { createServiceModel } = require('./models/TService');
+const { createPostModel } = require('./models/TPost');
 
 // Создаем объект приложения express
 const app = express();
@@ -24,13 +27,7 @@ const app = express();
 app.use(express.json({ extended: true }));
 
 // CORS middleware
-const allowCrossDomain = function(_req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', '*');
-  res.header('Access-Control-Allow-Headers', '*');
-  next();
-}
-app.use(allowCrossDomain);
+app.use(cors());
 
 // Для связи с конфигурационной БД ЦИВК (MS SQL)
 let sequelize;
@@ -52,6 +49,8 @@ app.use('/api/nsi/dncTrainSectorStations', (req, _res, next) => { req.sequelize 
 app.use('/api/nsi/ecdTrainSectorStations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectorStations.routes'));
 app.use('/api/nsi/dncTrainSectorBlocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncTrainSectorBlocks.routes'));
 app.use('/api/nsi/ecdTrainSectorBlocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectorBlocks.routes'));
+app.use('/api/nsi/services', require('./routes/services.routes'));
+app.use('/api/nsi/posts', require('./routes/posts.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;
@@ -124,9 +123,11 @@ async function start() {
     createECDTrainSectorStationModel(sequelize);
     createDNCTrainSectorBlockModel(sequelize);
     createECDTrainSectorBlockModel(sequelize);
+    createServiceModel(sequelize);
+    createPostModel(sequelize);
 
     // This creates the tables if they don't exist (and does nothing if they already exist)
-    //await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: true });
 
     // ----------------------------------------------------
 

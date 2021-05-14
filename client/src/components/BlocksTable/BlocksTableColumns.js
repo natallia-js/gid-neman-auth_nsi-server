@@ -14,6 +14,7 @@ const blocksTableColumns = (props) => {
     handleStartEditBlock,
     handleDelBlock,
     recsBeingProcessed,
+    getColumnSearchProps,
   } = props;
 
   return [
@@ -26,6 +27,7 @@ const blocksTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()),
       className: 'main-col',
+      ...getColumnSearchProps(BLOCK_FIELDS.NAME),
     },
     {
       title: 'Станция 1',

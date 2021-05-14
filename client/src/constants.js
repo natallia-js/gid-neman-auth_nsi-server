@@ -1,3 +1,5 @@
+import configData from "./config.json";
+
 export const LOCALSTORAGE_NAME = 'gid-neman-user';
 
 // ----------------------------------------
@@ -7,7 +9,7 @@ export const SUB_ADMIN_ROLE_NAME = 'SUB_ADMIN';
 
 // ----------------------------------------
 
-export const ServerAddress = 'http://localhost:5000';
+export const ServerAddress = configData.SERVER_URL;
 
 export const ServerAPI = Object.freeze({
   GET_APPS_DATA: ServerAddress + '/api/apps/data',
@@ -39,6 +41,16 @@ export const ServerAPI = Object.freeze({
   ADD_STATION_DATA: ServerAddress + '/api/nsi/stations/add',
   DEL_STATION_DATA: ServerAddress + '/api/nsi/stations/del',
   MOD_STATION_DATA: ServerAddress + '/api/nsi/stations/mod',
+
+  GET_SERVICES_DATA: ServerAddress + '/api/nsi/services/data',
+  ADD_SERVICE_DATA: ServerAddress + '/api/nsi/services/add',
+  DEL_SERVICE_DATA: ServerAddress + '/api/nsi/services/del',
+  MOD_SERVICE_DATA: ServerAddress + '/api/nsi/services/mod',
+
+  GET_POSTS_DATA: ServerAddress + '/api/nsi/posts/data',
+  ADD_POST_DATA: ServerAddress + '/api/nsi/posts/add',
+  DEL_POST_DATA: ServerAddress + '/api/nsi/posts/del',
+  MOD_POST_DATA: ServerAddress + '/api/nsi/posts/mod',
 
   GET_BLOCKS_DATA: ServerAddress + '/api/nsi/blocks/shortData',
   GET_BLOCKS_FULL_DATA: ServerAddress + '/api/nsi/blocks/data',
@@ -124,7 +136,7 @@ export const USER_FIELDS = Object.freeze({
   PASSWORD: 'password',
   NAME: 'name',
   SURNAME: 'surname',
-  FATHERNAME: 'fathername',
+  FATHERNAME: 'fatherName',
   POST: 'post',
   SERVICE: 'service',
   SECTOR: 'sector',
@@ -140,6 +152,22 @@ export const STATION_FIELDS = Object.freeze({
   NAME_AND_CODE: 'nameCode',
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
+});
+
+// ----------------------------------------
+
+export const SERVICE_FIELDS = Object.freeze({
+  KEY: 'key',
+  ABBREV: 'abbrev',
+  TITLE: 'title',
+});
+
+// ----------------------------------------
+
+export const POST_FIELDS = Object.freeze({
+  KEY: 'key',
+  ABBREV: 'abbrev',
+  TITLE: 'title',
 });
 
 // ----------------------------------------

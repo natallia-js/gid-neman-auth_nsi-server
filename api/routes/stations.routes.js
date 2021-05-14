@@ -54,7 +54,7 @@ router.get(
 
     } catch (error) {
       console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -104,9 +104,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена', station });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -170,10 +170,10 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
-    } catch (e) {
+    } catch (error) {
       await t.rollback();
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );
@@ -232,10 +232,10 @@ router.post(
       // Редактируем в БД запись
       const updateFields = {};
 
-      if (ESRCode || (ESRCode === '')) {
+      if (req.body.hasOwnProperty('ESRCode')) {
         updateFields.St_UNMC = ESRCode;
       }
-      if (name || (name === '')) {
+      if (req.body.hasOwnProperty('name')) {
         updateFields.St_Title = name;
       }
 
@@ -247,9 +247,9 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
-    } catch (e) {
-      console.log(e);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${e.message}` });
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
 );

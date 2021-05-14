@@ -1,6 +1,6 @@
 import React from 'react';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
-import { STATION_FIELDS } from '../../constants';
+import { STATION_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
 
 const { Option } = Select;
 const ERR_VALIDATE_STATUS = 'error';
@@ -15,6 +15,8 @@ const EditableTableCell = ({
   index,
   children,
   required,
+  services,
+  posts,
   stations,
   data,
   errMessage,
@@ -34,6 +36,30 @@ const EditableTableCell = ({
             stations.map(station =>
               <Option key={station[STATION_FIELDS.KEY]} value={JSON.stringify(station)}>
                 {station[STATION_FIELDS.NAME_AND_CODE]}
+              </Option>)
+          }
+        </Select>
+      break;
+    case 'servicesSelect':
+      inputNode =
+        <Select>
+          {
+            services &&
+            services.map(service =>
+              <Option key={service[SERVICE_FIELDS.ABBREV]} value={service[SERVICE_FIELDS.ABBREV]}>
+                {service[SERVICE_FIELDS.ABBREV]}
+              </Option>)
+          }
+        </Select>
+      break;
+    case 'postsSelect':
+      inputNode =
+        <Select>
+          {
+            posts &&
+            posts.map(post =>
+              <Option key={post[POST_FIELDS.ABBREV]} value={post[POST_FIELDS.ABBREV]}>
+                {post[POST_FIELDS.ABBREV]}
               </Option>)
           }
         </Select>

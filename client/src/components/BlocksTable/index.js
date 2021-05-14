@@ -10,6 +10,7 @@ import blocksTableColumns from './BlocksTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import compareStrings from '../../sorters/compareStrings';
+import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 
 const { Text, Title } = Typography;
 
@@ -62,6 +63,9 @@ const BlocksTable = () => {
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
+  // Для сортировки данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchProps();
+
 
   /**
    * Извлекает информацию по станциям (от нее зависит отображение информации по перегонам) из первоисточника
@@ -79,6 +83,8 @@ const BlocksTable = () => {
       const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
       setTableData(tableData);
 
+      // -------------------------------
+
       // Делаем запрос на сервер с целью получения информации по станциям
       res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
@@ -90,9 +96,12 @@ const BlocksTable = () => {
         compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()));
       setStations(stationsData);
 
+      // -------------------------------
+
       setLoadDataErr(null);
 
     } catch (e) {
+      setTableData(null);
       setStations(null);
       setLoadDataErr(e.message);
     }
@@ -325,6 +334,7 @@ const BlocksTable = () => {
     handleStartEditBlock,
     handleDelBlock,
     recsBeingProcessed,
+    getColumnSearchProps,
   });
 
   /**

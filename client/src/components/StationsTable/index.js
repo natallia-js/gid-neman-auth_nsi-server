@@ -11,6 +11,7 @@ import {
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import stationsTableColumns from './StationsTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
+import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 
 const { Text, Title } = Typography;
 
@@ -59,6 +60,9 @@ const StationsTable = () => {
 
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
+
+  // Для сортировки данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchProps();
 
 
   /**
@@ -114,7 +118,7 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о станции
-      const res = await request(ServerAPI.ADD_STATION_DATA, 'POST', {...station}, {
+      const res = await request(ServerAPI.ADD_STATION_DATA, 'POST', { ...station }, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -274,6 +278,7 @@ const StationsTable = () => {
     handleStartEditStation,
     handleDelStation,
     recsBeingProcessed,
+    getColumnSearchProps,
   });
 
   /**
