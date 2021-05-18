@@ -64,7 +64,10 @@ router.post(
       const { trainSectorId, stationIds } = req.body;
 
       // Ищем в БД поездной участок ЭЦД, id которого совпадает с переданным пользователем
-      const trainSector = await TECDTrainSector.findOne({ where: { ECDTS_ID: trainSectorId } });
+      const trainSector = await TECDTrainSector.findOne({
+        where: { ECDTS_ID: trainSectorId },
+        transaction: t,
+      });
 
       // Если не находим, то продолжать не можем
       if (!trainSector) {
@@ -73,14 +76,13 @@ router.post(
       }
 
       // Ищем в БД информацию обо всех станциях, принадлежащих заданному поездному участку ЭЦД
-      let trainSectorStations = await TECDTrainSectorStation.findAll(
-        {
-          raw: true,
-          where: {
-            ECDTSS_TrainSectorID: trainSectorId,
-          },
-        }
-      );
+      let trainSectorStations = await TECDTrainSectorStation.findAll({
+        raw: true,
+        where: {
+          ECDTSS_TrainSectorID: trainSectorId,
+        },
+        transaction: t,
+      });
 
       // Теперь нужно сравнить массив trainSectorStations со входным параметром stationIds:
       // 1. если запись из stationIds есть в trainSectorStations, то ничего не делаем
@@ -118,17 +120,15 @@ router.post(
       createdRecs = createdRecs.map((rec) => rec.dataValues);
 
       // Для элементов из delRecs удаляем записи из БД
-      await TECDTrainSectorStation.destroy(
-        {
-          where: {
-            [Op.and]: [
-              { ECDTSS_TrainSectorID: trainSectorId },
-              { ECDTSS_StationID: delRecs },
-            ],
-          },
-          transaction: t,
+      await TECDTrainSectorStation.destroy({
+        where: {
+          [Op.and]: [
+            { ECDTSS_TrainSectorID: trainSectorId },
+            { ECDTSS_StationID: delRecs },
+          ],
         },
-      );
+        transaction: t,
+      });
 
       // Формируем массив для возврата пользователю (вся информация по станциям поездного участка)
       // (Возвращаемое значение формирую в том же виде, что и значения, возвращаемые запросом к информации
@@ -136,14 +136,13 @@ router.post(
       trainSectorStations.push(...createdRecs);
       trainSectorStations = trainSectorStations.filter((station) => !delRecs.includes(station.ECDTSS_StationID));
 
-      const stations = await TStation.findAll(
-        {
-          raw: true,
-          where: {
-            St_ID: trainSectorStations.map(rec => rec.ECDTSS_StationID),
-          },
-        }
-      );
+      const stations = await TStation.findAll({
+        raw: true,
+        where: {
+          St_ID: trainSectorStations.map(rec => rec.ECDTSS_StationID),
+        },
+        transaction: t,
+      });
 
       trainSectorStations = trainSectorStations.map((sectorStation) => {
         return {

@@ -8,6 +8,8 @@ const {
 } = require('../validators/services.validator');
 const validate = require('../validators/validate');
 const { TService } = require('../models/TService');
+const User = require('../models/User');
+const mongoose = require('mongoose');
 
 const router = Router();
 
@@ -44,6 +46,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TService.findAll({
+        raw: true,
         attributes: ['S_ID', 'S_Abbrev', 'S_Title'],
       });
       res.status(OK).json(data);
@@ -134,17 +137,60 @@ router.post(
   delServiceValidationRules(),
   validate,
   async (req, res) => {
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      await TService.destroy({ where: { S_ID: id } });
+      // Ищем в БД службу, id которой совпадает с переданным пользователем
+      const candidate = await TService.findOne({
+        where: { S_ID: id },
+        transaction: t,
+      });
+
+      // Если не находим, то процесс удаления продолжать не можем
+      if (!candidate) {
+        await t.rollback();
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'Указанная служба не существует в базе данных' });
+      }
+
+      // Удаляем службу в конфигурационной БД
+      await TService.destroy({
+        where: { S_ID: id },
+        transaction: t,
+      });
+
+      // Обнуляем ссылки на удаленную службу у всех пользователей
+      await User.updateMany(
+        { service: candidate.S_Abbrev },
+        { $set: { service: null } },
+        { session },
+      );
+
+      await t.commit();
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
       console.log(error);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );
@@ -178,25 +224,46 @@ router.post(
   modServiceValidationRules(),
   validate,
   async (req, res) => {
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции редактирования не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id, abbrev, title } = req.body;
 
       // Ищем в БД службу, id которой совпадает с переданным пользователем
-      const candidate = await TService.findOne({ where: { S_ID: id } });
+      const candidate = await TService.findOne({
+        where: { S_ID: id },
+        transaction: t,
+      });
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
+        await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанная служба не существует в базе данных' });
       }
 
       // Если необходимо отредактировать аббревиатуру, то ищем в БД службу, аббревиатура которой совпадает
       // с переданной пользователем
       if (abbrev || (abbrev === '')) {
-        const antiCandidate = await TService.findOne({ where: { S_Abbrev: abbrev } });
+        const antiCandidate = await TService.findOne({
+          where: { S_Abbrev: abbrev },
+          transaction: t,
+        });
 
         // Если находим, то смотрим, та ли это самая служба. Если нет, продолжать не можем.
         if (antiCandidate && (antiCandidate.S_ID !== candidate.S_ID)) {
+          await t.rollback();
+          await session.abortTransaction();
           return res.status(ERR).json({ message: 'Служба с такой аббревиатурой уже существует' });
         }
       }
@@ -212,16 +279,32 @@ router.post(
       }
 
       await TService.update(updateFields, {
-        where: {
-          S_ID: id,
-        },
+        where: { S_ID: id },
+        transaction: t,
       });
+
+      // В коллекции пользователей также редактируем изменившуюся аббревиатуру службы
+      if (candidate.S_Abbrev !== abbrev) {
+        await User.updateMany(
+          { service: candidate.S_Abbrev },
+          { $set: { service: abbrev } },
+          { session },
+        );
+      }
+
+      await t.commit();
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
       console.log(error);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

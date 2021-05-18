@@ -10,7 +10,7 @@ const getAppRoleAppObjFromDBRoleAppObj = (dbRoleAppObj) => {
   if (dbRoleAppObj) {
     return {
       [APP_FIELDS.KEY]: dbRoleAppObj.appId,
-      [APP_FIELDS.CREDENTIALS]: !dbRoleAppObj.creds ? [] : [...dbRoleAppObj.creds],
+      [APP_FIELDS.CREDENTIALS]: dbRoleAppObj.creds || [],
     };
   }
   return null;

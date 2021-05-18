@@ -30,7 +30,8 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех участков ЭЦД.
+ * Обрабатывает запрос на получение списка всех участков ЭЦД со вложенными списками поездных участков,
+ * которые, в свою очередь, содержат вложенные списки станций и перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -71,6 +72,41 @@ router.get(
         ],
       });
       res.status(OK).json(data.map(d => d.dataValues));
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех участков ЭЦД и только, без вложенных списков поездных участков.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/shortData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (_req, res) => {
+    try {
+      const data = await TECDSector.findAll({
+        raw: true,
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+      });
+      res.status(OK).json(data);
 
     } catch (error) {
       console.log(error);
@@ -170,7 +206,10 @@ router.post(
       const { id } = req.body;
 
       // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
-      const candidate = await TECDSector.findOne({ where: { ECDS_ID: id } });
+      const candidate = await TECDSector.findOne({
+        where: { ECDS_ID: id },
+        transaction: t,
+      });
 
       // Если не находим, то процесс удаления продолжать не можем
       if (!candidate) {
@@ -180,39 +219,34 @@ router.post(
 
       // Перед удалением участка ЭЦД ищем все его поездные участки ЭЦД: для соответствующих записей
       // необходимо удалить информацию из таблицы станций поездных участков ЭЦД
-      const ecdTrainSectors = await TECDTrainSector.findAll({ where: { ECDTS_ECDSectorID: id } });
+      const ecdTrainSectors = await TECDTrainSector.findAll({
+        where: { ECDTS_ECDSectorID: id },
+        transaction: t,
+      });
 
       // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
-      await TAdjacentECDSector.destroy(
-        {
-          where: {
-            [Op.or]: [
-              { AECDS_ECDSectorID1: id },
-              { AECDS_ECDSectorID2: id },
-            ],
-          },
-          transaction: t,
+      await TAdjacentECDSector.destroy({
+        where: {
+          [Op.or]: [
+            { AECDS_ECDSectorID1: id },
+            { AECDS_ECDSectorID2: id },
+          ],
         },
-      );
-      await TNearestDNCandECDSector.destroy(
-        {
-          where: { NDE_ECDSectorID: id },
-          transaction: t,
-        }
-      );
+        transaction: t,
+      });
+      await TNearestDNCandECDSector.destroy({
+        where: { NDE_ECDSectorID: id },
+        transaction: t,
+      });
       if (ecdTrainSectors && ecdTrainSectors.length) {
-        await TECDTrainSectorStation.destroy(
-          {
-            where: { ECDTSS_TrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) },
-            transaction: t,
-          }
-        );
-        await TECDTrainSector.destroy(
-          {
-            where: { ECDTS_ECDSectorID: id },
-            transaction: t,
-          }
-        );
+        await TECDTrainSectorStation.destroy({
+          where: { ECDTSS_TrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) },
+          transaction: t,
+        });
+        await TECDTrainSector.destroy({
+          where: { ECDTS_ECDSectorID: id },
+          transaction: t,
+        });
       }
       await TECDSector.destroy({ where: { ECDS_ID: id }, transaction: t });
 

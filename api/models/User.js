@@ -1,5 +1,8 @@
 const { Schema, model, Types } = require('mongoose');
 
+function isPostFieldRequired() {
+  return typeof this.post === 'string' ? false : true;
+}
 
 // Схема записи в коллекции пользователей ГИД НЕМАН
 const schema = new Schema({
@@ -14,11 +17,9 @@ const schema = new Schema({
   // отчество
   fatherName: { type: String, required: false },
   // должность
-  post: { type: String, required: true },
+  post: { type: String, required: isPostFieldRequired },
   // служба
   service: { type: String, required: false },
-  // участок работы
-  sector: { type: String, required: true },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId]
 

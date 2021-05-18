@@ -80,16 +80,6 @@ const usersTableColumns = (props) => {
       ...getColumnSearchProps(USER_FIELDS.POST),
     },
     {
-      title: 'Участок',
-      dataIndex: USER_FIELDS.SECTOR,
-      key: USER_FIELDS.SECTOR,
-      width: '15%',
-      editable: true,
-      sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => compareStrings(a[USER_FIELDS.SECTOR].toLowerCase(), b[USER_FIELDS.SECTOR].toLowerCase()),
-      ...getColumnSearchProps(USER_FIELDS.SECTOR),
-    },
-    {
       title: 'Операции',
       dataIndex: 'operation',
       render: (_, record) => {

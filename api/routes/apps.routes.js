@@ -2,6 +2,7 @@ const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const App = require('../models/App');
 const Role = require('../models/Role');
 const {
@@ -22,8 +23,6 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
 
-  ALL_PERMISSIONS,
-
   GET_ALL_APPS_ACTION,
   GET_APPS_CREDENTIALS_ACTION,
   MOD_APP_ACTION,
@@ -40,6 +39,8 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -50,18 +51,10 @@ router.get(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
-  async (req, res) => {
+  async (_req, res) => {
     try {
-      // Проверяем принадлежность лица, производящего запрос
-      const serviceName = req.user.service;
-      if (serviceName !== ALL_PERMISSIONS) {
-        return res.status(ERR).json({ message: 'Список приложений ГИД Неман доступен лишь главному администратору ГИД Неман' });
-      }
-
       const data = await App.find();
-
       res.status(OK).json(data);
-
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -81,6 +74,8 @@ router.get(
   '/abbrData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -91,18 +86,10 @@ router.get(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
-  async (req, res) => {
+  async (_req, res) => {
     try {
-      // Проверяем принадлежность лица, производящего запрос
-      const serviceName = req.user.service;
-      if (serviceName !== ALL_PERMISSIONS) {
-        return res.status(ERR).json({ message: 'Список приложений ГИД Неман доступен лишь главному администратору ГИД Неман' });
-      }
-
       const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: {_id: 1, englAbbreviation: 1} });
-
       res.status(OK).json(data);
-
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -130,6 +117,8 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -144,12 +133,6 @@ router.post(
   addAppValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Добавить новое приложение ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { _id, shortTitle, title, credentials } = req.body;
@@ -196,6 +179,8 @@ router.post(
   '/addCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -210,12 +195,6 @@ router.post(
   addCredValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Добавить новое полномочие приложения ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, _id, englAbbreviation, description } = req.body;
@@ -282,6 +261,8 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -296,12 +277,7 @@ router.post(
   delAppValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Удалить приложение ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
+    // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -310,7 +286,7 @@ router.post(
       const { appId } = req.body;
 
       // Удаляем в БД запись
-      const delRes = await App.deleteOne({ _id: appId });
+      const delRes = await App.deleteOne({ _id: appId }).session(session);
 
       let canContinue = true;
       let errMess;
@@ -323,7 +299,8 @@ router.post(
         // Удалив приложение, необходимо удалить все ссылки на него в коллекции ролей
         await Role.updateMany(
           {},
-          { $pull: { apps: { appId } } }
+          { $pull: { apps: { appId } } },
+          { session },
         );
 
         await session.commitTransaction();
@@ -363,6 +340,8 @@ router.post(
   '/delCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -377,12 +356,7 @@ router.post(
   delCredValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Удалить полномочие приложения ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
+    // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -391,7 +365,7 @@ router.post(
       const { appId, credId } = req.body;
 
       // Ищем в БД нужное приложение
-      const candidate = await App.findOne({ _id: appId });
+      const candidate = await App.findOne({ _id: appId }).session(session);
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {
@@ -408,12 +382,14 @@ router.post(
         return res.status(ERR).json({ message: 'Указанное полномочие не определено для данного приложения в базе данных' });
       }
 
+      // By default, `save()` uses the associated session
       await candidate.save();
 
       // Удалив полномочие, необходимо удалить все ссылки на него в коллекции ролей
       await Role.updateMany(
         { "apps.appId": appId },
-        { $pull: { "apps.$[].creds": credId } }
+        { $pull: { "apps.$[].creds": credId } },
+        { session },
       );
 
       await session.commitTransaction();
@@ -452,6 +428,8 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -466,12 +444,6 @@ router.post(
   modAppValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Отредактировать информацию о приложении ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
       // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
@@ -525,6 +497,8 @@ router.post(
   '/modCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -539,12 +513,6 @@ router.post(
   modCredValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Отредактировать информацию о полномочии приложения ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { appId, credId, englAbbreviation, description } = req.body;

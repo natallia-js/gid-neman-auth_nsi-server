@@ -32,13 +32,21 @@ const registerValidationRules = () => {
     check('service')
       .if(body('service').exists())
       .trim(),
-    check('sector')
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка 1 символ'),
     check('roles')
       .isArray()
-      .withMessage('Список ролей пользователя должен быть массивом')
+      .withMessage('Список ролей пользователя должен быть массивом'),
+    check('stations')
+      .if(body('stations').exists())
+      .isArray()
+      .withMessage('Список рабочих полигонов-станций пользователя должен быть массивом'),
+    check('dncSectors')
+      .if(body('dncSectors').exists())
+      .isArray()
+      .withMessage('Список рабочих полигонов-участков ДНЦ пользователя должен быть массивом'),
+    check('ecdSectors')
+      .if(body('ecdSectors').exists())
+      .isArray()
+      .withMessage('Список рабочих полигонов-участков ЭЦД пользователя должен быть массивом'),
   ];
 };
 
@@ -116,11 +124,6 @@ const modUserValidationRules = () => {
     check('service')
       .if(body('service').exists())
       .trim(),
-    check('sector')
-      .if(body('sector').exists())
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage('Минимальная длина наименования участка 1 символ'),
     check('roles')
       .if(body('roles').exists())
       .isArray()

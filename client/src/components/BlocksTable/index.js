@@ -367,8 +367,9 @@ const BlocksTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Перегоны</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewBlockModal
@@ -380,8 +381,6 @@ const BlocksTable = () => {
           stations={stations}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Перегоны</Title>
 
         <Button
           type="primary"

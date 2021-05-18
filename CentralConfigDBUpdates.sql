@@ -1,6 +1,7 @@
 use CentralConfigDB;
 GO
 
+/* Службы */
 CREATE TABLE TServices
 (
   S_ID int IDENTITY (1,1),
@@ -11,6 +12,7 @@ CREATE TABLE TServices
 )
 go
 
+/* Должности */
 CREATE TABLE TPosts
 (
   P_ID int IDENTITY (1,1),
@@ -231,7 +233,38 @@ CREATE TABLE TECDTrainSectorBlocks
 )
 go
 
+/* Рабочие полигоны-станции пользователей */
+CREATE TABLE TStationWorkPoligons
+(
+  SWP_UserID varchar(24) NOT NULL,
+  SWP_StID int NOT NULL,
+  CONSTRAINT XPK_TStationWorkPoligons PRIMARY KEY CLUSTERED (SWP_UserID ASC, SWP_StID ASC),
+  CONSTRAINT XRef_TStationFromWorkPoligon FOREIGN KEY (SWP_StID) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
 
-// #546e7a
-// #f57f17
-// #9e9e9e
+/* Рабочие полигоны-участки ДНЦ пользователей */
+CREATE TABLE TDNCSectorWorkPoligons
+(
+  DNCSWP_UserID varchar(24) NOT NULL,
+  DNCSWP_DNCSID int NOT NULL,
+  CONSTRAINT XPK_TDNCSectorWorkPoligons PRIMARY KEY CLUSTERED (DNCSWP_UserID ASC, DNCSWP_DNCSID ASC),
+  CONSTRAINT XRef_TDNCSectorFromWorkPoligon FOREIGN KEY (DNCSWP_DNCSID) REFERENCES TDNCSectors (DNCS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go
+
+/* Рабочие полигоны-участки ЭЦД пользователей */
+CREATE TABLE TECDSectorWorkPoligons
+(
+  ECDSWP_UserID varchar(24) NOT NULL,
+  ECDSWP_ECDSID int NOT NULL,
+  CONSTRAINT XPK_TECDSectorWorkPoligons PRIMARY KEY CLUSTERED (ECDSWP_UserID ASC, ECDSWP_ECDSID ASC),
+  CONSTRAINT XRef_TECDSectorFromWorkPoligon FOREIGN KEY (ECDSWP_ECDSID) REFERENCES TECDSectors (ECDS_ID)
+    ON DELETE NO ACTION
+	  ON UPDATE NO ACTION
+)
+go

@@ -64,7 +64,10 @@ router.post(
       const { trainSectorId, blockIds } = req.body;
 
       // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
-      const trainSector = await TDNCTrainSector.findOne({ where: { DNCTS_ID: trainSectorId } });
+      const trainSector = await TDNCTrainSector.findOne({
+        where: { DNCTS_ID: trainSectorId },
+        transaction: t,
+      });
 
       // Если не находим, то продолжать не можем
       if (!trainSector) {
@@ -73,14 +76,13 @@ router.post(
       }
 
       // Ищем в БД информацию обо всех перегонах, принадлежащих заданному поездному участку ДНЦ
-      let trainSectorBlocks = await TDNCTrainSectorBlock.findAll(
-        {
-          raw: true,
-          where: {
-            DNCTSB_TrainSectorID: trainSectorId,
-          },
-        }
-      );
+      let trainSectorBlocks = await TDNCTrainSectorBlock.findAll({
+        raw: true,
+        where: {
+          DNCTSB_TrainSectorID: trainSectorId,
+        },
+        transaction: t,
+      });
 
       // Теперь нужно сравнить массив trainSectorBlocks со входным параметром blockIds:
       // 1. если запись из blockIds есть в trainSectorBlocks, то ничего не делаем
@@ -118,17 +120,15 @@ router.post(
       createdRecs = createdRecs.map((rec) => rec.dataValues);
 
       // Для элементов из delRecs удаляем записи из БД
-      await TDNCTrainSectorBlock.destroy(
-        {
-          where: {
-            [Op.and]: [
-              { DNCTSB_TrainSectorID: trainSectorId },
-              { DNCTSB_BlockID: delRecs },
-            ],
-          },
-          transaction: t,
+      await TDNCTrainSectorBlock.destroy({
+        where: {
+          [Op.and]: [
+            { DNCTSB_TrainSectorID: trainSectorId },
+            { DNCTSB_BlockID: delRecs },
+          ],
         },
-      );
+        transaction: t,
+      });
 
       // Формируем массив для возврата пользователю (вся информация по перегонам поездного участка)
       // (Возвращаемое значение формирую в том же виде, что и значения, возвращаемые запросом к информации
@@ -136,14 +136,13 @@ router.post(
       trainSectorBlocks.push(...createdRecs);
       trainSectorBlocks = trainSectorBlocks.filter((block) => !delRecs.includes(block.DNCTSB_BlockID));
 
-      const blocks = await TBlock.findAll(
-        {
-          raw: true,
-          where: {
-            Bl_ID: trainSectorBlocks.map(rec => rec.DNCTSB_BlockID),
-          },
-        }
-      );
+      const blocks = await TBlock.findAll({
+        raw: true,
+        where: {
+          Bl_ID: trainSectorBlocks.map(rec => rec.DNCTSB_BlockID),
+        },
+        transaction: t,
+      });
 
       trainSectorBlocks = trainSectorBlocks.map((sectorBlock) => {
         return {

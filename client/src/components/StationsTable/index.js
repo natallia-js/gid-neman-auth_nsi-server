@@ -306,8 +306,9 @@ const StationsTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Станции</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewStationModal
@@ -318,8 +319,6 @@ const StationsTable = () => {
           clearAddStationMessages={clearAddStationMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Станции</Title>
 
         <Button
           type="primary"

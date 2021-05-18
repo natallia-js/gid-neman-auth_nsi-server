@@ -31,14 +31,16 @@ export default function App() {
     userRoles,
     userCredentials,
     authError,
-    clearAuthError } = useAuth();
+    clearAuthError,
+    hasUserCredential,
+  } = useAuth();
 
   // Флаг (true/false) аутентифицированности пользователя
-  const isAuthenticated = !!token;
+  const isAuthenticated = !!token && !!userRoles && !!userCredentials;
 
   // Маршруты, по которым может передвигаться пользователь, определяются
   // флагом isAuthenticated и ролью пользователя
-  const routes = useRoutes(isAuthenticated, userRoles);
+  const routes = useRoutes(isAuthenticated, hasUserCredential);
 
   // Если процесс аутентификации пользователя еще не завершен, отображаем компонент
   // ожидания загрузки
@@ -49,7 +51,7 @@ export default function App() {
   return (
     <AuthContext.Provider value={{
       login, logout, isAuthenticated, token, userId, userService, userRoles,
-      userCredentials, authError, clearAuthError
+      userCredentials, authError, clearAuthError, hasUserCredential,
     }}>
       <Router>
         <Layout>

@@ -298,8 +298,9 @@ const AppsTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Приложения ГИД НЕМАН</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewAppModal
@@ -310,8 +311,6 @@ const AppsTable = () => {
           clearAddAppMessages={clearAddAppMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Приложения ГИД НЕМАН</Title>
 
         <Button
           type="primary"

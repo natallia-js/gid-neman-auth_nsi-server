@@ -301,8 +301,9 @@ const ServicesTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Службы</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewServiceModal
@@ -313,8 +314,6 @@ const ServicesTable = () => {
           clearAddServiceMessages={clearAddServiceMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Службы</Title>
 
         <Button
           type="primary"

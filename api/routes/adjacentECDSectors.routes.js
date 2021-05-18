@@ -9,7 +9,7 @@ const {
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
-const { TECDSector} = require('../models/TECDSector');
+const { TECDSector } = require('../models/TECDSector');
 
 const router = Router();
 
@@ -46,6 +46,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TAdjacentECDSector.findAll({
+        raw: true,
         attributes: ['AECDS_ECDSectorID1', 'AECDS_ECDSectorID2'],
       });
       res.status(OK).json(data);
@@ -249,18 +250,26 @@ router.post(
       const { sectorId, adjacentSectIds } = req.body;
 
       // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
-      const candidate = await TECDSector.findOne({ where: { ECDS_ID: sectorId } });
+      const candidate = await TECDSector.findOne({
+        where: { ECDS_ID: sectorId },
+        transaction: t,
+      });
 
       // Если не находим, то процесс изменения списка смежных участков продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Участок ЭЦД не найден' });
       }
 
       if (adjacentSectIds && adjacentSectIds.length) {
         // Проверяю начилие в БД всех участков, которые необходимо связать с заданным
-        const ecdSectors = await TECDSector.findAll({ where: { ECDS_ID: adjacentSectIds } });
+        const ecdSectors = await TECDSector.findAll({
+          where: { ECDS_ID: adjacentSectIds },
+          transaction: t,
+        });
 
         if (!ecdSectors || ecdSectors.length !== adjacentSectIds.length) {
+          await t.rollback();
           return res.status(ERR).json({ message: 'Не все смежные участки ЭЦД найдены в базе' });
         }
 
@@ -276,6 +285,7 @@ router.post(
                 { AECDS_ECDSectorID1: id, AECDS_ECDSectorID2: sectorId },
               ]
             },
+            transaction: t,
           });
 
           // Если находим, то установить смежность с данным участком не можем.

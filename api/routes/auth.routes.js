@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('config');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const {
   registerValidationRules,
   addRoleValidationRules,
@@ -13,9 +14,16 @@ const {
   modUserValidationRules,
 } = require('../validators/auth.validator');
 const validate = require('../validators/validate');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const App = require('../models/App');
+const { TStation } = require('../models/TStation');
+const { TDNCSector } = require('../models/TDNCSector');
+const { TECDSector } = require('../models/TECDSector');
+const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
+const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
+const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 
 const router = Router();
 
@@ -115,13 +123,11 @@ router.put(
         surname: MAIN_ADMIN_SURNAME,
         post: MAIN_ADMIN_POST,
         service: ALL_PERMISSIONS,
-        sector: ALL_PERMISSIONS,
         roles: [adminRole._id],
       });
       await user.save();
 
-      res.status(OK).json({ message: 'Регистрация прошла успешно',
-                             userId: user._id });
+      res.status(OK).json({ message: 'Регистрация прошла успешно', userId: user._id });
 
     } catch (error) {
       console.log(error.message);
@@ -134,10 +140,10 @@ router.put(
 /**
  * Обрабатывает запрос на получение списка всех пользователей.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список всех пользователей,
- * иное же лицо получит полный список тех пользователей, которые закреплены за его службой.
+ * иное же лицо получит полный список тех пользователей, которые закреплены за его службой
+ * (включая его самого).
  */
 router.get(
   '/data',
@@ -158,13 +164,50 @@ router.get(
       const serviceName = req.user.service;
 
       let data;
-      if (serviceName !== ALL_PERMISSIONS) {
+      if (!isMainAdmin(req)) {
         // Ищем пользователей, принадлежащих заданной службе
         data = await User.find({ service: serviceName });
       } else {
         // Извлекаем информацию обо всех пользователях
         data = await User.find();
       }
+
+      // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
+      // по рабочим перегонам
+      const userIds = data.map((user) => String(user._id));
+
+      const stationWorkPoligons = await TStationWorkPoligon.findAll({
+        raw: true,
+        attributes: ['SWP_UserID', 'SWP_StID'],
+        where: { SWP_UserID: userIds },
+      });
+
+      const dncSectorsWorkPoligons = await TDNCSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['DNCSWP_UserID', 'DNCSWP_DNCSID'],
+        where: { DNCSWP_UserID: userIds },
+      });
+
+      const ecdSectorsWorkPoligons = await TECDSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
+        where: { ECDSWP_UserID: userIds },
+      });
+
+      data = data.map((user) => {
+        return {
+          ...user._doc,
+          stationWorkPoligons: stationWorkPoligons
+            .filter((poligon) => poligon.SWP_UserID === String(user._id))
+            .map((poligon) => poligon.SWP_StID),
+          dncSectorsWorkPoligons: dncSectorsWorkPoligons
+            .filter((poligon) => poligon.DNCSWP_UserID === String(user._id))
+            .map((poligon) => poligon.DNCSWP_DNCSID),
+          ecdSectorsWorkPoligons: ecdSectorsWorkPoligons
+            .filter((poligon) => poligon.ECDSWP_UserID === String(user._id))
+            .map((poligon) => poligon.ECDSWP_ECDSID),
+        };
+      });
 
       res.status(OK).json(data);
 
@@ -192,8 +235,7 @@ const checkRoleExists = async (roleId) => {
 /**
  * Обработка запроса на регистрацию нового пользователя.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может зарегистрировать любого пользователя,
  * а иное лицо сможет зарегистрировать пользователя лишь в рамках своей службы.
  *
@@ -204,11 +246,16 @@ const checkRoleExists = async (roleId) => {
  * name - имя пользователя (обязательно),
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (обязательна),
- * sector - наименование участка (обязательно),
  * service - наименование службы (необязательно),
  * post - должность (обязательна),
  * roles - массив ролей (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
- *         каждый элемент массива - строка с id роли
+ *         каждый элемент массива - строка с id роли,
+ * stations - массив рабочих полигонов-станций (не обязателен),
+ *            каждый элемент массива - строка с id станции,
+ * dncSectors - массив рабочих полигонов-участков ДНЦ (не обязателен),
+ *              каждый элемент массива - строка с id участка ДНЦ,
+ * ecdSectors - массив рабочих полигонов-участков ЭЦД (не обязателен),
+ *              каждый элемент массива - строка с id участка ЭЦД,
  */
 router.post(
   '/register',
@@ -229,26 +276,54 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе регистрационные данные
-    const { _id, login, password, name, fatherName, surname, post, service, sector, roles } = req.body;
+    const {
+      _id,
+      login,
+      password,
+      name,
+      fatherName,
+      surname,
+      post,
+      service,
+      roles,
+      stations,
+      dncSectors,
+      ecdSectors,
+    } = req.body;
 
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
 
-    if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== service)) {
+    if (!isMainAdmin(req) && (serviceName !== service)) {
       return res.status(ERR).json({ message: `У Вас нет полномочий на регистрацию пользователя в службе ${service}` });
     }
 
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции регистрации пользователя не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
-      const candidate = await User.findOne({ login });
+      const candidate = await User.findOne({ login }).session(session);
 
       // Если находим, то процесс регистрации продолжать не можем
       if (candidate) {
+        await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Пользователь с таким логином уже существует' });
       }
 
       for (let role of roles) {
         if (!await checkRoleExists(role)) {
+          await t.rollback();
+          await session.abortTransaction();
           return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
         }
       }
@@ -265,7 +340,6 @@ router.post(
         surname,
         post,
         service: service || null,
-        sector,
         roles,
       };
       let user;
@@ -274,27 +348,108 @@ router.post(
       } else {
         user = new User(userObj);
       }
-      await user.save();
+      await user.save({ session });
 
-      res.status(OK).json({ message: 'Регистрация прошла успешно', user });
+      // Определяем, при необходимости, для созданного пользователя рабочие полигоны
+
+      if (stations && stations.length) {
+        // Проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем
+        const stationObjects = await TStation.findAll({
+          where: { St_ID: stations },
+          transaction: t,
+        });
+
+        if (!stationObjects || stationObjects.length !== stations.length) {
+          await t.rollback();
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Не все станции найдены в базе' });
+        }
+
+        // Создаем в БД рабочие полигоны-станции для заданного пользователя
+        for (let id of stations) {
+          await TStationWorkPoligon.create({
+            SWP_UserID: String(user._id),
+            SWP_StID: id,
+          }, { transaction: t });
+        }
+      }
+
+      if (dncSectors && dncSectors.length) {
+        // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем
+        const dncSectorObjects = await TDNCSector.findAll({
+          where: { DNCS_ID: dncSectors },
+          transaction: t,
+        });
+
+        if (!dncSectorObjects || dncSectorObjects.length !== dncSectors.length) {
+          await t.rollback();
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Не все участки ДНЦ найдены в базе' });
+        }
+
+        // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
+        for (let id of dncSectors) {
+          await TDNCSectorWorkPoligon.create({
+            DNCSWP_UserID: String(user._id),
+            DNCSWP_DNCSID: id,
+          }, { transaction: t });
+        }
+      }
+
+      if (ecdSectors && ecdSectors.length) {
+        // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем
+        const ecdSectorObjects = await TECDSector.findAll({
+          where: { ECDS_ID: ecdSectors },
+          transaction: t,
+        });
+
+        if (!ecdSectorObjects || ecdSectorObjects.length !== ecdSectors.length) {
+          await t.rollback();
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Не все участки ЭЦД найдены в базе' });
+        }
+
+        // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
+        for (let id of ecdSectors) {
+          await TECDSectorWorkPoligon.create({
+            ECDSWP_UserID: String(user._id),
+            ECDSWP_ECDSID: id,
+          }, { transaction: t });
+        }
+      }
+
+      await t.commit();
+      await session.commitTransaction();
+
+      const resObj = {
+        ...user._doc,
+        stationWorkPoligons: stations,
+        dncSectorsWorkPoligons: dncSectors,
+        ecdSectorsWorkPoligons: ecdSectors,
+      };
+
+      res.status(OK).json({ message: 'Регистрация прошла успешно', user: resObj });
 
     } catch (error) {
       console.log(error.message);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );
 
 
 /**
- * Обработка запроса на добавление новой роли пользователя.
+ * Обработка запроса на добавление новой роли пользователю.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может добавить любую роль любому пользователю,
- * а иное лицо сможет добавить роль пользователю лишь в рамках своей службы:
- * пользователь должен принадлежать данной службе и роль должна быть доступна добавляющему
- * для добавления ее пользователю.
+ * а иное лицо сможет добавить роль пользователю, принадлежащему его службе, кроме того,
+ * роль должна быть доступна добавляющему для добавления ее пользователю.
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
@@ -333,7 +488,7 @@ router.post(
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли пользователю в службе ${candidate.service}` });
       }
 
@@ -350,7 +505,7 @@ router.post(
         return res.status(ERR).json({ message: 'Роль не существует в базе данных' });
       }
 
-      if ((serviceName !== ALL_PERMISSIONS) && !role.subAdminCanUse) {
+      if (!isMainAdmin(req) && !role.subAdminCanUse) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли ${englAbbreviation} пользователю` });
       }
 
@@ -508,6 +663,26 @@ router.post(
         }
       }
 
+      // Осталось извлечь перечень рабочих полигонов пользователя
+
+      const stations = await TStationWorkPoligon.findAll({
+        raw: true,
+        attributes: ['SWP_UserID', 'SWP_StID'],
+        where: { SWP_UserID: String(user._id) },
+      });
+
+      const dncSectors = await TDNCSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['DNCSWP_UserID', 'DNCSWP_DNCSID'],
+        where: { DNCSWP_UserID: String(user._id) },
+      });
+
+      const ecdSectors = await TECDSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
+        where: { ECDSWP_UserID: String(user._id) },
+      });
+
       // Создаем JWT-токен (as string) для успешно вошедшего в систему пользователя.
       // JWT состоит из трех частей: заголовок (header - JSON-объект, содержит информацию о том,
       // как должна вычисляться JWT подпись), полезные данные (payload) и
@@ -522,6 +697,9 @@ router.post(
           service: user.service,
           roles: rolesAbbreviations,
           credentials: appsCredentials,
+          stationWorkPoligons: stations,
+          dncSectorsWorkPoligons: dncSectors,
+          ecdSectorsWorkPoligons: ecdSectors,
         },
         jwtSecret,
         //{ expiresIn: '1h' }
@@ -535,11 +713,13 @@ router.post(
           fatherName: user.fatherName,
           surname: user.surname,
           service: user.service,
-          sector: user.sector,
           post: user.post,
         },
         roles: rolesAbbreviations,
-        credentials: appsCredentials
+        credentials: appsCredentials,
+        stationWorkPoligons: stations,
+        dncSectorsWorkPoligons: dncSectors,
+        ecdSectorsWorkPoligons: ecdSectors,
       });
 
     } catch (error) {
@@ -553,10 +733,9 @@ router.post(
 /**
  * Обработка запроса на удаление пользователя.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может удалить любого пользователя,
- * а иное лицо может удалить лишь того пользователя, который закреплен за его службой.
+ * иное же лицо может удалить лишь того пользователя, который закреплен за его службой.
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен)
@@ -582,6 +761,17 @@ router.post(
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
 
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции регистрации пользователя не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { userId } = req.body;
@@ -589,24 +779,53 @@ router.post(
       const candidate = await User.findOne({ _id: userId });
 
       if (!candidate) {
+        await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
+        await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: `У Вас нет полномочий на удаление пользователя в службе ${candidate.service}` });
       }
 
-      // Удаляем в БД запись
-      const delRes = await User.deleteOne({ _id: userId });
-      if (!delRes.deletedCount) {
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
-      }
+      // Удаляем в БД запись о пользователе
+      await User.deleteOne({ _id: userId });
+
+      // Удаляем также информацию о его рабочих полигонах
+      await TStationWorkPoligon.destroy({
+        where: {
+          SWP_UserID: userId,
+        },
+        transaction: t,
+      });
+      await TDNCSectorWorkPoligon.destroy({
+        where: {
+          DNCSWP_UserID: userId,
+        },
+        transaction: t,
+      });
+      await TECDSectorWorkPoligon.destroy({
+        where: {
+          ECDSWP_UserID: userId,
+        },
+        transaction: t,
+      });
+
+      await t.commit();
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
       console.log(error);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );
@@ -615,10 +834,9 @@ router.post(
 /**
  * Обработка запроса на удаление роли пользователя.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может удалить роль любого пользователя,
- * а иное лицо может удалить лишь роль того пользователя, который закреплен за его службой.
+ * иное же лицо может удалить лишь роль того пользователя, который закреплен за его службой.
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
@@ -657,7 +875,7 @@ router.post(
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на удаление роли пользователя в службе ${candidate.service}` });
       }
 
@@ -691,10 +909,9 @@ router.post(
 /**
  * Обработка запроса на редактирование информации о пользователе.
  *
- * Данный запрос доступен главному администратору ГИД Неман, наделенному соответствующим полномочием,
- * а также лицу, которое также наделено данным полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может редактировать информацию о любои пользователе,
- * а иное лицо может отредактировать информацию лишь о том пользователе, который закреплен за его службой.
+ * иное же лицо может отредактировать информацию лишь о том пользователе, который закреплен за его службой.
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
@@ -705,7 +922,6 @@ router.post(
  * surname - фамилия пользователя (не обязательна),
  * post - наименование должности (не обязательно),
  * service - наименование службы (не обязательно),
- * sector - наименование участка (не обязательно),
  * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли)
  */
 router.post(
@@ -734,7 +950,7 @@ router.post(
       // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
       const { userId, login, password, service, roles } = req.body;
 
-      if ((serviceName !== ALL_PERMISSIONS) && service && (service !== serviceName)) {
+      if (!isMainAdmin(req) && (service !== serviceName)) {
         return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
       }
 
@@ -746,7 +962,7 @@ router.post(
         return res.status(ERR).json({ message: 'Указанный пользователь не существует в базе данных' });
       }
 
-      if ((serviceName !== ALL_PERMISSIONS) && (serviceName !== candidate.service)) {
+      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование информации о пользователе в службе ${candidate.service}` });
       }
 
@@ -769,7 +985,6 @@ router.post(
           }
         }
       }
-
       // Редактируем поля объекта перед его сохранением в БД
       if (req.body.hasOwnProperty('password')) {
         req.body.password = await bcrypt.hash(password, 12);

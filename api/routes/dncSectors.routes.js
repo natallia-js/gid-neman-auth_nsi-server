@@ -30,7 +30,8 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех участков ДНЦ.
+ * Обрабатывает запрос на получение списка всех участков ДНЦ со вложенными списками поездных участков,
+ * которые, в свою очередь, содержат вложенные списки станций и перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -71,6 +72,41 @@ router.get(
         ],
       });
       res.status(OK).json(data.map(d => d.dataValues));
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех участков ДНЦ и только, без вложенных списков поездных участков.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/shortData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_DNCSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (_req, res) => {
+    try {
+      const data = await TDNCSector.findAll({
+        raw: true,
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+      });
+      res.status(OK).json(data);
 
     } catch (error) {
       console.log(error);
@@ -170,7 +206,10 @@ router.post(
       const { id } = req.body;
 
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCSector.findOne({ where: { DNCS_ID: id } });
+      const candidate = await TDNCSector.findOne({
+        where: { DNCS_ID: id },
+        transaction: t,
+      });
 
       // Если не находим, то процесс удаления продолжать не можем
       if (!candidate) {
@@ -180,39 +219,34 @@ router.post(
 
       // Перед удалением участка ДНЦ ищем все его поездные участки ДНЦ: для соответствующих записей
       // необходимо удалить информацию из таблицы станций поездных участков ДНЦ
-      const dncTrainSectors = await TDNCTrainSector.findAll({ where: { DNCTS_DNCSectorID: id } });
+      const dncTrainSectors = await TDNCTrainSector.findAll({
+        where: { DNCTS_DNCSectorID: id },
+        transaction: t,
+      });
 
       // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
-      await TAdjacentDNCSector.destroy(
-        {
-          where: {
-            [Op.or]: [
-              { ADNCS_DNCSectorID1: id },
-              { ADNCS_DNCSectorID2: id },
-            ],
-          },
-          transaction: t,
+      await TAdjacentDNCSector.destroy({
+        where: {
+          [Op.or]: [
+            { ADNCS_DNCSectorID1: id },
+            { ADNCS_DNCSectorID2: id },
+          ],
         },
-      );
-      await TNearestDNCandECDSector.destroy(
-        {
-          where: { NDE_DNCSectorID: id },
-          transaction: t,
-        }
-      );
+        transaction: t,
+      });
+      await TNearestDNCandECDSector.destroy({
+        where: { NDE_DNCSectorID: id },
+        transaction: t,
+      });
       if (dncTrainSectors && dncTrainSectors.length) {
-        await TDNCTrainSectorStation.destroy(
-          {
-            where: { DNCTSS_TrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) },
-            transaction: t,
-          }
-        );
-        await TDNCTrainSector.destroy(
-          {
-            where: { DNCTS_DNCSectorID: id },
-            transaction: t,
-          }
-        );
+        await TDNCTrainSectorStation.destroy({
+          where: { DNCTSS_TrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) },
+          transaction: t,
+        });
+        await TDNCTrainSector.destroy({
+          where: { DNCTS_DNCSectorID: id },
+          transaction: t,
+        });
       }
       await TDNCSector.destroy({ where: { DNCS_ID: id }, transaction: t });
 

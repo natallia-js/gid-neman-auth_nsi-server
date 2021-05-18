@@ -2,6 +2,7 @@ const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { isMainAdmin, checkMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const Role = require('../models/Role');
 const App = require('../models/App');
 const User = require('../models/User');
@@ -22,8 +23,6 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
 
-  ALL_PERMISSIONS,
-
   MOD_APP_CREDENTIALS_ACTION,
   GET_ALL_ROLES_ACTION,
   MOD_ROLE_ACTION,
@@ -33,10 +32,9 @@ const {
 /**
  * Обрабатывает запрос на получение списка всех ролей.
  *
- * Данный запрос доступен главному администратору ГИД Неман и администратору нижнего уровня,
- * которые наделены соответствующим полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список всех ролей,
- * а администратор нижнего уровня получит полный список тех ролей, которые ему разрешил
+ * а иное лицо получит полный список тех ролей, которые ему разрешил
  * использовать главный администратор ГИД Неман.
  */
 router.get(
@@ -55,19 +53,15 @@ router.get(
   checkAuthority,
   async (req, res) => {
     try {
-      const serviceName = req.user.service;
-
       let data;
-      if (serviceName !== ALL_PERMISSIONS) {
-        // Ищем роли, доступные лишь для администратора нижнего уровня
+      if (!isMainAdmin(req)) {
+        // Ищем роли, которые разрешил использовать главный администратор ГИД Неман
         data = await Role.find({ subAdminCanUse: true });
       } else {
         // Извлекаем информацию обо всех ролях
         data = await Role.find();
       }
-
       res.status(OK).json(data);
-
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -79,10 +73,9 @@ router.get(
 /**
  * Обрабатывает запрос на получение списка аббревиатур всех ролей с их идентификаторами.
  *
- * Данный запрос доступен главному администратору ГИД Неман и администратору нижнего уровня,
- * которые наделены соответствующим полномочием.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список аббревиатур ролей,
- * а администратор нижнего уровня получит полный список аббревиатур тех ролей, которые ему разрешил
+ * а иное лицо получит полный список аббревиатур тех ролей, которые ему разрешил
  * использовать главный администратор ГИД Неман.
  */
 router.get(
@@ -101,19 +94,15 @@ router.get(
   checkAuthority,
   async (req, res) => {
     try {
-      const serviceName = req.user.service;
-
       let data;
-      if (serviceName !== ALL_PERMISSIONS) {
-        // Ищем роли, доступные лишь для администратора нижнего уровня
+      if (!isMainAdmin(req)) {
+        // Ищем роли, которые разрешил использовать главный администратор ГИД Неман
         data = await Role.find({ subAdminCanUse: true }, { _id: 1, englAbbreviation: 1 });
       } else {
         // Извлекаем информацию обо всех ролях
         data = await Role.find({}, { _id: 1, englAbbreviation: 1 });
       }
-
       res.status(OK).json(data);
-
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -160,7 +149,7 @@ const checkAppWithCredsExists = async (app) => {
   }
 
   return true;
-}
+};
 
 
 /**
@@ -184,6 +173,8 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -198,12 +189,6 @@ router.post(
   addRoleValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Добавить новую роль для приложений ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { _id, englAbbreviation, description, subAdminCanUse, apps } = req.body;
@@ -250,12 +235,14 @@ router.post(
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
  * appId - идентификатор приложения (обязателен),
- * credId - идентификатор полномочия (обязателен)
+ * credId - идентификатор полномочия (обязателен),
  */
 router.post(
   '/addCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -270,12 +257,6 @@ router.post(
   addCredValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Добавить к роли новое полномочие в приложении ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { roleId, appId, credId } = req.body;
@@ -337,6 +318,8 @@ router.post(
   '/changeCreds',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -351,12 +334,6 @@ router.post(
   changeCredsValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Изменить список полномочий в приложении ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { roleId, appId, newCredIds } = req.body;
@@ -407,6 +384,8 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -421,12 +400,7 @@ router.post(
   delRoleValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Удалить роль в приложениях ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
+    // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -435,7 +409,7 @@ router.post(
       const { roleId } = req.body;
 
       // Удаляем в БД запись
-      const delRes = await Role.deleteOne({ _id: roleId });
+      const delRes = await Role.deleteOne({ _id: roleId }).session(session);
 
       let canContinue = true;
       let errMess;
@@ -448,7 +422,8 @@ router.post(
         // Удалив роль, необходимо удалить все ссылки на нее в коллекции пользователей
         await User.updateMany(
           {},
-          { $pull: { roles: roleId } }
+          { $pull: { roles: roleId } },
+          { session },
         );
 
         await session.commitTransaction();
@@ -494,6 +469,8 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // проверяем, является ли пользователь главным администратором ГИД Неман
+  checkMainAdmin,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -508,15 +485,9 @@ router.post(
   modRoleValidationRules(),
   validate,
   async (req, res) => {
-    // Проверяем принадлежность лица, производящего запрос
-    const serviceName = req.user.service;
-    if (serviceName !== ALL_PERMISSIONS) {
-      return res.status(ERR).json({ message: 'Отредактировать роль в приложениях ГИД Неман может лишь главный администратор ГИД Неман' });
-    }
-
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { roleId, englAbbreviation, description, subAdminCanUse, apps } = req.body;
+      const { roleId, englAbbreviation, apps } = req.body;
 
       // Ищем в БД роль, id которой совпадает с переданным пользователем
       let candidate = await Role.findById(roleId);
@@ -526,7 +497,7 @@ router.post(
         return res.status(ERR).json({ message: 'Указанная роль не существует в базе данных' });
       }
 
-      // Ищем в БД роль, englAbbreviation которой совпадает с переданным пользователем
+      // Ищем в БД роль, englAbbreviation которой совпадает с переданной пользователем
       let antiCandidate;
 
       if (englAbbreviation) {

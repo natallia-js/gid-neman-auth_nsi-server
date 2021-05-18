@@ -416,8 +416,9 @@ const ECDSectorsTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Участки ЭЦД</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewECDSectorModal
@@ -428,8 +429,6 @@ const ECDSectorsTable = () => {
           clearAddECDSectorMessages={clearAddECDSectorMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Участки ЭЦД</Title>
 
         <Button
           type="primary"

@@ -8,6 +8,8 @@ const {
 } = require('../validators/posts.validator');
 const validate = require('../validators/validate');
 const { TPost } = require('../models/TPost');
+const User = require('../models/User');
+const mongoose = require('mongoose');
 
 const router = Router();
 
@@ -44,6 +46,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TPost.findAll({
+        raw: true,
         attributes: ['P_ID', 'P_Abbrev', 'P_Title'],
       });
       res.status(OK).json(data);
@@ -134,17 +137,60 @@ router.post(
   delPostValidationRules(),
   validate,
   async (req, res) => {
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      await TPost.destroy({ where: { P_ID: id } });
+      // Ищем в БД должность, id которой совпадает с переданным пользователем
+      const candidate = await TPost.findOne({
+        where: { P_ID: id },
+        transaction: t,
+      });
+
+      // Если не находим, то процесс удаления продолжать не можем
+      if (!candidate) {
+        await t.rollback();
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'Указанная должность не существует в базе данных' });
+      }
+
+      // Удаляем должность в конфигурационной БД
+      await TPost.destroy({
+        where: { P_ID: id },
+        transaction: t,
+      });
+
+      // Обнуляем ссылки на удаленную должность у всех пользователей
+      await User.updateMany(
+        { post: candidate.P_Abbrev },
+        { $set: { post: '' } },
+        { session },
+      );
+
+      await t.commit();
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
       console.log(error);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );
@@ -178,25 +224,46 @@ router.post(
   modPostValidationRules(),
   validate,
   async (req, res) => {
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции редактирования не определен объект транзакции' });
+    }
+    const t = await sequelize.transaction();
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id, abbrev, title } = req.body;
 
       // Ищем в БД должность, id которой совпадает с переданным пользователем
-      const candidate = await TPost.findOne({ where: { P_ID: id } });
+      const candidate = await TPost.findOne({
+        where: { P_ID: id },
+        transaction: t,
+      });
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
+        await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанная должность не существует в базе данных' });
       }
 
       // Если необходимо отредактировать аббревиатуру, то ищем в БД должность, аббревиатура которой совпадает
       // с переданной пользователем
       if (abbrev || (abbrev === '')) {
-        const antiCandidate = await TPost.findOne({ where: { P_Abbrev: abbrev } });
+        const antiCandidate = await TPost.findOne({
+          where: { P_Abbrev: abbrev },
+          transaction: t,
+        });
 
         // Если находим, то смотрим, та ли это самая должность. Если нет, продолжать не можем.
         if (antiCandidate && (antiCandidate.P_ID !== candidate.P_ID)) {
+          await t.rollback();
+          await session.abortTransaction();
           return res.status(ERR).json({ message: 'Должность с такой аббревиатурой уже существует' });
         }
       }
@@ -212,16 +279,32 @@ router.post(
       }
 
       await TPost.update(updateFields, {
-        where: {
-          P_ID: id,
-        },
+        where: { P_ID: id },
+        transaction: t,
       });
+
+      // В коллекции пользователей также редактируем изменившуюся аббревиатуру должности
+      if (candidate.P_Abbrev !== abbrev) {
+        await User.updateMany(
+          { post: candidate.P_Abbrev },
+          { $set: { post: abbrev } },
+          { session },
+        );
+      }
+
+      await t.commit();
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
       console.log(error);
+      await t.rollback();
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

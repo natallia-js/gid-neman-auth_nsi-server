@@ -1,15 +1,30 @@
-import configData from "./config.json";
+// ----------------------------------------
+
+const ServerAddress = process.env.REACT_APP_SERVER_URL;
+
+// ----------------------------------------
 
 export const LOCALSTORAGE_NAME = 'gid-neman-user';
 
 // ----------------------------------------
 
-export const MAIN_ADMIN_ROLE_NAME = 'GID_NEMAN_ADMIN';
-export const SUB_ADMIN_ROLE_NAME = 'SUB_ADMIN';
+export const CURR_APP_ABBREV_NAME = 'GidNemanAuthNSIUtil';
 
 // ----------------------------------------
 
-export const ServerAddress = configData.SERVER_URL;
+export const GetDataCredentials = Object.freeze({
+  GET_ALL_APPS_ACTION: 'GET_ALL_APPS_ACTION',
+  GET_ALL_ROLES_ACTION: 'GET_ALL_ROLES_ACTION',
+  GET_ALL_USERS_ACTION: 'GET_ALL_USERS_ACTION',
+  GET_ALL_STATIONS_ACTION: 'GET_ALL_STATIONS_ACTION',
+  GET_ALL_BLOCKS_ACTION: 'GET_ALL_BLOCKS_ACTION',
+  GET_ALL_DNCSECTORS_ACTION	: 'GET_ALL_DNCSECTORS_ACTION',
+  GET_ALL_ECDSECTORS_ACTION: 'GET_ALL_ECDSECTORS_ACTION',
+  GET_ALL_SERVICES_ACTION: 'GET_ALL_SERVICES_ACTION',
+  GET_ALL_POSTS_ACTION: 'GET_ALL_POSTS_ACTION',
+});
+
+// ----------------------------------------
 
 export const ServerAPI = Object.freeze({
   GET_APPS_DATA: ServerAddress + '/api/apps/data',
@@ -59,11 +74,13 @@ export const ServerAPI = Object.freeze({
   MOD_BLOCK_DATA: ServerAddress + '/api/nsi/blocks/mod',
 
   GET_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/data',
+  GET_DNCSECTORS_SHORT_DATA: ServerAddress + '/api/nsi/dncSectors/shortData',
   ADD_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/add',
   DEL_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/del',
   MOD_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/mod',
 
   GET_ECDSECTORS_DATA: ServerAddress + '/api/nsi/ecdSectors/data',
+  GET_ECDSECTORS_SHORT_DATA: ServerAddress + '/api/nsi/ecdSectors/shortData',
   ADD_ECDSECTORS_DATA: ServerAddress + '/api/nsi/ecdSectors/add',
   DEL_ECDSECTORS_DATA: ServerAddress + '/api/nsi/ecdSectors/del',
   MOD_ECDSECTORS_DATA: ServerAddress + '/api/nsi/ecdSectors/mod',
@@ -101,6 +118,10 @@ export const ServerAPI = Object.freeze({
   MOD_ECDTRAINSECTORBLOCKLIST: ServerAddress + '/api/nsi/ecdTrainSectorBlocks/modBlocksList',
   DEL_ECDTRAINSECTORBLOCK_DATA: ServerAddress + '/api/nsi/ecdTrainSectorBlocks/del',
   MOD_ECDTRAINSECTORBLOCK_DATA: ServerAddress + '/api/nsi/ecdTrainSectorBlocks/mod',
+
+  MOD_STATIONS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/stations/change',
+  MOD_DNC_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/dncSectors/change',
+  MOD_ECD_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/ecdSectors/change',
 });
 
 // ----------------------------------------
@@ -139,8 +160,10 @@ export const USER_FIELDS = Object.freeze({
   FATHERNAME: 'fatherName',
   POST: 'post',
   SERVICE: 'service',
-  SECTOR: 'sector',
   ROLES: 'roles',
+  STATION_WORK_POLIGONS: 'stations',
+  DNC_SECTOR_WORK_POLIGONS: 'dncSectors',
+  ECD_SECTOR_WORK_POLIGONS: 'ecdSectors',
 });
 
 // ----------------------------------------

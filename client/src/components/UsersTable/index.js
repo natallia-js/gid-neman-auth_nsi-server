@@ -4,13 +4,25 @@ import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
-import { ServerAPI, USER_FIELDS, ROLE_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
+import {
+  ServerAPI,
+  USER_FIELDS,
+  ROLE_FIELDS,
+  SERVICE_FIELDS,
+  POST_FIELDS,
+  STATION_FIELDS,
+  DNCSECTOR_FIELDS,
+  ECDSECTOR_FIELDS,
+} from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import usersTableColumns from './UsersTableColumns';
 import getAppUserObjFromDBUserObj from '../../mappers/getAppUserObjFromDBUserObj';
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
 import getAppServiceObjFromDBServiceObj from '../../mappers/getAppServiceObjFromDBServiceObj';
 import getAppPostObjFromDBPostObj from '../../mappers/getAppPostObjFromDBPostObj';
+import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
+import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
@@ -35,6 +47,15 @@ const UsersTable = () => {
 
   // Массив объектов должностей
   const [posts, setPosts] = useState(null);
+
+  // Краткая информация по участкам ДНЦ (массив объектов)
+  const [dncSectorsData, setDNCSectorsData] = useState(null);
+
+  // Краткая информация по участкам ЭЦД (массив объектов)
+  const [ecdSectorsData, setECDSectorsData] = useState(null);
+
+  // Краткая информация по станциям (массив объектов)
+  const [stations, setStations] = useState(null);
 
   // Ошибка загрузки данных о пользователях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -96,6 +117,36 @@ const UsersTable = () => {
 
       // ---------------------------------
 
+      // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
+      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const dncSectors = res.map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector));
+      setDNCSectorsData(dncSectors);
+
+      // ---------------------------------
+
+      // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
+      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+      setECDSectorsData(ecdSectors);
+
+      // ---------------------------------
+
+      // Делаем запрос на сервер с целью получения информации по станциям
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+
+      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
+      setStations(stations);
+
+      // ---------------------------------
+
       // Делаем запрос на сервер с целью получения информации по ролям
       res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
@@ -135,8 +186,6 @@ const UsersTable = () => {
       postsData.sort((a, b) =>
         compareStrings(a[POST_FIELDS.ABBREV].toLowerCase(), b[POST_FIELDS.ABBREV].toLowerCase()));
       setPosts(postsData);
-
-      // ---------------------------------
 
       setLoadDataErr(null);
 
@@ -178,7 +227,7 @@ const UsersTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о пользователе
-      const res = await request(ServerAPI.ADD_NEW_USER, 'POST', { ...user, roles: [] }, {
+      const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -241,7 +290,6 @@ const UsersTable = () => {
       [USER_FIELDS.SURNAME]: '',
       [USER_FIELDS.POST]: '',
       [USER_FIELDS.SERVICE]: '',
-      [USER_FIELDS.SECTOR]: '',
       ...record,
     });
     setEditingKey(record[USER_FIELDS.KEY]);
@@ -333,13 +381,102 @@ const UsersTable = () => {
 
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
-          return { ...user, roles: rolesIds };
+          return { ...user, [USER_FIELDS.ROLES]: rolesIds };
         }
         return user;
       });
 
       setTableData(newTableData);
-      setEditingKey('');
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
+  };
+
+
+  /**
+   * Редактирует информацию о рабочих полигонах-станциях пользователя в БД.
+   *
+   * @param {number} userId
+   * @param {array} stationIds
+   */
+   const handleEditUserStationWorkPoligons = async ({ userId, stationIds }) => {
+    try {
+      const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST',
+        { userId, stationIds },
+        { Authorization: `Bearer ${auth.token}` }
+      );
+
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+
+      const newTableData = tableData.map((user) => {
+        if (user[USER_FIELDS.KEY] === userId) {
+          return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: stationIds };
+        }
+        return user;
+      });
+
+      setTableData(newTableData);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
+  };
+
+
+  /**
+   * Редактирует информацию о рабочих полигонах-участках ДНЦ пользователя в БД.
+   *
+   * @param {number} userId
+   * @param {array} dncSectorIds
+   */
+   const handleEditUserDNCSectorWorkPoligons = async ({ userId, dncSectorIds }) => {
+    try {
+      const res = await request(ServerAPI.MOD_DNC_SECTORS_WORK_POLIGON_LIST, 'POST',
+        { userId, dncSectorIds },
+        { Authorization: `Bearer ${auth.token}` }
+      );
+
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+
+      const newTableData = tableData.map((user) => {
+        if (user[USER_FIELDS.KEY] === userId) {
+          return { ...user, [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dncSectorIds };
+        }
+        return user;
+      });
+
+      setTableData(newTableData);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
+  };
+
+
+  /**
+   * Редактирует информацию о рабочих полигонах-участках ЭЦД пользователя в БД.
+   *
+   * @param {number} userId
+   * @param {array} ecdSectorIds
+   */
+   const handleEditUserECDSectorWorkPoligons = async ({ userId, ecdSectorIds }) => {
+    try {
+      const res = await request(ServerAPI.MOD_ECD_SECTORS_WORK_POLIGON_LIST, 'POST',
+        { userId, ecdSectorIds },
+        { Authorization: `Bearer ${auth.token}` }
+      );
+
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+
+      const newTableData = tableData.map((user) => {
+        if (user[USER_FIELDS.KEY] === userId) {
+          return { ...user, [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: ecdSectorIds };
+        }
+        return user;
+      });
+
+      setTableData(newTableData);
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -405,8 +542,9 @@ const UsersTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Пользователи</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewUserModal
@@ -418,10 +556,15 @@ const UsersTable = () => {
           services={services}
           posts={posts}
           recsBeingAdded={recsBeingAdded}
+          roleAbbrs={roleAbbrs}
+          stations={stations}
+          dncSectors={dncSectorsData}
+          ecdSectors={ecdSectorsData}
         />
 
-        <Title level={2} className="center top-margin-05">Пользователи</Title>
-
+        {/*
+          Кнопка добавления нового пользователя
+        */}
         <Button
           type="primary"
           style={{
@@ -432,6 +575,9 @@ const UsersTable = () => {
           Добавить запись
         </Button>
 
+        {/*
+          Таблица пользователей
+        */}
         <Table
           loading={!dataLoaded}
           components={{
@@ -468,6 +614,9 @@ const UsersTable = () => {
                   userId={record[USER_FIELDS.KEY]}
                 />
 
+                {/*
+                  Роли данного пользователя
+                */}
                 <Title level={4}>Роли</Title>
                 <SavableSelectMultiple
                   key={`roles${record[USER_FIELDS.KEY]}`}
@@ -496,6 +645,108 @@ const UsersTable = () => {
                     handleEditUserRoles({
                       userId: record[USER_FIELDS.KEY],
                       rolesIds: roleIds,
+                    });
+                  }}
+                />
+
+                {/*
+                  Рабочие полигоны-станции данного пользователя
+                */}
+                <Title level={4}>Рабочие полигоны (станции)</Title>
+                <SavableSelectMultiple
+                  placeholder="Выберите станции"
+                  options={
+                    (!stations || !stations.length) ?
+                    [] :
+                    stations.map((station) => {
+                      return {
+                        value: station[STATION_FIELDS.NAME_AND_CODE],
+                      };
+                    })
+                  }
+                  selectedItems={
+                    (!record[USER_FIELDS.STATION_WORK_POLIGONS] || !record[USER_FIELDS.STATION_WORK_POLIGONS].length ||
+                      !stations || !stations.length) ?
+                    [] :
+                    stations
+                      .filter((station) => record[USER_FIELDS.STATION_WORK_POLIGONS].includes(station[STATION_FIELDS.KEY]))
+                      .map(station => station[STATION_FIELDS.NAME_AND_CODE])
+                  }
+                  saveChangesCallback={(selectedVals) => {
+                    const stationIds = stations
+                      .filter(station => selectedVals.includes(station[STATION_FIELDS.NAME_AND_CODE]))
+                      .map(station => station[STATION_FIELDS.KEY]);
+                    handleEditUserStationWorkPoligons({
+                      userId: record[USER_FIELDS.KEY],
+                      stationIds,
+                    });
+                  }}
+                />
+
+                {/*
+                  Рабочие полигоны-участки ДНЦ данного пользователя
+                */}
+                <Title level={4}>Рабочие полигоны (участки ДНЦ)</Title>
+                <SavableSelectMultiple
+                  placeholder="Выберите участки ДНЦ"
+                  options={
+                    (!dncSectorsData || !dncSectorsData.length) ?
+                    [] :
+                    dncSectorsData.map((sector) => {
+                      return {
+                        value: sector[DNCSECTOR_FIELDS.NAME],
+                      };
+                    })
+                  }
+                  selectedItems={
+                    (!record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].length ||
+                      !dncSectorsData || !dncSectorsData.length) ?
+                    [] :
+                    dncSectorsData
+                      .filter((sector) => record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].includes(sector[DNCSECTOR_FIELDS.KEY]))
+                      .map(sector => sector[DNCSECTOR_FIELDS.NAME])
+                  }
+                  saveChangesCallback={(selectedVals) => {
+                    const dncSectorIds = dncSectorsData
+                      .filter(sector => selectedVals.includes(sector[DNCSECTOR_FIELDS.NAME]))
+                      .map(sector => sector[DNCSECTOR_FIELDS.KEY]);
+                    handleEditUserDNCSectorWorkPoligons({
+                      userId: record[USER_FIELDS.KEY],
+                      dncSectorIds,
+                    });
+                  }}
+                />
+
+                {/*
+                  Рабочие полигоны-участки ЭЦД данного пользователя
+                */}
+                <Title level={4}>Рабочие полигоны (участки ЭЦД)</Title>
+                <SavableSelectMultiple
+                  placeholder="Выберите участки ЭЦД"
+                  options={
+                    (!ecdSectorsData || !ecdSectorsData.length) ?
+                    [] :
+                    ecdSectorsData.map((sector) => {
+                      return {
+                        value: sector[ECDSECTOR_FIELDS.NAME],
+                      };
+                    })
+                  }
+                  selectedItems={
+                    (!record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].length ||
+                      !ecdSectorsData || !ecdSectorsData.length) ?
+                    [] :
+                    ecdSectorsData
+                      .filter((sector) => record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].includes(sector[ECDSECTOR_FIELDS.KEY]))
+                      .map(sector => sector[ECDSECTOR_FIELDS.NAME])
+                  }
+                  saveChangesCallback={(selectedVals) => {
+                    const ecdSectorIds = ecdSectorsData
+                      .filter(sector => selectedVals.includes(sector[ECDSECTOR_FIELDS.NAME]))
+                      .map(sector => sector[ECDSECTOR_FIELDS.KEY]);
+                    handleEditUserECDSectorWorkPoligons({
+                      userId: record[USER_FIELDS.KEY],
+                      ecdSectorIds,
                     });
                   }}
                 />

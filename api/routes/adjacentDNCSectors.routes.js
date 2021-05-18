@@ -9,7 +9,7 @@ const {
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
-const { TDNCSector} = require('../models/TDNCSector');
+const { TDNCSector } = require('../models/TDNCSector');
 
 const router = Router();
 
@@ -46,6 +46,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TAdjacentDNCSector.findAll({
+        raw: true,
         attributes: ['ADNCS_DNCSectorID1', 'ADNCS_DNCSectorID2'],
       });
       res.status(OK).json(data);
@@ -249,18 +250,26 @@ router.post(
       const { sectorId, adjacentSectIds } = req.body;
 
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCSector.findOne({ where: { DNCS_ID: sectorId } });
+      const candidate = await TDNCSector.findOne({
+        where: { DNCS_ID: sectorId },
+        transaction: t,
+      });
 
       // Если не находим, то процесс изменения списка смежных участков продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Участок ДНЦ не найден' });
       }
 
       if (adjacentSectIds && adjacentSectIds.length) {
         // Проверяю начилие в БД всех участков, которые необходимо связать с заданным
-        const dncSectors = await TDNCSector.findAll({ where: { DNCS_ID: adjacentSectIds } });
+        const dncSectors = await TDNCSector.findAll({
+          where: { DNCS_ID: adjacentSectIds },
+          transaction: t,
+        });
 
         if (!dncSectors || dncSectors.length !== adjacentSectIds.length) {
+          await t.rollback();
           return res.status(ERR).json({ message: 'Не все смежные участки ДНЦ найдены в базе' });
         }
 
@@ -276,6 +285,7 @@ router.post(
                 { ADNCS_DNCSectorID1: id, ADNCS_DNCSectorID2: sectorId },
               ]
             },
+            transaction: t,
           });
 
           // Если находим, то установить смежность с данным участком не можем.

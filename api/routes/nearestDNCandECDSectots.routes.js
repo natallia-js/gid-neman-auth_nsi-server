@@ -51,6 +51,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TNearestDNCandECDSector.findAll({
+        raw: true,
         attributes: ['NDE_ECDSectorID', 'NDE_DNCSectorID'],
       });
       res.status(OK).json(data);
@@ -295,18 +296,26 @@ router.post(
       const { sectorId, nearestECDSectIds } = req.body;
 
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCSector.findOne({ where: { DNCS_ID: sectorId } });
+      const candidate = await TDNCSector.findOne({
+        where: { DNCS_ID: sectorId },
+        transaction: t,
+      });
 
       // Если не находим, то процесс изменения списка ближайших участков продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Участок ДНЦ не найден' });
       }
 
       if (nearestECDSectIds && nearestECDSectIds.length) {
         // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным участком ДНЦ
-        const ecdSectors = await TECDSector.findAll({ where: { ECDS_ID: nearestECDSectIds } });
+        const ecdSectors = await TECDSector.findAll({
+          where: { ECDS_ID: nearestECDSectIds },
+          transaction: t,
+        });
 
         if (!ecdSectors || ecdSectors.length !== nearestECDSectIds.length) {
+          await t.rollback();
           return res.status(ERR).json({ message: 'Не все ближайшие участки ЭЦД найдены в базе' });
         }
 
@@ -318,6 +327,7 @@ router.post(
              NDE_ECDSectorID: id,
              NDE_DNCSectorID: sectorId,
             },
+            transaction: t,
           });
 
           if (!antiCandidate) {
@@ -398,6 +408,7 @@ router.post(
 
       // Если не находим, то процесс изменения списка ближайших участков продолжать не можем
       if (!candidate) {
+        await t.rollback();
         return res.status(ERR).json({ message: 'Участок ЭЦД не найден' });
       }
 
@@ -406,6 +417,7 @@ router.post(
         const dncSectors = await TDNCSector.findAll({ where: { DNCS_ID: nearestDNCSectIds } });
 
         if (!dncSectors || dncSectors.length !== nearestDNCSectIds.length) {
+          await t.rollback();
           return res.status(ERR).json({ message: 'Не все ближайшие участки ДНЦ найдены в базе' });
         }
 

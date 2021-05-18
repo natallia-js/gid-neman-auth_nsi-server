@@ -301,8 +301,9 @@ const PostsTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Должности</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewPostModal
@@ -313,8 +314,6 @@ const PostsTable = () => {
           clearAddPostMessages={clearAddPostMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Должности</Title>
 
         <Button
           type="primary"

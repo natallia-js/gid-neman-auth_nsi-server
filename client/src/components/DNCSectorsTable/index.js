@@ -415,8 +415,9 @@ const DNCSectorsTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Участки ДНЦ</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewDNCSectorModal
@@ -427,8 +428,6 @@ const DNCSectorsTable = () => {
           clearAddDNCSectorMessages={clearAddDNCSectorMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Участки ДНЦ</Title>
 
         <Button
           type="primary"

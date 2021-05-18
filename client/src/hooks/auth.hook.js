@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   LOCALSTORAGE_NAME,
-  MAIN_ADMIN_ROLE_NAME,
-  SUB_ADMIN_ROLE_NAME
+  CURR_APP_ABBREV_NAME,
 } from '../constants';
 
 
@@ -30,20 +29,9 @@ export const useAuth = () => {
    * Функция входа пользователя в систему
    */
   const login = useCallback((jwtToken, id, service, roles, credentials) => {
-    // Имея список ролей ГИД Неман пользователя, ищем среди них роли администратора
-    // ГИД Неман и подотчетного ему администратора.
-    // Лишь имеющие эти роли пользователи могут работать с данным приложением.
-    let found = false;
-    if (jwtToken && id && roles) {
-      for (let role of roles) {
-        if ((role === MAIN_ADMIN_ROLE_NAME) || (role === SUB_ADMIN_ROLE_NAME)) {
-          found = true;
-          break;
-        }
-      }
-    }
-
-    if (!found) {
+    if (!jwtToken || !id || !roles || !credentials ||
+      // Имея список полномочий пользователя в приложениях ГИД Неман, ищем среди них текущее приложение
+      !credentials.find((app) => app.appAbbrev === CURR_APP_ABBREV_NAME)) {
       setAuthError('Данный пользователь не имеет прав на работу с текущим приложением');
       return;
     }
@@ -71,6 +59,16 @@ export const useAuth = () => {
    * Позволяет очистить объект ошибки аутентификации.
    */
   const clearAuthError = useCallback(() => setAuthError(null), []);
+
+
+  /**
+   * Позволяет проверить, имеет ли пользователь заданное полномочие.
+   *
+   * @param {string} cred
+   */
+  const hasUserCredential = useCallback((cred) => {
+    return Boolean(userCredentials && userCredentials.find((app) => app.creds && app.creds.indexOf(cred) >= 0));
+  }, [userCredentials]);
 
 
   /**
@@ -112,6 +110,7 @@ export const useAuth = () => {
     userCredentials,
     ready,
     authError,
-    clearAuthError
+    clearAuthError,
+    hasUserCredential,
   };
-}
+};

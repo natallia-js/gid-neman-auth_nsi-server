@@ -48,6 +48,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TStation.findAll({
+        raw: true,
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
       });
       res.status(OK).json(data);
@@ -151,17 +152,15 @@ router.post(
       const { id } = req.body;
 
       // Перед удалением самой станции необходимо удалить связанные с нею записи в других таблицах
-      await TBlock.destroy(
-        {
-          where: {
-            [Op.or]: [
-              { Bl_StationID1: id },
-              { Bl_StationID2: id },
-            ],
-          },
-          transaction: t,
+      await TBlock.destroy({
+        where: {
+          [Op.or]: [
+            { Bl_StationID1: id },
+            { Bl_StationID2: id },
+          ],
         },
-      );
+        transaction: t,
+      });
       await TDNCTrainSectorStation.destroy({ where: { DNCTSS_StationID: id }, transaction: t });
       await TECDTrainSectorStation.destroy({ where: { ECDTSS_StationID: id }, transaction: t });
       await TStation.destroy({ where: { St_ID: id }, transaction: t });
@@ -241,8 +240,8 @@ router.post(
 
       await TStation.update(updateFields, {
         where: {
-          St_ID: id
-        }
+          St_ID: id,
+        },
       });
 
       res.status(OK).json({ message: 'Информация успешно изменена' });

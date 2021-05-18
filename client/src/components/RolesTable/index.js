@@ -285,13 +285,17 @@ const RolesTable = () => {
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableData((roles) => roles.map((role) => {
-        if (String(role[ROLE_FIELDS.KEY]) === String(roleId)) {
-          let roleApp = role[ROLE_FIELDS.APPLICATIONS]
-            .find((app) => String(app[APP_FIELDS.KEY]) === String(appId));
-          if (!roleApp) {
-            roleApp = { appId };
-          }
-          roleApp[APP_FIELDS.CREDENTIALS] = credIds;
+        if (String(role[ROLE_FIELDS.KEY]) !== String(roleId)) {
+          return role;
+        }
+        let application = role[ROLE_FIELDS.APPLICATIONS].find((app) => String(app[APP_FIELDS.KEY]) === String(appId));
+        if (application) {
+          application[APP_FIELDS.CREDENTIALS] = credIds;
+        } else {
+          role[ROLE_FIELDS.APPLICATIONS].push({
+            [APP_FIELDS.KEY]: appId,
+            [APP_FIELDS.CREDENTIALS]: credIds,
+          });
         }
         return role;
       }));
@@ -357,8 +361,9 @@ const RolesTable = () => {
 
   return (
     <>
-    {
-      loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
+      <Title level={2} className="center top-margin-05">Роли ГИД НЕМАН</Title>
+
+      {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
         <NewRoleModal
@@ -369,8 +374,6 @@ const RolesTable = () => {
           clearAddRoleMessages={clearAddRoleMessages}
           recsBeingAdded={recsBeingAdded}
         />
-
-        <Title level={2} className="center top-margin-05">Роли ГИД НЕМАН</Title>
 
         <Button
           type="primary"
