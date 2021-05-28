@@ -33,6 +33,7 @@ const registerValidationRules = () => {
       .if(body('service').exists())
       .trim(),
     check('roles')
+      .if(body('roles').exists())
       .isArray()
       .withMessage('Список ролей пользователя должен быть массивом'),
     check('stations')

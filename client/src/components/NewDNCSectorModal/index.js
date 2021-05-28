@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { DNCSECTOR_FIELDS } from '../../constants';
 
@@ -30,6 +30,8 @@ const NewDNCSectorModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredNameErrMess, setRequiredNameErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новом участке.
@@ -39,14 +41,21 @@ const NewDNCSectorModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddDNCSectorMessages();
+    setRequiredNameErrMess(null);
+  };
+
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddDNCSectorMessages();
+    resetAll();
     handleAddNewDNCSectorOk({ ...values });
   };
 
@@ -58,8 +67,7 @@ const NewDNCSectorModal = ({
     handleAddNewDNCSectorCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddDNCSectorMessages();
+    resetAll();
   };
 
 
@@ -80,18 +88,25 @@ const NewDNCSectorModal = ({
         <Form.Item
           label="Наименование"
           name={DNCSECTOR_FIELDS.NAME}
-          validateStatus={dncSectorFieldsErrs && dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
-          help={dncSectorFieldsErrs ? dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите наименование участка!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredNameErrMess('Пожалуйста, введите наименование участка!');
+                } else {
+                  setRequiredNameErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(dncSectorFieldsErrs && dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME]) || requiredNameErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(dncSectorFieldsErrs && dncSectorFieldsErrs[DNCSECTOR_FIELDS.NAME]) || requiredNameErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
+            placeholder="Введите наименование участка"
           />
         </Form.Item>
 

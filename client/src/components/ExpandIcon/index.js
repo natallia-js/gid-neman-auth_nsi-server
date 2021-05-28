@@ -1,7 +1,7 @@
 import { DownSquareTwoTone, RightSquareTwoTone } from '@ant-design/icons';
 import { InterfaceDesign } from '../../constants';
 
-// Наименования параметров менять нельзя!!! (antd-table не поймет)
+// Наименования параметров функции менять нельзя!!! (antd-table не поймет)
 const expandIcon = ({ expanded, onExpand, record }) =>
   expanded ? (
     <DownSquareTwoTone

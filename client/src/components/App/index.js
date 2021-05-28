@@ -12,6 +12,7 @@ import '../../assets/styles/modals.scss';
 import '../../assets/styles/tables.scss';
 import '../../assets/styles/text.scss';
 import '../../assets/styles/lists.scss';
+import '../../assets/styles/blocks.scss';
 
 const { Content, Footer } = Layout;
 

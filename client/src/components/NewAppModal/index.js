@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { APP_FIELDS } from '../../constants';
 
@@ -30,6 +30,9 @@ const NewAppModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredShortTitleErrMess, setRequiredShortTitleErrMess] = useState(null);
+  const [requiredTitleErrMess, setRequiredTitleErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новом приложении.
@@ -39,14 +42,21 @@ const NewAppModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddAppMessages();
+    setRequiredShortTitleErrMess(null);
+    setRequiredTitleErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddAppMessages();
+    resetAll();
     handleAddNewAppOk({ ...values });
   };
 
@@ -58,8 +68,7 @@ const NewAppModal = ({
     handleAddNewAppCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddAppMessages();
+    resetAll();
   };
 
 
@@ -80,14 +89,20 @@ const NewAppModal = ({
         <Form.Item
           label="Аббревиатура"
           name={APP_FIELDS.SHORT_TITLE}
-          validateStatus={appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE] ? ERR_VALIDATE_STATUS : null}
-          help={appFieldsErrs ? appFieldsErrs[APP_FIELDS.SHORT_TITLE] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите аббревиатуру приложения!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredShortTitleErrMess('Пожалуйста, введите аббревиатуру приложения!');
+                } else {
+                  setRequiredShortTitleErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess}
         >
           <Input
             autoFocus={true}
@@ -99,14 +114,20 @@ const NewAppModal = ({
         <Form.Item
           label="Полное наименование"
           name={APP_FIELDS.TITLE}
-          validateStatus={appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE] ? ERR_VALIDATE_STATUS : null}
-          help={appFieldsErrs ? appFieldsErrs[APP_FIELDS.TITLE] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите полное наименование приложения!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredTitleErrMess('Пожалуйста, введите полное наименование приложения!');
+                } else {
+                  setRequiredTitleErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE]) || requiredTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE]) || requiredTitleErrMess}
         >
           <Input
             autoComplete="off"

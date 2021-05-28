@@ -248,7 +248,7 @@ const checkRoleExists = async (roleId) => {
  * surname - фамилия пользователя (обязательна),
  * service - наименование службы (необязательно),
  * post - должность (обязательна),
- * roles - массив ролей (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
+ * roles - массив ролей (не обязателен),
  *         каждый элемент массива - строка с id роли,
  * stations - массив рабочих полигонов-станций (не обязателен),
  *            каждый элемент массива - строка с id станции,
@@ -320,11 +320,13 @@ router.post(
         return res.status(ERR).json({ message: 'Пользователь с таким логином уже существует' });
       }
 
-      for (let role of roles) {
-        if (!await checkRoleExists(role)) {
-          await t.rollback();
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
+      if (roles) {
+        for (let role of roles) {
+          if (!await checkRoleExists(role)) {
+            await t.rollback();
+            await session.abortTransaction();
+            return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
+          }
         }
       }
 
@@ -340,7 +342,7 @@ router.post(
         surname,
         post,
         service: service || null,
-        roles,
+        roles: roles || [],
       };
       let user;
       if (_id) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { SERVICE_FIELDS } from '../../constants';
 
@@ -30,6 +30,9 @@ const NewServiceModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredAbbrevErrMess, setRequiredAbbrevErrMess] = useState(null);
+  const [requiredTitleErrMess, setRequiredTitleErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новой службе.
@@ -39,14 +42,21 @@ const NewServiceModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddServiceMessages();
+    setRequiredAbbrevErrMess(null);
+    setRequiredTitleErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddServiceMessages();
+    resetAll();
     handleAddNewServiceOk({ ...values });
   };
 
@@ -58,8 +68,7 @@ const NewServiceModal = ({
     handleAddNewServiceCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddServiceMessages();
+    resetAll();
   };
 
 
@@ -80,35 +89,49 @@ const NewServiceModal = ({
         <Form.Item
           label="Аббревиатура"
           name={SERVICE_FIELDS.ABBREV}
-          validateStatus={serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.ABBREV] ? ERR_VALIDATE_STATUS : null}
-          help={serviceFieldsErrs ? serviceFieldsErrs[SERVICE_FIELDS.ABBREV] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите аббревиатуру службы!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredAbbrevErrMess('Пожалуйста, введите аббревиатуру службы!');
+                } else {
+                  setRequiredAbbrevErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.ABBREV]) || requiredAbbrevErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.ABBREV]) || requiredAbbrevErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
+            placeholder="Введите аббревиатуру"
           />
         </Form.Item>
 
         <Form.Item
           label="Наименование"
           name={SERVICE_FIELDS.TITLE}
-          validateStatus={serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.TITLE] ? ERR_VALIDATE_STATUS : null}
-          help={serviceFieldsErrs ? serviceFieldsErrs[SERVICE_FIELDS.TITLE] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите наименование службы!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredTitleErrMess('Пожалуйста, введите наименование службы!');
+                } else {
+                  setRequiredTitleErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.TITLE]) || requiredTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(serviceFieldsErrs && serviceFieldsErrs[SERVICE_FIELDS.TITLE]) || requiredTitleErrMess}
         >
           <Input
             autoComplete="off"
+            placeholder="Введите наименование службы"
           />
         </Form.Item>
 

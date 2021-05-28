@@ -11,6 +11,7 @@ import { DNCSectorsPage } from './pages/DNCSectorsPage';
 import { ECDSectorsPage } from './pages/ECDSectorsPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { PostsPage } from './pages/PostsPage';
+import { OrderPatternsPage } from './pages/OrderPatternsPage';
 
 import { GetDataCredentials } from './constants';
 
@@ -51,6 +52,9 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
         </Route>
         <Route path="/dncSectors" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_DNCSECTORS_ACTION) ? <DNCSectorsPage /> : <Redirect to="/ecdSectors" />}
+        </Route>
+        <Route path="/orderPatterns" exact>
+          <OrderPatternsPage />
         </Route>
         <Route path="/ecdSectors" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_ECDSECTORS_ACTION) ? <ECDSectorsPage /> : <Redirect to="/help" />}

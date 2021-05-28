@@ -99,7 +99,12 @@ const usersTableColumns = (props) => {
               </a>
             </Col>
             <Col>
-              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+              <Popconfirm
+                title="Отменить редактирование?"
+                onConfirm={handleCancelMod}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   style={{
@@ -131,7 +136,12 @@ const usersTableColumns = (props) => {
               </Typography.Link>
             </Col>
             <Col>
-              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelUser(record[USER_FIELDS.KEY])}>
+              <Popconfirm
+                title="Удалить запись?"
+                onConfirm={() => handleDelUser(record[USER_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]))}

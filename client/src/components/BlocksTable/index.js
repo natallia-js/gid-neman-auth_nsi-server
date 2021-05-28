@@ -66,6 +66,8 @@ const BlocksTable = () => {
   // Для сортировки данных в столбцах таблицы
   const { getColumnSearchProps } = useColumnSearchProps();
 
+  const [initialEditedRecordValues, setInitialEditedRecordValues] = useState(null);
+
 
   /**
    * Извлекает информацию по станциям (от нее зависит отображение информации по перегонам) из первоисточника
@@ -199,6 +201,7 @@ const BlocksTable = () => {
       ...record,
     });
     setEditingKey(record[BLOCK_FIELDS.KEY]);
+    setInitialEditedRecordValues(record);
   };
 
 
@@ -209,6 +212,7 @@ const BlocksTable = () => {
    const finishEditing = () => {
     setEditingKey('');
     setModBlockFieldsErrs(null);
+    setInitialEditedRecordValues(null);
   };
 
 
@@ -365,13 +369,47 @@ const BlocksTable = () => {
   });
 
 
+  /**
+   * Позволяет автоматически формировать наименование перегона на основании информации о выбранных станциях.
+   */
+  const onValuesChange = (changedValues) => {
+    let station1Name;
+    let station2Name;
+
+    if (changedValues[BLOCK_FIELDS.STATION1]) {
+      const stationInfoObj = JSON.parse(changedValues[BLOCK_FIELDS.STATION1][STATION_FIELDS.NAME_AND_CODE]);
+      setInitialEditedRecordValues((value) => {
+        return {
+          ...value,
+          [BLOCK_FIELDS.STATION1]: stationInfoObj,
+        };
+      });
+      station1Name = stationInfoObj[STATION_FIELDS.NAME];
+      station2Name = initialEditedRecordValues[BLOCK_FIELDS.STATION2][STATION_FIELDS.NAME];
+    }
+    if (changedValues[BLOCK_FIELDS.STATION2]) {
+      const stationInfoObj = JSON.parse(changedValues[BLOCK_FIELDS.STATION2][STATION_FIELDS.NAME_AND_CODE]);
+      setInitialEditedRecordValues((value) => {
+        return {
+          ...value,
+          [BLOCK_FIELDS.STATION2]: stationInfoObj,
+        };
+      });
+      station2Name = stationInfoObj[STATION_FIELDS.NAME];
+      station1Name = initialEditedRecordValues[BLOCK_FIELDS.STATION1][STATION_FIELDS.NAME];
+    }
+
+    form.setFieldsValue({ [BLOCK_FIELDS.NAME]: `${station1Name} - ${station2Name}` });
+  }
+
+
   return (
     <>
       <Title level={2} className="center top-margin-05">Перегоны</Title>
 
       {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
-      <Form form={form} component={false}>
+      <Form form={form} component={false} onValuesChange={onValuesChange}>
         <NewBlockModal
           isModalVisible={isAddNewBlockModalVisible}
           handleAddNewBlockOk={handleAddNewBlockOk}

@@ -1,7 +1,7 @@
 const {
   MAIN_ADMIN_ROLE_NAME,
   UNAUTHORIZED,
-  UNAUTHORIZED_ERR_MESS,
+  NOT_MAIN_ADMIN_ERR_MESS,
 } = require('../constants');
 
 
@@ -27,7 +27,7 @@ const checkMainAdmin = (req, res, next) => {
   }
 
   if (!isMainAdmin(req)) {
-    return res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
+    return res.status(UNAUTHORIZED).json({ message: NOT_MAIN_ADMIN_ERR_MESS });
   }
 
   next();

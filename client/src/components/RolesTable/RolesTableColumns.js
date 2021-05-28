@@ -66,7 +66,12 @@ const rolesTableColumns = (props) => {
               </a>
             </Col>
             <Col>
-              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+              <Popconfirm
+                title="Отменить редактирование?"
+                onConfirm={handleCancelMod}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   style={{
@@ -98,7 +103,12 @@ const rolesTableColumns = (props) => {
               </Typography.Link>
             </Col>
             <Col>
-              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelRole(record[ROLE_FIELDS.KEY])}>
+              <Popconfirm
+                title="Удалить запись?"
+                onConfirm={() => handleDelRole(record[ROLE_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[ROLE_FIELDS.KEY]))}

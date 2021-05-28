@@ -18,7 +18,7 @@ const schema = new Schema({
   fatherName: { type: String, required: false },
   // должность
   post: { type: String, required: isPostFieldRequired },
-  // служба
+  // служба (аббревиатура)
   service: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId]

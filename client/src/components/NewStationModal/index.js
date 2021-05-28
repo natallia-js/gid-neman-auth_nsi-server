@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { STATION_FIELDS } from '../../constants';
 
@@ -30,6 +30,9 @@ const NewStationModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredCodeErrMess, setRequiredCodeErrMess] = useState(null);
+  const [requiredNameErrMess, setRequiredNameErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новой станции.
@@ -39,14 +42,21 @@ const NewStationModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddStationMessages();
+    setRequiredCodeErrMess(null);
+    setRequiredNameErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddStationMessages();
+    resetAll();
     handleAddNewStationOk({ ...values });
   };
 
@@ -58,8 +68,7 @@ const NewStationModal = ({
     handleAddNewStationCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddStationMessages();
+    resetAll();
   };
 
 
@@ -72,7 +81,7 @@ const NewStationModal = ({
     >
       <Form
         layout="vertical"
-        size='small'
+        size="small"
         form={form}
         name="new-station-form"
         onFinish={onFinish}
@@ -80,35 +89,49 @@ const NewStationModal = ({
         <Form.Item
           label="ЕСР-код"
           name={STATION_FIELDS.ESR_CODE}
-          validateStatus={stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.ESR_CODE] ? ERR_VALIDATE_STATUS : null}
-          help={stationFieldsErrs ? stationFieldsErrs[STATION_FIELDS.ESR_CODE] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите ЕСР-код станции!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredCodeErrMess('Пожалуйста, введите ЕСР-код станции!');
+                } else {
+                  setRequiredCodeErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.ESR_CODE]) || requiredCodeErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.ESR_CODE]) || requiredCodeErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
+            placeholder="Введите ЕСР-код станции"
           />
         </Form.Item>
 
         <Form.Item
           label="Наименование"
           name={STATION_FIELDS.NAME}
-          validateStatus={stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.NAME] ? ERR_VALIDATE_STATUS : null}
-          help={stationFieldsErrs ? stationFieldsErrs[STATION_FIELDS.NAME] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите наименование станции!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredNameErrMess('Пожалуйста, введите наименование станции!');
+                } else {
+                  setRequiredNameErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.NAME]) || requiredNameErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.NAME]) || requiredNameErrMess}
         >
           <Input
             autoComplete="off"
+            placeholder="Введите наименование станции"
           />
         </Form.Item>
 

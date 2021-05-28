@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { STATION_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
 
@@ -23,6 +23,7 @@ const EditableTableCell = ({
   ...restProps
 }) => {
   let inputNode;
+  const [requiredErrMess, setRequiredErrMess] = useState(null);
 
   switch (inputType) {
     case 'number':
@@ -84,11 +85,17 @@ const EditableTableCell = ({
             !required ? {} :
             {
               required: true,
-              message: `Пожалуйста, введите ${title}!`,
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredErrMess(`Не задано значение поля "${title}"!`);
+                } else {
+                  setRequiredErrMess(null);
+                }
+              },
             },
           ]}
-          validateStatus={errMessage ? ERR_VALIDATE_STATUS : null}
-          help={errMessage ? errMessage : null}
+          validateStatus={errMessage || requiredErrMess ? ERR_VALIDATE_STATUS : null}
+          help={errMessage || requiredErrMess}
         >
           {inputNode}
         </Form.Item>

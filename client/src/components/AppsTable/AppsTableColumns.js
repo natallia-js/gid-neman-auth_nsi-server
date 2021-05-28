@@ -56,7 +56,12 @@ const appsTableColumns = (props) => {
               </a>
             </Col>
             <Col>
-              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+              <Popconfirm
+                title="Отменить редактирование?"
+                onConfirm={handleCancelMod}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   style={{
@@ -88,7 +93,12 @@ const appsTableColumns = (props) => {
               </Typography.Link>
             </Col>
             <Col>
-              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelApp(record[APP_FIELDS.KEY])}>
+              <Popconfirm
+                title="Удалить запись?"
+                onConfirm={() => handleDelApp(record[APP_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY]))}

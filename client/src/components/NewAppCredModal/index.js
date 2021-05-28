@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { APP_CRED_FIELDS } from '../../constants';
 
@@ -32,6 +32,7 @@ const NewAppCredModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredCredErrMess, setRequiredCredErrMess] = useState(null);
 
   /**
    * Чистим поля ввода информации о новом полномочии.
@@ -41,14 +42,20 @@ const NewAppCredModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddAppCredMessages();
+    setRequiredCredErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddAppCredMessages();
+    resetAll();
     handleAddNewAppCredOk({ ...values });
   };
 
@@ -60,8 +67,7 @@ const NewAppCredModal = ({
     handleAddNewAppCredCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddAppCredMessages();
+    resetAll();
   };
 
 
@@ -74,22 +80,28 @@ const NewAppCredModal = ({
     >
       <Form
         layout="vertical"
-        size='small'
+        size="small"
         form={form}
-        name={`new-app-cred-form${appId}`}
+        name="new-app-cred-form"
         onFinish={onFinish}
       >
         <Form.Item
           label="Аббревиатура"
           name={APP_CRED_FIELDS.ENGL_ABBREVIATION}
-          validateStatus={appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION] ? ERR_VALIDATE_STATUS : null}
-          help={appCredFieldsErrs ? appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите аббревиатуру полномочия!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredCredErrMess('Пожалуйста, введите аббревиатуру полномочия!');
+                } else {
+                  setRequiredCredErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION]) || requiredCredErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION]) || requiredCredErrMess}
         >
           <Input
             autoFocus={true}

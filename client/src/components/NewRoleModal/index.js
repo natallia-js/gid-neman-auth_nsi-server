@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography, Checkbox } from 'antd';
 import { ROLE_FIELDS } from '../../constants';
 
@@ -30,6 +30,8 @@ const NewRoleModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredAbbrevErrMess, setRequiredAbbrevErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новой роли.
@@ -39,14 +41,20 @@ const NewRoleModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddRoleMessages();
+    setRequiredAbbrevErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddRoleMessages();
+    resetAll();
     handleAddNewRoleOk({ ...values });
   };
 
@@ -58,8 +66,7 @@ const NewRoleModal = ({
     handleAddNewRoleCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddRoleMessages();
+    resetAll();
   };
 
 
@@ -72,7 +79,7 @@ const NewRoleModal = ({
     >
       <Form
         layout="vertical"
-        size='small'
+        size="small"
         form={form}
         name="new-role-form"
         onFinish={onFinish}
@@ -83,14 +90,20 @@ const NewRoleModal = ({
         <Form.Item
           label="Аббревиатура"
           name={ROLE_FIELDS.ENGL_ABBREVIATION}
-          validateStatus={roleFieldsErrs && roleFieldsErrs[ROLE_FIELDS.ENGL_ABBREVIATION] ? ERR_VALIDATE_STATUS : null}
-          help={roleFieldsErrs ? roleFieldsErrs[ROLE_FIELDS.ENGL_ABBREVIATION] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите аббревиатуру роли!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredAbbrevErrMess('Пожалуйста, введите аббревиатуру роли!');
+                } else {
+                  setRequiredAbbrevErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(roleFieldsErrs && roleFieldsErrs[ROLE_FIELDS.ENGL_ABBREVIATION]) || requiredAbbrevErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(roleFieldsErrs && roleFieldsErrs[ROLE_FIELDS.ENGL_ABBREVIATION]) || requiredAbbrevErrMess}
         >
           <Input
             autoFocus={true}
@@ -104,12 +117,6 @@ const NewRoleModal = ({
           name={ROLE_FIELDS.DESCRIPTION}
           validateStatus={roleFieldsErrs && roleFieldsErrs[ROLE_FIELDS.DESCRIPTION] ? ERR_VALIDATE_STATUS : null}
           help={roleFieldsErrs ? roleFieldsErrs[ROLE_FIELDS.DESCRIPTION] : null}
-          rules={[
-            {
-              required: true,
-              message: 'Пожалуйста, введите описание роли!',
-            },
-          ]}
         >
           <Input
             autoComplete="off"

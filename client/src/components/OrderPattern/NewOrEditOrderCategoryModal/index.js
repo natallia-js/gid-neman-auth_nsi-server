@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
-import { ECDSECTOR_FIELDS } from '../../constants';
 
 const { Text } = Typography;
 
@@ -8,25 +7,26 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Компонент модального окна добавления информации о новом участке ЭЦД.
+ * Компонент модального окна добавления либо редактирования наименования категории распоряжения.
  *
  * @param {object} params - свойства компонента:
  *   isModalVisible,
- *   handleAddNewECDSectorOk,
- *   handleAddNewECDSectorCancel,
- *   ecdSectorFieldsErrs,
- *   clearAddECDSectorMessages,
- *   recsBeingAdded,
+ *   orderCategoryName,
+ *   handleOk,
+ *   handleCancel,
+ *   fieldsErrs,
+ *   clearMessages,
+ *   recsBeingProcessed,
  */
-const NewECDSectorModal = ({
+const NewOrEditOrderCategoryModal = ({
   isModalVisible,
-  handleAddNewECDSectorOk,
-  handleAddNewECDSectorCancel,
-  ecdSectorFieldsErrs,
-  clearAddECDSectorMessages,
-  recsBeingAdded,
+  orderCategoryName,
+  handleOk,
+  handleCancel,
+  fieldsErrs,
+  clearMessages,
+  recsBeingProcessed,
 }) => {
-
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
@@ -34,7 +34,15 @@ const NewECDSectorModal = ({
 
 
   /**
-   * Чистим поля ввода информации о новом участке.
+   * Устанавливаем исходные значения полей ввода информации.
+   */
+  useEffect(() => {
+    form.setFieldsValue({ name: orderCategoryName });
+  }, [form, orderCategoryName]);
+
+
+  /**
+   * Чистим поля ввода информации.
    */
   const onReset = () => {
     form.resetFields();
@@ -43,7 +51,7 @@ const NewECDSectorModal = ({
 
   const resetAll = () => {
     // Чистим все сообщения
-    clearAddECDSectorMessages();
+    clearMessages();
     setRequiredNameErrMess(null);
   };
 
@@ -55,7 +63,7 @@ const NewECDSectorModal = ({
    */
   const onFinish = (values) => {
     resetAll();
-    handleAddNewECDSectorOk({ ...values });
+    handleOk({ ...values });
   };
 
 
@@ -63,7 +71,7 @@ const NewECDSectorModal = ({
    * Обработка события отмены ввода информации.
    */
   const onCancel = () => {
-    handleAddNewECDSectorCancel();
+    handleCancel();
     // Чистим поля ввода
     onReset();
     resetAll();
@@ -72,7 +80,11 @@ const NewECDSectorModal = ({
 
   return (
     <Modal
-      title="Введите информацию о новом участке ЭЦД"
+      title={
+        !orderCategoryName ?
+        'Введите информацию о новой категории распоряжений' :
+        'Редактирование существующей категории распоряжений'
+      }
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
@@ -81,31 +93,31 @@ const NewECDSectorModal = ({
         layout="vertical"
         size='small'
         form={form}
-        name="new-ecdsector-form"
+        name="new-order-category-form"
         onFinish={onFinish}
       >
         <Form.Item
-          label="Наименование"
-          name={ECDSECTOR_FIELDS.NAME}
+          label="Наименование категории распоряжений"
+          name="name"
           rules={[
             {
               required: true,
               validator: async (_, value) => {
                 if (!value || value.length < 1) {
-                  setRequiredNameErrMess('Пожалуйста, введите наименование участка!');
+                  setRequiredNameErrMess('Пожалуйста, введите наименование категории распоряжений!');
                 } else {
                   setRequiredNameErrMess(null);
                 }
               },
             },
           ]}
-          validateStatus={(ecdSectorFieldsErrs && ecdSectorFieldsErrs[ECDSECTOR_FIELDS.NAME]) || requiredNameErrMess ? ERR_VALIDATE_STATUS : null}
-          help={(ecdSectorFieldsErrs && ecdSectorFieldsErrs[ECDSECTOR_FIELDS.NAME]) || requiredNameErrMess}
+          validateStatus={(fieldsErrs && fieldsErrs['name']) || requiredNameErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(fieldsErrs && fieldsErrs['name']) || requiredNameErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
-            placeholder="Введите наименование участка"
+            placeholder="Введите наименование категории распоряжений"
           />
         </Form.Item>
 
@@ -123,11 +135,11 @@ const NewECDSectorModal = ({
           </div>
         </Form.Item>
 
-        { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
+        { recsBeingProcessed > 0 && <Text type="warning">На сервер отправлено {recsBeingProcessed} запросов. Ожидаю ответ...</Text> }
       </Form>
     </Modal>
   );
 };
 
 
-export default NewECDSectorModal;
+export default NewOrEditOrderCategoryModal;

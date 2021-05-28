@@ -57,7 +57,12 @@ const appCredsTableColumns = (props) => {
               </a>
             </Col>
             <Col>
-              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+              <Popconfirm
+                title="Отменить редактирование?"
+                onConfirm={handleCancelMod}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   style={{
@@ -89,7 +94,12 @@ const appCredsTableColumns = (props) => {
               </Typography.Link>
             </Col>
             <Col>
-              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelAppCred(record[APP_CRED_FIELDS.KEY])}>
+              <Popconfirm
+                title="Удалить запись?"
+                onConfirm={() => handleDelAppCred(record[APP_CRED_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_CRED_FIELDS.KEY]))}

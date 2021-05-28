@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
 import { POST_FIELDS } from '../../constants';
 
@@ -30,6 +30,9 @@ const NewPostModal = ({
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [requiredAbbrevErrMess, setRequiredAbbrevErrMess] = useState(null);
+  const [requiredTitleErrMess, setRequiredTitleErrMess] = useState(null);
+
 
   /**
    * Чистим поля ввода информации о новой должности.
@@ -39,14 +42,21 @@ const NewPostModal = ({
   };
 
 
+  const resetAll = () => {
+    // Чистим все сообщения
+    clearAddPostMessages();
+    setRequiredAbbrevErrMess(null);
+    setRequiredTitleErrMess(null);
+  };
+
+
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
    * @param {object} values
    */
   const onFinish = (values) => {
-    // Чистим все сообщения
-    clearAddPostMessages();
+    resetAll();
     handleAddNewPostOk({ ...values });
   };
 
@@ -58,8 +68,7 @@ const NewPostModal = ({
     handleAddNewPostCancel();
     // Чистим поля ввода
     onReset();
-    // Чистим все сообщения
-    clearAddPostMessages();
+    resetAll();
   };
 
 
@@ -80,35 +89,49 @@ const NewPostModal = ({
         <Form.Item
           label="Аббревиатура"
           name={POST_FIELDS.ABBREV}
-          validateStatus={postFieldsErrs && postFieldsErrs[POST_FIELDS.ABBREV] ? ERR_VALIDATE_STATUS : null}
-          help={postFieldsErrs ? postFieldsErrs[POST_FIELDS.ABBREV] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите аббревиатуру должности!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredAbbrevErrMess('Пожалуйста, введите аббревиатуру должности!');
+                } else {
+                  setRequiredAbbrevErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(postFieldsErrs && postFieldsErrs[POST_FIELDS.ABBREV]) || requiredAbbrevErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(postFieldsErrs && postFieldsErrs[POST_FIELDS.ABBREV]) || requiredAbbrevErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
+            placeholder="Введите аббревиатуру"
           />
         </Form.Item>
 
         <Form.Item
           label="Наименование"
           name={POST_FIELDS.TITLE}
-          validateStatus={postFieldsErrs && postFieldsErrs[POST_FIELDS.TITLE] ? ERR_VALIDATE_STATUS : null}
-          help={postFieldsErrs ? postFieldsErrs[POST_FIELDS.TITLE] : null}
           rules={[
             {
               required: true,
-              message: 'Пожалуйста, введите наименование должности!',
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredTitleErrMess('Пожалуйста, введите наименование должности!');
+                } else {
+                  setRequiredTitleErrMess(null);
+                }
+              },
             },
           ]}
+          validateStatus={(postFieldsErrs && postFieldsErrs[POST_FIELDS.TITLE]) || requiredTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(postFieldsErrs && postFieldsErrs[POST_FIELDS.TITLE]) || requiredTitleErrMess}
         >
           <Input
             autoComplete="off"
+            placeholder="Введите наименование должности"
           />
         </Form.Item>
 

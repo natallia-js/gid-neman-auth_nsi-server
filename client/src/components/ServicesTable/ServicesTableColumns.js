@@ -56,7 +56,12 @@ const servicesTableColumns = (props) => {
               </a>
             </Col>
             <Col>
-              <Popconfirm title="Отменить редактирование?" onConfirm={handleCancelMod}>
+              <Popconfirm
+                title="Отменить редактирование?"
+                onConfirm={handleCancelMod}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   style={{
@@ -88,7 +93,12 @@ const servicesTableColumns = (props) => {
               </Typography.Link>
             </Col>
             <Col>
-              <Popconfirm title="Удалить запись?" onConfirm={() => handleDelService(record[SERVICE_FIELDS.KEY])}>
+              <Popconfirm
+                title="Удалить запись?"
+                onConfirm={() => handleDelService(record[SERVICE_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
                 <a
                   href="#!"
                   disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[SERVICE_FIELDS.KEY]))}

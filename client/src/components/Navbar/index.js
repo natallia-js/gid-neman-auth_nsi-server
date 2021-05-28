@@ -67,8 +67,9 @@ export const Navbar = () => {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_ECDSECTORS_ACTION) &&
           <Menu.Item key="9"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
         }
-        <Menu.Item key="10"><NavLink to="/help">Помощь</NavLink></Menu.Item>
-        <Menu.Item key="11"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+        <Menu.Item key="10"><NavLink to="/orderPatterns">Шаблоны распоряжений</NavLink></Menu.Item>
+        <Menu.Item key="11"><NavLink to="/help">Помощь</NavLink></Menu.Item>
+        <Menu.Item key="12"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
       </Menu>
     </Header>
   );
