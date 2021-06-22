@@ -57,6 +57,7 @@ app.use('/api/nsi/dncTrainSectorBlocks', (req, _res, next) => { req.sequelize = 
 app.use('/api/nsi/ecdTrainSectorBlocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdTrainSectorBlocks.routes'));
 app.use('/api/nsi/services', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/services.routes'));
 app.use('/api/nsi/posts', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/posts.routes'));
+app.use('/api/orderPatterns', require('./routes/orderPatterns.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

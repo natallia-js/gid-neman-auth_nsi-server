@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from 'antd';
 import { OrderPatternElementType, ElementSizesCorrespondence } from '../constants';
+import getOrderPatternElementView from '../getOrderPatternElementView';
+import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../../constants';
 
 const { Title } = Typography;
 
@@ -16,7 +18,7 @@ export const OrderPatternPreview = ({ orderPattern }) => {
 
     const linebreakElementsIndexes = [];
     orderPattern.forEach((element, index) => {
-      if (element.type === OrderPatternElementType.LINEBREAK) {
+      if (element[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] === OrderPatternElementType.LINEBREAK) {
         linebreakElementsIndexes.push(index);
       }
     });
@@ -44,22 +46,25 @@ export const OrderPatternPreview = ({ orderPattern }) => {
           <div key={index} style={{ minHeight: '1.5rem' }}>
           {
             array.map((patternElement) => (
-              patternElement.type === OrderPatternElementType.TEXT
+              patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] === OrderPatternElementType.TEXT
               ?
-              <span key={patternElement.id} style={{ marginRight: 5, marginBottom: 5 }}>
-                {patternElement.element}
+              <span
+                key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
+                style={{ marginRight: 5, marginBottom: 5 }}
+              >
+                {getOrderPatternElementView(patternElement)}
               </span>
               :
               <div
-                key={patternElement.id}
+                key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
                 style={{
-                  width: ElementSizesCorrespondence[patternElement.size],
+                  width: ElementSizesCorrespondence[patternElement[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]],
                   marginRight: 5,
                   marginBottom: 2,
                   display: 'inline-block',
                 }}
               >
-                {patternElement.element}
+                {getOrderPatternElementView(patternElement)}
               </div>
             ))
           }

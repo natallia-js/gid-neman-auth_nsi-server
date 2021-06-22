@@ -108,6 +108,7 @@ const NewPostModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите аббревиатуру"
+            allowClear
           />
         </Form.Item>
 
@@ -132,6 +133,7 @@ const NewPostModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите наименование должности"
+            allowClear
           />
         </Form.Item>
 

@@ -124,6 +124,7 @@ const ECDTrainSectorsBlock = (props) => {
                   <Input
                     autoComplete="off"
                     placeholder="Название добавляемого участка"
+                    allowClear
                   />
                 </Form.Item>
               </Col>

@@ -108,6 +108,7 @@ const NewServiceModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите аббревиатуру"
+            allowClear
           />
         </Form.Item>
 
@@ -132,6 +133,7 @@ const NewServiceModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите наименование службы"
+            allowClear
           />
         </Form.Item>
 

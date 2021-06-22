@@ -8,12 +8,11 @@ export const OrderTypes = Object.freeze({
   NOTIFICATION: 'уведомление',
 });
 
-export const NewOrderFields = Object.freeze({
+export const OrderPatternsNodeType = Object.freeze({
   SERVICE: 'service',
-  TYPE: 'type',
-  CATEGORY: 'category',
-  TITLE: 'title',
-  ELEMENTS: 'elements',
+  ORDER_TYPE: 'orderType',
+  ORDER_CATEGORY: 'orderCategory',
+  ORDER_PATTERN: 'orderPattern',
 });
 
 export const OrderPatternElementType = Object.freeze({

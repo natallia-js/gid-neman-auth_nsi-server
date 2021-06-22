@@ -1,5 +1,16 @@
 const { check, body } = require('express-validator');
 
+const getDefiniteDNCSectorsValidationRules = () => {
+  return [
+    check('dncSectorIds')
+      .exists()
+      .withMessage('Не указан массив id участков ДНЦ')
+      .bail()
+      .isArray()
+      .withMessage('Список id участков ДНЦ должен быть массивом'),
+  ];
+};
+
 const addDNCSectorValidationRules = () => {
   return [
     check('name')
@@ -31,6 +42,7 @@ const modDNCSectorValidationRules = () => {
 };
 
 module.exports = {
+  getDefiniteDNCSectorsValidationRules,
   addDNCSectorValidationRules,
   delDNCSectorValidationRules,
   modDNCSectorValidationRules,

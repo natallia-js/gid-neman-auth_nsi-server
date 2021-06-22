@@ -127,6 +127,7 @@ const NewBlockModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите наименование перегона"
+            allowClear
           />
         </Form.Item>
 

@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefiniteECDSectorsValidationRules,
   addECDSectorValidationRules,
   delECDSectorValidationRules,
   modECDSectorValidationRules,
@@ -105,6 +106,49 @@ router.get(
       const data = await TECDSector.findAll({
         raw: true,
         attributes: ['ECDS_ID', 'ECDS_Title'],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка участков ЭЦД и только, без вложенных списков поездных участков,
+ * по id этих участков ЭЦД.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.post(
+  '/shortDefinitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getDefiniteECDSectorsValidationRules(),
+  validate,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { ecdSectorIds } = req.body;
+
+      const data = await TECDSector.findAll({
+        raw: true,
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: ecdSectorIds },
       });
       res.status(OK).json(data);
 

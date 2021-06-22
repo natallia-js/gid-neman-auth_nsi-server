@@ -1,24 +1,16 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Typography, Row, Col, Button, Popconfirm, Form, Select, Input, DatePicker, TimePicker, Space } from 'antd';
+import { Typography, Row, Col, Button, Popconfirm, Form, Select, Input, Space } from 'antd';
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import { ServerAPI, SERVICE_FIELDS } from '../../../constants';
-import {
-  OrderPatternElementType,
-  OrderTypes,
-  NewOrderFields,
-  DateFormat,
-  TimeFormat,
-  DateTimeFormat,
-  ElementSizesCorrespondence,
-} from '../constants';
+import { OrderTypes } from '../constants';
 import { useHttp } from '../../../hooks/http.hook';
 import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
-import { EnterOutlined } from '@ant-design/icons';
-import NewOrEditOrderCategoryModal from '../NewOrEditOrderCategoryModal';
 import { OrderCategoryChooser } from '../OrderCategoryChooser';
+import objectId from '../../../generators/objectId.generator';
+import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS } from '../../../constants';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -31,10 +23,11 @@ const ERR_VALIDATE_STATUS = 'error';
  *
  * services - массив всех служб
  * existingOrderAffiliationTree - массив, представляющий собой дерево принадлежности созданных распоряжений
- * (уровни дерева: служба -> тип распоряжения -> категория распоряжения)
+ *   (уровни дерева: служба -> тип распоряжения -> категория распоряжения)
+ * onCreateOrderPattern - callback для передачи "наверх" сформированного и успешно сохраненного в БД шаблона распоряжения
  */
 export const CreateOrderPattern = (props) => {
-  const { services, existingOrderAffiliationTree } = props;
+  const { services, existingOrderAffiliationTree, onCreateOrderPattern } = props;
 
   // Массив элементов создаваемого шаблона
   const [orderPattern, setOrderPattern] = useState([]);
@@ -42,8 +35,8 @@ export const CreateOrderPattern = (props) => {
   // Текущая позиция, на которую будет вставлен созданный элемент шаблона
   const [insertOrderElementPos, setInsertOrderElementPos] = useState(0);
 
-  // ?????????????????????????
-  const [nextPatternElementID, setNextPatternElementID] = useState(1);
+  // Список категорий распоряжений, соответстввующий текущей выбранной пользователем службе и типу распоряжения
+  const [currentOrderCategoriesList, setCurrentOrderCategoriesList] = useState([]);
 
   // Для создания значений полей нового распоряжения
   const [form] = Form.useForm();
@@ -57,70 +50,46 @@ export const CreateOrderPattern = (props) => {
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
 
-  //
+  // Выбранная пользователем служба
+  const [selectedService, setSelectedService] = useState(null);
+  // Сообщение об ошибке, связанное с отсутствием заданного наименования службы
   const [requiredServiceErrMess, setRequiredServiceErrMess] = useState(null);
 
-  //
+  // Выбранный пользователем тип распоряжения
+  const [selectedOrderType, setSelectedOrderType] = useState(null);
+  // Сообщение об ошибке, связанное с отсутствием заданного типа распоряжения
+  const [requiredOrderTypeErrMess, setRequiredOrderTypeErrMess] = useState(null);
+
+  // Категория распоряжения, определенная пользователем
+  const [orderCategory, setOrderCategory] = useState(null);
+  // Сообщение об ошибке, связанное с отсутствием заданной категории распоряжения
+  const [missingOrderCategoryErr, setMissingOrderCategoryErr] = useState(null);
+
+  // Сообщение об ошибке, связанное с отсутствием заданного наименования распоряжения
+  const [requiredOrderTitleErrMess, setRequiredOrderTitleErrMess] = useState(null);
+
+  // Количество шаблонов, переданное серверу с целью сохранения в базе
   const [recsBeingAdded, setRecsBeingAdded] = useState(0);
 
-  const [selectedService, setSelectedService] = useState(null);
-  const [selectedOrderType, setSelectedOrderType] = useState(null);
-  const [selectedOrderCategory, setSelectedOrderCategory] = useState(null);
-
-  // Видимо либо нет модальное окно добавления новой / редактирования существующей записи о категории распоряжения
-  const [isOrderCategoryModalVisible, setOrderCategoryModalVisible] = useState(false);
-
-  // Ошибки добавления / редактирования информации о категории распоряжения
-  const [orderCategoryFieldsErrs, setOrderCategoryFieldsErrs] = useState(null);
-
-  // количество запущенных процессов добавления / редактирования информации о категории распоряжения на сервере
-  const [orderCategoryRecsBeingProcessed, setOrderCategoryRecsBeingProcessed] = useState(0);
-
-  // true - add, false - edit, undefined - nothing
-  const [addOrderCategory, setAddOrderCategory] = useState(undefined);
-
-  const [currentOrderCategoriesList, setCurrentOrderCategoriesList] = useState([]);
+  // Ошибки, выявленные серверной частью в информационных полях, в процессе обработки
+  // запроса о создании нового шаблона распоряжения
+  const [orderPatternFieldsErrs, setOrderPatternFieldsErrs] = useState(null);
 
 
   /**
-   *
-   */
-  const getOrderPatternElementView = (element) => {
-    switch (element.type) {
-      case OrderPatternElementType.TEXT:
-        return <span>{element.value}</span>;
-      case OrderPatternElementType.INPUT:
-        return <Input style={{ width: ElementSizesCorrespondence[element.size] }} size="small" />;
-      case OrderPatternElementType.SELECT:
-        return <Select style={{ width: ElementSizesCorrespondence[element.size] }} size="small" />;
-      case OrderPatternElementType.DATE:
-        return <DatePicker format={DateFormat} size="small" />;
-      case OrderPatternElementType.TIME:
-        return <TimePicker format={TimeFormat} size="small" />;
-      case OrderPatternElementType.DATETIME:
-        return <DatePicker showTime format={DateTimeFormat} size="small" />;
-      case OrderPatternElementType.LINEBREAK:
-        return <EnterOutlined />;
-      default:
-        return null;
-    }
-  };
-
-
-  /**
-   *
+   * Добавляет заданный элемент в создаваемый шаблон распоряжения на текущую позицию
+   * (т.е. позицию, на которой находится курсор).
    */
   const addNewPatternElement = (selectedPatternElement) => {
     if (!selectedPatternElement) {
       return;
     }
     const newElement = {
-      id: nextPatternElementID,
-      type: selectedPatternElement.type,
-      ref: selectedPatternElement.ref,
-      value: selectedPatternElement.value,
-      size: selectedPatternElement.size,
-      element: getOrderPatternElementView(selectedPatternElement),
+      [ORDER_PATTERN_ELEMENT_FIELDS.KEY]: objectId(),
+      [ORDER_PATTERN_ELEMENT_FIELDS.TYPE]: selectedPatternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE],
+      [ORDER_PATTERN_ELEMENT_FIELDS.REF]: selectedPatternElement[ORDER_PATTERN_ELEMENT_FIELDS.REF],
+      [ORDER_PATTERN_ELEMENT_FIELDS.VALUE]: selectedPatternElement[ORDER_PATTERN_ELEMENT_FIELDS.VALUE],
+      [ORDER_PATTERN_ELEMENT_FIELDS.SIZE]: selectedPatternElement[ORDER_PATTERN_ELEMENT_FIELDS.SIZE],
     };
     setOrderPattern((value) =>
       [
@@ -134,25 +103,24 @@ export const CreateOrderPattern = (props) => {
     } else {
       setInsertOrderElementPos(1);
     }
-    setNextPatternElementID((value) => value + 1);
   };
 
 
   /**
-   *
+   * Позволяет отредактировать элемент шаблона с id = elementId путем замены его
+   * на элемент editedElement.
    */
   const editPatternElement = (elementId, editedElement) => {
-    const elementIndex = orderPattern.findIndex((element) => element.id === elementId);
+    const elementIndex = orderPattern.findIndex((element) => element[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === elementId);
     if (elementIndex === -1) {
       return;
     }
     setOrderPattern((value) => value.map((el) => {
-      if (el.id !== elementId) {
+      if (el[ORDER_PATTERN_ELEMENT_FIELDS.KEY] !== elementId) {
         return el;
       }
       return {
-        id: elementId,
-        element: getOrderPatternElementView(editedElement),
+        [ORDER_PATTERN_ELEMENT_FIELDS.KEY]: elementId,
         ...editedElement,
       };
     }));
@@ -160,25 +128,25 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   *
+   * Позволяет удалить элемент шаблона с id = elementId.
    */
   const delPatternElement = (elementId) => {
-    const elementIndex = orderPattern.findIndex((element) => element.id === elementId);
+    const elementIndex = orderPattern.findIndex((element) => element[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === elementId);
     if (elementIndex === -1) {
       return;
     }
     if (elementIndex < insertOrderElementPos) {
       setInsertOrderElementPos((value) => value - 1);
     }
-    setOrderPattern((value) => value.filter((el) => el.id !== elementId));
+    setOrderPattern((value) => value.filter((el) => el[ORDER_PATTERN_ELEMENT_FIELDS.KEY] !== elementId));
   };
 
 
   /**
-   *
+   * Позволяет вставить курсор перед заданным элементом шаблона.
    */
   const setCursorBeforeElement = (elementId) => {
-    const elementIndex = orderPattern.findIndex((element) => element.id === elementId);
+    const elementIndex = orderPattern.findIndex((element) => element[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === elementId);
     if (elementIndex === -1) {
       return;
     }
@@ -187,10 +155,10 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   *
+   * Позволяет вставить курсор после заданного элемента шаблона.
    */
   const setCursorAfterElement = (elementId) => {
-    const elementIndex = orderPattern.findIndex((element) => element.id === elementId);
+    const elementIndex = orderPattern.findIndex((element) => element[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === elementId);
     if (elementIndex === -1) {
       return;
     }
@@ -199,25 +167,12 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   *
+   * Позволяет выполнить очистку создаваемого шаблона распоряжения путем удаления
+   * из него всех созданных элементов.
    */
   const clearPattern = () => {
     setOrderPattern([]);
     setInsertOrderElementPos(0);
-    setNextPatternElementID(1);
-  };
-
-
-  /**
-   * Обработка события подтверждения пользователем окончания ввода.
-   *
-   * @param {object} values
-   */
-  const onFinish = (values) => {
-    // Чистим все сообщения
-    //clearAddUserMessages();
-    //handleAddNewUserOk({ ...values });
-    console.log(values)
   };
 
 
@@ -226,93 +181,91 @@ export const CreateOrderPattern = (props) => {
    * запоминаем выбранную информацию (для смены информации в списке категорий распоряжений).
    */
   const onValuesChange = (changedValues) => {
-    if (changedValues[NewOrderFields.SERVICE]) {
-      setSelectedService(changedValues[NewOrderFields.SERVICE]);
-    } else if (changedValues[NewOrderFields.TYPE]) {
-      setSelectedOrderType(changedValues[NewOrderFields.TYPE]);
-    } else if (changedValues[NewOrderFields.CATEGORY]) {
-      setSelectedOrderCategory(changedValues[NewOrderFields.CATEGORY]);
+    if (changedValues[ORDER_PATTERN_FIELDS.SERVICE]) {
+      setSelectedService(changedValues[ORDER_PATTERN_FIELDS.SERVICE]);
+    } else if (changedValues[ORDER_PATTERN_FIELDS.TYPE]) {
+      setSelectedOrderType(changedValues[ORDER_PATTERN_FIELDS.TYPE]);
     }
   };
 
 
   /**
-   *
+   * Меняем текущий список категорий распоряжений при смене текущей службы и/или типа распоряжения.
    */
   useEffect(() => {
-    const currentServiceInfo = existingOrderAffiliationTree.find((service) => service.name === selectedService);
-    if (!currentServiceInfo || !currentServiceInfo.orderTypes) {
+    const currentServiceInfo = existingOrderAffiliationTree.find((service) => service.title === selectedService);
+    if (!currentServiceInfo || !currentServiceInfo.children) {
       setCurrentOrderCategoriesList([]);
     } else {
-      const orderTypeInfo = currentServiceInfo.orderTypes.find((orderType) => orderType.name === selectedOrderType);
-      if (!orderTypeInfo || !orderTypeInfo.orderCategories) {
+      const orderTypeInfo = currentServiceInfo.children.find((orderType) => orderType.title === selectedOrderType);
+      if (!orderTypeInfo || !orderTypeInfo.children) {
         setCurrentOrderCategoriesList([]);
       } else {
-        setCurrentOrderCategoriesList(orderTypeInfo.orderCategories || []);
+        setCurrentOrderCategoriesList(orderTypeInfo.children.map((category) => category.title) || []);
       }
     }
-    setSelectedOrderCategory(null);
-    form.setFieldsValue({ [NewOrderFields.CATEGORY]: null });
   }, [selectedService, existingOrderAffiliationTree, selectedOrderType, form]);
 
 
-  // --------------------------------------------------------------
-  // Для работы с диалоговым окном добавления / редактирования информации о категории распоряжения
-
-  const showAddOrEditOrderCategoryModal = () => {
-    setOrderCategoryModalVisible(true);
-  };
-
-  const handleAddOrEditOrderCategoryOk = (orderCategory) => {
-    //handleAddNewStation(station);
-  };
-
-  const handleAddOrEditOrderCategoryCancel = () => {
-    setAddOrderCategory(undefined);
-    setOrderCategoryModalVisible(false);
-  };
-
-  // --------------------------------------------------------------
-
-
   /**
-   * Чистит все сообщения добавления / редактирования категории распоряжения (ошибки и успех).
-   */
-   const clearAddOrEditOrderCategoryMessages = () => {
-    setOrderCategoryFieldsErrs(null);
-  };
-
-
-  /**
-   *
-   */
-  useEffect(() => {
-    if (typeof addOrderCategory === 'boolean') {
-      showAddOrEditOrderCategoryModal();
-    }
-  }, [addOrderCategory]);
-
-
-  /**
-   *
+   * Реакция на смену определяемой пользователем категории распоряжений.
    */
   const handleChangeOrderCategory = (value) => {
-    console.log('value',value);
+    setOrderCategory(value);
+    if (missingOrderCategoryErr && value && value.length) {
+      setMissingOrderCategoryErr(null);
+    }
+  };
+
+
+  /**
+   * Обработка события подтверждения пользователем окончания ввода и начала создания
+   * нового распоряжения.
+   *
+   * @param {object} values
+   */
+   const onFinish = async (values) => {
+    // Чистим все сообщения об ошибках
+    setOrderPatternFieldsErrs(null);
+
+    if (!orderCategory || !orderCategory.length) {
+      setMissingOrderCategoryErr('Пожалуйста, определите категорию распоряжения!');
+      return;
+    }
+
+    setRecsBeingAdded((value) => value + 1);
+
+    try {
+      // Делаем запрос на сервер с целью добавления информации о шаблоне распоряжения
+      const res = await request(ServerAPI.ADD_ORDER_PATTERN_DATA, 'POST',
+        {
+          ...values,
+          [ORDER_PATTERN_FIELDS.CATEGORY]: orderCategory,
+          [ORDER_PATTERN_FIELDS.ELEMENTS]: orderPattern,
+        },
+        { Authorization: `Bearer ${auth.token}` }
+      );
+
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+
+      onCreateOrderPattern(res.orderPattern);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+
+      if (e.errors) {
+        const errs = {};
+        e.errors.forEach((e) => { errs[e.param] = e.msg; });
+        setOrderPatternFieldsErrs(errs);
+      }
+    }
+
+    setRecsBeingAdded((value) => value - 1);
   };
 
 
   return (
     <Row justify="space-around">
-      <NewOrEditOrderCategoryModal
-        isModalVisible={isOrderCategoryModalVisible}
-        orderCategoryName={addOrderCategory === true ? null : addOrderCategory === false ? selectedOrderCategory : undefined}
-        handleOk={handleAddOrEditOrderCategoryOk}
-        handleCancel={handleAddOrEditOrderCategoryCancel}
-        fieldsErrs={orderCategoryFieldsErrs}
-        clearMessages={clearAddOrEditOrderCategoryMessages}
-        recsBeingProcessed={recsBeingAdded}
-      />
-
       <Col span={8}>
         <Form
           layout="vertical"
@@ -336,7 +289,7 @@ export const CreateOrderPattern = (props) => {
 
           <Form.Item
             label={<Text strong>Служба</Text>}
-            name={NewOrderFields.SERVICE}
+            name={ORDER_PATTERN_FIELDS.SERVICE}
             rules={[
               {
                 required: true,
@@ -349,8 +302,8 @@ export const CreateOrderPattern = (props) => {
                 },
               },
             ]}
-            validateStatus={requiredServiceErrMess ? ERR_VALIDATE_STATUS : null}
-            help={requiredServiceErrMess}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SERVICE]) || requiredServiceErrMess ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SERVICE]) || requiredServiceErrMess}
           >
             <Select>
             {
@@ -369,13 +322,21 @@ export const CreateOrderPattern = (props) => {
 
           <Form.Item
             label={<Text strong>Тип распоряжения</Text>}
-            name={NewOrderFields.TYPE}
+            name={ORDER_PATTERN_FIELDS.TYPE}
             rules={[
               {
                 required: true,
-                message: 'Пожалуйста, выберите тип распоряжения!',
+                validator: async (_, value) => {
+                  if (!value || value.length < 1) {
+                    setRequiredOrderTypeErrMess('Пожалуйста, выберите тип распоряжения!');
+                  } else {
+                    setRequiredOrderTypeErrMess(null);
+                  }
+                },
               },
             ]}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.TYPE]) || requiredOrderTypeErrMess ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.TYPE]) || requiredOrderTypeErrMess}
           >
             <Select>
             {
@@ -397,6 +358,11 @@ export const CreateOrderPattern = (props) => {
                     orderCategoriesList={currentOrderCategoriesList}
                     onChangeValue={handleChangeOrderCategory}
                   />
+                  {missingOrderCategoryErr && <Text type="danger">{missingOrderCategoryErr}</Text>}
+                  {
+                    orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.CATEGORY] &&
+                    <Text type="danger">{orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.CATEGORY]}</Text>
+                  }
                 </Space>
               </div>
             </Col>
@@ -404,16 +370,25 @@ export const CreateOrderPattern = (props) => {
 
           <Form.Item
             label={<Text strong>Наименование распоряжения</Text>}
-            name={NewOrderFields.TITLE}
+            name={ORDER_PATTERN_FIELDS.TITLE}
             rules={[
               {
                 required: true,
-                message: 'Пожалуйста, введите наименование распоряжения!',
+                validator: async (_, value) => {
+                  if (!value || value.length < 1) {
+                    setRequiredOrderTitleErrMess('Пожалуйста, выберите наименование распоряжения!');
+                  } else {
+                    setRequiredOrderTitleErrMess(null);
+                  }
+                },
               },
             ]}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.TITLE]) || requiredOrderTitleErrMess ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.TITLE]) || requiredOrderTitleErrMess}
           >
             <Input
               autoComplete="off"
+              allowClear
             />
           </Form.Item>
         </Form>
@@ -444,22 +419,26 @@ export const CreateOrderPattern = (props) => {
                   delPatternElementCallback={delPatternElement}
                   editPatternElementCallback={editPatternElement}
                 />
-                <Popconfirm
-                  title="Очистить шаблон?"
-                  onConfirm={clearPattern}
-                  okText="Да"
-                  cancelText="Отмена"
-                >
-                  <Button
-                    type="primary"
-                    size="small"
-                    style={{
-                      marginBottom: 16,
-                    }}
+                {
+                  (orderPattern && orderPattern.length) ?
+                  <Popconfirm
+                    title="Очистить шаблон?"
+                    onConfirm={clearPattern}
+                    okText="Да"
+                    cancelText="Отмена"
                   >
-                    Очистить шаблон
-                  </Button>
-                </Popconfirm>
+                    <Button
+                      type="primary"
+                      size="small"
+                      style={{
+                        marginBottom: 16,
+                      }}
+                    >
+                      Очистить шаблон
+                    </Button>
+                  </Popconfirm>
+                  : <></>
+                }
               </Space>
             </Col>
           </Row>

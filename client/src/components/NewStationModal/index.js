@@ -108,6 +108,7 @@ const NewStationModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите ЕСР-код станции"
+            allowClear
           />
         </Form.Item>
 
@@ -132,6 +133,7 @@ const NewStationModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите наименование станции"
+            allowClear
           />
         </Form.Item>
 

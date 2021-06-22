@@ -162,6 +162,7 @@ const NewUserModal = ({
                 autoFocus={true}
                 placeholder="Введите логин"
                 autoComplete="off"
+                allowClear
               />
             </Form.Item>
           </Col>
@@ -187,6 +188,7 @@ const NewUserModal = ({
               <Input
                 placeholder="Введите пароль"
                 autoComplete="off"
+                allowClear
               />
             </Form.Item>
           </Col>
@@ -215,6 +217,7 @@ const NewUserModal = ({
               <Input
                 placeholder="Введите имя"
                 autoComplete="off"
+                allowClear
               />
             </Form.Item>
           </Col>
@@ -228,6 +231,7 @@ const NewUserModal = ({
               <Input
                 placeholder="Введите отчество"
                 autoComplete="off"
+                allowClear
               />
             </Form.Item>
           </Col>
@@ -253,6 +257,7 @@ const NewUserModal = ({
               <Input
                 placeholder="Введите фамилию"
                 autoComplete="off"
+                allowClear
               />
             </Form.Item>
           </Col>

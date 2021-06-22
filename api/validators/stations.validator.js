@@ -1,5 +1,16 @@
 const { check, body } = require('express-validator');
 
+const getDefiniteStationsValidationRules = () => {
+  return [
+    check('stationIds')
+      .exists()
+      .withMessage('Не указан массив id станций')
+      .bail()
+      .isArray()
+      .withMessage('Список id станций должен быть массивом'),
+  ];
+};
+
 const addStationValidationRules = () => {
   return [
     check('ESRCode')
@@ -40,6 +51,7 @@ const modStationValidationRules = () => {
 };
 
 module.exports = {
+  getDefiniteStationsValidationRules,
   addStationValidationRules,
   delStationValidationRules,
   modStationValidationRules,

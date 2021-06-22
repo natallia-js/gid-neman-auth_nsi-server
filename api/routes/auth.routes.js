@@ -665,23 +665,23 @@ router.post(
         }
       }
 
-      // Осталось извлечь перечень рабочих полигонов пользователя
+      // Осталось извлечь перечень рабочих полигонов пользователя (точнее, их id)
 
       const stations = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_UserID', 'SWP_StID'],
+        attributes: ['SWP_StID'],
         where: { SWP_UserID: String(user._id) },
       });
 
       const dncSectors = await TDNCSectorWorkPoligon.findAll({
         raw: true,
-        attributes: ['DNCSWP_UserID', 'DNCSWP_DNCSID'],
+        attributes: ['DNCSWP_DNCSID'],
         where: { DNCSWP_UserID: String(user._id) },
       });
 
       const ecdSectors = await TECDSectorWorkPoligon.findAll({
         raw: true,
-        attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
+        attributes: ['ECDSWP_ECDSID'],
         where: { ECDSWP_UserID: String(user._id) },
       });
 

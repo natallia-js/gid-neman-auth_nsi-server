@@ -28,7 +28,7 @@ export default function App() {
     userId,
     token,
     ready,
-    userService,
+    userInfo,
     userRoles,
     userCredentials,
     authError,
@@ -51,7 +51,7 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{
-      login, logout, isAuthenticated, token, userId, userService, userRoles,
+      login, logout, isAuthenticated, token, userId, userInfo, userRoles,
       userCredentials, authError, clearAuthError, hasUserCredential,
     }}>
       <Router>

@@ -13,8 +13,8 @@ export const useAuth = () => {
   const [token, setToken] = useState(null);
   // Уникальный идентификатор пользователя
   const [userId, setUserId] = useState(null);
-  // Принадлежность службе
-  const [userService, setUserService] = useState(null);
+  // Информация о пользователе (имя, отчество, фамилия, служба, должность)
+  const [userInfo, setUserInfo] = useState(null);
   // Роли пользователя системы ГИД Неман
   const [userRoles, setUserRoles] = useState(null);
   // Полномочия пользователя во всех приложениях ГИД Неман
@@ -28,7 +28,7 @@ export const useAuth = () => {
   /**
    * Функция входа пользователя в систему
    */
-  const login = useCallback((jwtToken, id, service, roles, credentials) => {
+  const login = useCallback((jwtToken, id, userInfo, roles, credentials) => {
     if (!jwtToken || !id || !roles || !credentials ||
       // Имея список полномочий пользователя в приложениях ГИД Неман, ищем среди них текущее приложение
       !credentials.find((app) => app.appAbbrev === CURR_APP_ABBREV_NAME)) {
@@ -38,7 +38,7 @@ export const useAuth = () => {
 
     setToken(jwtToken);
     setUserId(id);
-    setUserService(service);
+    setUserInfo(userInfo);
     setUserRoles(roles);
     setUserCredentials(credentials);
 
@@ -48,7 +48,7 @@ export const useAuth = () => {
       ...localStorageData,
       userId: id,
       token: jwtToken,
-      userService: service,
+      userInfo,
       userRoles: roles,
       userCredentials: credentials,
     }));
@@ -77,7 +77,7 @@ export const useAuth = () => {
   const logout = useCallback(() => {
     setToken(null);
     setUserId(null);
-    setUserService(null);
+    setUserInfo(null);
     setUserRoles(null);
     setUserCredentials(null);
 
@@ -93,7 +93,7 @@ export const useAuth = () => {
     const data = JSON.parse(localStorage.getItem(LOCALSTORAGE_NAME));
 
     if (data) {
-      login(data.token, data.userId, data.userService, data.userRoles, data.userCredentials);
+      login(data.token, data.userId, data.userInfo, data.userRoles, data.userCredentials);
     }
 
     setReady(true);
@@ -105,7 +105,7 @@ export const useAuth = () => {
     logout,
     token,
     userId,
-    userService,
+    userInfo,
     userRoles,
     userCredentials,
     ready,

@@ -122,6 +122,12 @@ export const ServerAPI = Object.freeze({
   MOD_STATIONS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/stations/change',
   MOD_DNC_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/dncSectors/change',
   MOD_ECD_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/ecdSectors/change',
+
+  GET_ORDER_PATTERNS_LIST: ServerAddress + '/api/orderPatterns/data',
+  ADD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/add',
+  DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
+  MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
+  MOD_ORDER_CATEGORY_TITLE: ServerAddress + '/api/orderPatterns/modCategoryTitle',
 });
 
 // ----------------------------------------
@@ -245,6 +251,25 @@ export const TRAIN_SECTOR_FIELDS = Object.freeze({
   NAME: 'name',
   STATIONS: 'stations',
   BLOCKS: 'blocks',
+});
+
+// ----------------------------------------
+
+export const ORDER_PATTERN_FIELDS = Object.freeze({
+  KEY: '_id',
+  SERVICE: 'service',
+  TYPE: 'type',
+  CATEGORY: 'category',
+  TITLE: 'title',
+  ELEMENTS: 'elements',
+});
+
+export const ORDER_PATTERN_ELEMENT_FIELDS = Object.freeze({
+  KEY: '_id',
+  TYPE: 'type',
+  SIZE: 'size',
+  REF: 'ref',
+  VALUE: 'value',
 });
 
 // ----------------------------------------

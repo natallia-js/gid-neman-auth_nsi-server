@@ -34,7 +34,7 @@ export const AuthPage = () => {
       const data = await request(ServerAPI.LOGIN, 'POST', { ...loginData });
 
       // Входим в систему
-      auth.login(data.token, data.userId, data.userInfo.service, data.roles, data.credentials);
+      auth.login(data.token, data.userId, data.userInfo, data.roles, data.credentials);
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);

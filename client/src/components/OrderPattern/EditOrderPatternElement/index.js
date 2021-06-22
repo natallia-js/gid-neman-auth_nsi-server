@@ -137,6 +137,7 @@ export const EditOrderPatternElement = (props) => {
           value={selectedPatternElement.value}
           onChange={changePatternElementValue}
           size="small"
+          allowClear
         />;
       case OrderPatternElementType.INPUT:
         return <Input

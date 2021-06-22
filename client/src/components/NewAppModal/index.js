@@ -108,6 +108,7 @@ const NewAppModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите аббревиатуру приложения"
+            allowClear
           />
         </Form.Item>
 
@@ -132,6 +133,7 @@ const NewAppModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите полное наименование приложения"
+            allowClear
           />
         </Form.Item>
 

@@ -106,6 +106,7 @@ const NewECDSectorModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите наименование участка"
+            allowClear
           />
         </Form.Item>
 

@@ -9,6 +9,7 @@ const {
 const validate = require('../validators/validate');
 const { TService } = require('../models/TService');
 const User = require('../models/User');
+const OrderPattern = require('../models/OrderPattern');
 const mongoose = require('mongoose');
 
 const router = Router();
@@ -177,6 +178,8 @@ router.post(
         { $set: { service: null } },
         { session },
       );
+      // В коллекции шаблонов распоряжений ничего не трогаем: аббревиатура службы остается как есть.
+      // Информация о ней исчезнет после удаления всех связанных с нею шаблонов распоряжений.
 
       await t.commit();
       await session.commitTransaction();
@@ -283,8 +286,14 @@ router.post(
         transaction: t,
       });
 
-      // В коллекции пользователей также редактируем изменившуюся аббревиатуру службы
+      // Редактируем наименование службы в коллекции шаблонов распоряжений.
+      // В коллекции пользователей также редактируем изменившуюся аббревиатуру службы.
       if (candidate.S_Abbrev !== abbrev) {
+        await OrderPattern.updateMany(
+          { service: candidate.S_Abbrev },
+          { $set: { service: abbrev } },
+          { session },
+        );
         await User.updateMany(
           { service: candidate.S_Abbrev },
           { $set: { service: abbrev } },

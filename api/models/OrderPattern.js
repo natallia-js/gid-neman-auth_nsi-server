@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model, Types } = require('mongoose');
 
 
 // Схема записи в коллекции шаблонов распоряжений
@@ -16,18 +16,20 @@ const schema = new Schema({
     {
       // Тип элемента шаблона
       type: { type: String, required: true },
-      // Ширина элемента шаблона
-      width: { type: String, required: false },
+      // Размер (ширина) элемента шаблона
+      size: { type: String, required: false },
       // Строка с описанием того, что должно отображаться в элементе шаблона при формировании распоряжения
       ref: { type: String, required: false },
       // Значение элемента шаблона (для элементов типа text)
       value: { type: String, required: false },
     },
   ],
+  // id пользователя, которому необходимо показывать данный шаблон
+  personalPattern: { type: Types.ObjectId, required: false }
 });
 
 /*
-  // select distunct values
+  // select distinct values
   db.orderPatterns.aggregate([{
     $group: {
       _id: {

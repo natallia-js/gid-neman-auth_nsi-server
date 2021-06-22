@@ -14,19 +14,17 @@ export const OrderCategoryChooser = ({
   const [selectValue, setSelectValue] = useState(null);
   const [inputValue, setInputValue] = useState(null);
 
+  // при смене списка категорий распоряжений обнуляем выбор пользователя
+  // в предыдущем списке категорий распоряжений
   useEffect(() => {
-    switch (userChoice) {
-      case OrderCategoryType.EXISTING:
-        onChangeValue(selectValue);
-        break;
-      case OrderCategoryType.NEW:
-        onChangeValue(inputValue);
-        break;
-      default:
-        break;
+    setSelectValue(null);
+    if (userChoice === OrderCategoryType.EXISTING) {
+      onChangeValue(null);
     }
-  }, [selectValue, inputValue, userChoice, onChangeValue]);
+  // не менять список зависимостей!
+  }, [orderCategoriesList]);
 
+  // реакция на смену способа ввода категории распоряжения
   const onChangeUserChoice = (e) => {
     setUserChoice(e.target.value);
   };
@@ -34,12 +32,14 @@ export const OrderCategoryChooser = ({
   const onExistingOrderCategoryChange = (value) => {
     if (userChoice === OrderCategoryType.EXISTING) {
       setSelectValue(value);
+      onChangeValue(value);
     }
   };
 
   const onNewOrderCategoryChange = (e) => {
     if (userChoice === OrderCategoryType.NEW) {
       setInputValue(e.target.value);
+      onChangeValue(e.target.value);
     }
   };
 
@@ -74,6 +74,7 @@ export const OrderCategoryChooser = ({
                 };
               })
             }
+            value={selectValue}
           />
           <Radio value={OrderCategoryType.NEW} style={{ width: '100%' }}>
             Либо создайте новую
@@ -83,6 +84,7 @@ export const OrderCategoryChooser = ({
             onChange={onNewOrderCategoryChange}
             onFocus={onFocusInput}
             value={inputValue}
+            allowClear
           />
         </Space>
       </Radio.Group>

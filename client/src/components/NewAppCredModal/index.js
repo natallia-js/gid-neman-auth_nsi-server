@@ -107,6 +107,7 @@ const NewAppCredModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите аббревиатуру"
+            allowClear
           />
         </Form.Item>
 
@@ -119,6 +120,7 @@ const NewAppCredModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите описание полномочия"
+            allowClear
           />
         </Form.Item>
 

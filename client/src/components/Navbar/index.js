@@ -2,9 +2,11 @@ import React, { useContext } from 'react';
 import { NavLink, useHistory } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { GetDataCredentials } from '../../constants';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Popover, Typography } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 
 const { Header } = Layout;
+const { Text } = Typography;
 
 
 /**
@@ -25,12 +27,25 @@ export const Navbar = () => {
     history.push('/');
   }
 
+  const userInfo = (
+    <div>
+      <p>
+        <Text strong>ФИО:</Text>
+        {` ${auth.userInfo.surname} ${auth.userInfo.name.charAt(0)}. ${auth.userInfo.fatherName ? auth.userInfo.fatherName.charAt(0) + '.' : ''}`}
+      </p>
+      <p><Text strong>Служба:</Text> {auth.userInfo.service}</p>
+      <p><Text strong>Должность:</Text> {auth.userInfo.post}</p>
+      <p><Text strong>Роли:</Text></p>
+      {auth.userRoles.map((role) => <p>{role}</p>)}
+    </div>
+  );
+
 
   // Компонент блока основного меню
   return (
     <Header>
-      <div className="logo" />
       <Menu theme="dark" mode="horizontal" selectedKeys={[]}>
+        <Menu.Item key="0"><Popover content={userInfo} title="Информация о пользователе"><UserOutlined /></Popover></Menu.Item>
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_APPS_ACTION) &&
           <Menu.Item key="1"><NavLink to="/apps">Приложения</NavLink></Menu.Item>

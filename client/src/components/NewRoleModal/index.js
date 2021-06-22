@@ -109,6 +109,7 @@ const NewRoleModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите аббревиатуру роли"
+            allowClear
           />
         </Form.Item>
 
@@ -121,6 +122,7 @@ const NewRoleModal = ({
           <Input
             autoComplete="off"
             placeholder="Введите описание роли"
+            allowClear
           />
         </Form.Item>
 
