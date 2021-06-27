@@ -197,7 +197,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
                 return { ...cred, ...getAppApplicationCredObjFromDBApplicationCredObj(res.cred) };
               }
               return cred;
-            })
+            });
           }
           return app;
         })
@@ -274,7 +274,6 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
   return (
     <Form form={form} component={false}>
       <NewAppCredModal
-        appId={appId}
         isModalVisible={isAddNewAppCredModalVisible}
         handleAddNewAppCredOk={handleAddNewAppCredOk}
         handleAddNewAppCredCancel={handleAddNewAppCredCancel}

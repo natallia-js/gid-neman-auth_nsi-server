@@ -268,3 +268,16 @@ CREATE TABLE TECDSectorWorkPoligons
 	  ON UPDATE NO ACTION
 )
 go
+
+/* Пути перегонов */
+CREATE TABLE TBlockTracks
+(
+  BT_ID int IDENTITY (1,1),
+  BT_BlockId int NOT NULL,
+  BT_Name varchar(16) NOT NULL,
+  CONSTRAINT XPK_TBlockTracks PRIMARY KEY CLUSTERED (BT_ID ASC),
+  CONSTRAINT XRef_TBlockFromBlockTrack FOREIGN KEY (BT_BlockId) REFERENCES TBlocks (Bl_ID)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+go

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
-import { APP_CRED_FIELDS } from '../../constants';
+import { BLOCK_TRACK_FIELDS } from '../../constants';
 
 const { Text } = Typography;
 
@@ -8,32 +8,32 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Компонент модального окна добавления информации о новом полномочии приложения.
+ * Компонент модального окна добавления информации о новом пути перегона.
  *
  * @param {object} params - свойства компонента:
  *   isModalVisible,
- *   handleAddNewAppCredOk,
- *   handleAddNewAppCredCancel,
- *   appCredFieldsErrs,
- *   clearAddAppCredMessages,
+ *   handleAddNewBlockTrackOk,
+ *   handleAddNewBlockTrackCancel,
+ *   blockTrackFieldsErrs,
+ *   clearAddBlockTrackMessages,
  *   recsBeingAdded,
  */
-const NewAppCredModal = ({
+const NewBlockTrackModal = ({
   isModalVisible,
-  handleAddNewAppCredOk,
-  handleAddNewAppCredCancel,
-  appCredFieldsErrs,
-  clearAddAppCredMessages,
+  handleAddNewBlockTrackOk,
+  handleAddNewBlockTrackCancel,
+  blockTrackFieldsErrs,
+  clearAddBlockTrackMessages,
   recsBeingAdded,
 }) => {
 
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
-  const [requiredCredErrMess, setRequiredCredErrMess] = useState(null);
+  const [requiredTrackErrMess, setRequiredTrackErrMess] = useState(null);
 
   /**
-   * Чистим поля ввода информации о новом полномочии.
+   * Чистим поля ввода информации о новом пути.
    */
   const onReset = () => {
     form.resetFields();
@@ -42,8 +42,8 @@ const NewAppCredModal = ({
 
   const resetAll = () => {
     // Чистим все сообщения
-    clearAddAppCredMessages();
-    setRequiredCredErrMess(null);
+    clearAddBlockTrackMessages();
+    setRequiredTrackErrMess(null);
   };
 
 
@@ -54,7 +54,7 @@ const NewAppCredModal = ({
    */
   const onFinish = (values) => {
     resetAll();
-    handleAddNewAppCredOk({ ...values });
+    handleAddNewBlockTrackOk({ ...values });
   };
 
 
@@ -62,7 +62,7 @@ const NewAppCredModal = ({
    * Обработка события отмены ввода информации.
    */
   const onCancel = () => {
-    handleAddNewAppCredCancel();
+    handleAddNewBlockTrackCancel();
     // Чистим поля ввода
     onReset();
     resetAll();
@@ -71,7 +71,7 @@ const NewAppCredModal = ({
 
   return (
     <Modal
-      title="Введите информацию о новом полномочии в приложении"
+      title="Введите информацию о новом пути перегона"
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
@@ -80,44 +80,31 @@ const NewAppCredModal = ({
         layout="vertical"
         size="small"
         form={form}
-        name="new-app-cred-form"
+        name="new-block-track-form"
         onFinish={onFinish}
       >
         <Form.Item
-          label="Аббревиатура"
-          name={APP_CRED_FIELDS.ENGL_ABBREVIATION}
+          label="Наименование"
+          name={BLOCK_TRACK_FIELDS.NAME}
           rules={[
             {
               required: true,
               validator: async (_, value) => {
                 if (!value || value.length < 1) {
-                  setRequiredCredErrMess('Пожалуйста, введите аббревиатуру полномочия!');
+                  setRequiredTrackErrMess('Пожалуйста, введите наименование пути!');
                 } else {
-                  setRequiredCredErrMess(null);
+                  setRequiredTrackErrMess(null);
                 }
               },
             },
           ]}
-          validateStatus={(appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION]) || requiredCredErrMess ? ERR_VALIDATE_STATUS : null}
-          help={(appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.ENGL_ABBREVIATION]) || requiredCredErrMess}
+          validateStatus={(blockTrackFieldsErrs && blockTrackFieldsErrs[BLOCK_TRACK_FIELDS.NAME]) || requiredTrackErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(blockTrackFieldsErrs && blockTrackFieldsErrs[BLOCK_TRACK_FIELDS.NAME]) || requiredTrackErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
-            placeholder="Введите аббревиатуру"
-            allowClear
-          />
-        </Form.Item>
-
-        <Form.Item
-          label="Описание"
-          name={APP_CRED_FIELDS.DESCRIPTION}
-          validateStatus={appCredFieldsErrs && appCredFieldsErrs[APP_CRED_FIELDS.DESCRIPTION] ? ERR_VALIDATE_STATUS : null}
-          help={appCredFieldsErrs ? appCredFieldsErrs[APP_CRED_FIELDS.DESCRIPTION] : null}
-        >
-          <Input
-            autoComplete="off"
-            placeholder="Введите описание полномочия"
+            placeholder="Введите наименование"
             allowClear
           />
         </Form.Item>
@@ -143,4 +130,4 @@ const NewAppCredModal = ({
 };
 
 
-export default NewAppCredModal;
+export default NewBlockTrackModal;

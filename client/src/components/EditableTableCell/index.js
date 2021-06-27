@@ -70,6 +70,7 @@ const EditableTableCell = ({
       break;
     default:
       inputNode = <Input autoComplete="off" />;
+      break;
   }
 
   return (

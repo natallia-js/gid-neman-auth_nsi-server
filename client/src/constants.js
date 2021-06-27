@@ -70,8 +70,11 @@ export const ServerAPI = Object.freeze({
   GET_BLOCKS_DATA: ServerAddress + '/api/nsi/blocks/shortData',
   GET_BLOCKS_FULL_DATA: ServerAddress + '/api/nsi/blocks/data',
   ADD_BLOCK_DATA: ServerAddress + '/api/nsi/blocks/add',
+  ADD_BLOCK_TRACK_DATA: ServerAddress + '/api/nsi/blockTracks/add',
   DEL_BLOCK_DATA: ServerAddress + '/api/nsi/blocks/del',
+  DEL_BLOCK_TRACK_DATA: ServerAddress + '/api/nsi/blockTracks/del',
   MOD_BLOCK_DATA: ServerAddress + '/api/nsi/blocks/mod',
+  MOD_BLOCK_TRACK_DATA: ServerAddress + '/api/nsi/blockTracks/mod',
 
   GET_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/data',
   GET_DNCSECTORS_SHORT_DATA: ServerAddress + '/api/nsi/dncSectors/shortData',
@@ -208,6 +211,12 @@ export const BLOCK_FIELDS = Object.freeze({
   STATION2: 'station2',
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
+  TRACKS: 'TBlockTracks',
+});
+
+export const BLOCK_TRACK_FIELDS = Object.freeze({
+  KEY: 'key',
+  NAME: 'name',
 });
 
 // ----------------------------------------

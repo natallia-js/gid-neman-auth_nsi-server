@@ -1,5 +1,6 @@
 import { BLOCK_FIELDS } from '../constants';
 import getAppStationObjFromDBStationObj from './getAppStationObjFromDBStationObj';
+import getAppBlockTrackObjFromDBBlockTrackObj from './getAppBlockTrackObjFromDBBlockTrackObj';
 
 /**
  * Преобразует объект перегона, полученный из БД, в объект перегона приложения.
@@ -13,6 +14,7 @@ const getAppBlockObjFromDBBlockObj = (dbBlockObj, getTrainSectorInfo = false) =>
   const appBlockObj = {
     [BLOCK_FIELDS.KEY]: dbBlockObj.Bl_ID,
     [BLOCK_FIELDS.NAME]: dbBlockObj.Bl_Title,
+    [BLOCK_FIELDS.TRACKS]: !dbBlockObj.TBlockTracks ? [] : dbBlockObj.TBlockTracks.map((track) => getAppBlockTrackObjFromDBBlockTrackObj(track)),
   };
   if (dbBlockObj.Bl_StationID1) {
     appBlockObj[BLOCK_FIELDS.STATION1] = getAppStationObjFromDBStationObj({ St_ID: dbBlockObj.Bl_StationID1 });

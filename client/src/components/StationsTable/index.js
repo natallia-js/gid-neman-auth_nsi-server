@@ -12,6 +12,7 @@ import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook'
 import stationsTableColumns from './StationsTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
+import expandIcon from '../ExpandIcon';
 
 const { Text, Title } = Typography;
 
@@ -358,6 +359,14 @@ const StationsTable = () => {
                 }
               }
             };
+          }}
+          expandable={{
+            expandedRowRender: record => (
+              <div className="expandable-row-content">
+              </div>
+            ),
+            rowExpandable: _record => true,
+            expandIcon: expandIcon,
           }}
         />
       </Form>

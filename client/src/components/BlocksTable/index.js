@@ -11,6 +11,8 @@ import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFrom
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import compareStrings from '../../sorters/compareStrings';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
+import expandIcon from '../ExpandIcon';
+import BlockTracksTable from './BlockTracksTable';
 
 const { Text, Title } = Typography;
 
@@ -84,6 +86,7 @@ const BlocksTable = () => {
 
       const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
       setTableData(tableData);
+      console.log(tableData)
 
       // -------------------------------
 
@@ -375,6 +378,7 @@ const BlocksTable = () => {
   const onValuesChange = (changedValues) => {
     let station1Name;
     let station2Name;
+    let oneOfStationNamesChanged = false;
 
     if (changedValues[BLOCK_FIELDS.STATION1]) {
       const stationInfoObj = JSON.parse(changedValues[BLOCK_FIELDS.STATION1][STATION_FIELDS.NAME_AND_CODE]);
@@ -386,6 +390,7 @@ const BlocksTable = () => {
       });
       station1Name = stationInfoObj[STATION_FIELDS.NAME];
       station2Name = initialEditedRecordValues[BLOCK_FIELDS.STATION2][STATION_FIELDS.NAME];
+      oneOfStationNamesChanged = true;
     }
     if (changedValues[BLOCK_FIELDS.STATION2]) {
       const stationInfoObj = JSON.parse(changedValues[BLOCK_FIELDS.STATION2][STATION_FIELDS.NAME_AND_CODE]);
@@ -397,9 +402,12 @@ const BlocksTable = () => {
       });
       station2Name = stationInfoObj[STATION_FIELDS.NAME];
       station1Name = initialEditedRecordValues[BLOCK_FIELDS.STATION1][STATION_FIELDS.NAME];
+      oneOfStationNamesChanged = true;
     }
 
-    form.setFieldsValue({ [BLOCK_FIELDS.NAME]: `${station1Name} - ${station2Name}` });
+    if (oneOfStationNamesChanged) {
+      form.setFieldsValue({ [BLOCK_FIELDS.NAME]: `${station1Name} - ${station2Name}` });
+    }
   }
 
 
@@ -458,6 +466,20 @@ const BlocksTable = () => {
                 }
               }
             };
+          }}
+          expandable={{
+            expandedRowRender: record => (
+              <div className="expandable-row-content">
+                <Title level={4}>Пути перегона</Title>
+                <BlockTracksTable
+                  blockId={record[BLOCK_FIELDS.KEY]}
+                  blockTracks={record[BLOCK_FIELDS.TRACKS]}
+                  setTableDataCallback={setTableData}
+                />
+              </div>
+            ),
+            rowExpandable: _record => true,
+            expandIcon: expandIcon,
           }}
         />
       </Form>

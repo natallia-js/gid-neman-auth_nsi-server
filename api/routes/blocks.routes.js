@@ -10,6 +10,7 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TBlock } = require('../models/TBlock');
 const { TStation } = require('../models/TStation');
+const { TBlockTrack } = require('../models/TBlockTrack');
 
 const router = Router();
 
@@ -30,7 +31,7 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех перегонов, без вложенной информации о станциях.
+ * Обрабатывает запрос на получение списка всех перегонов, без вложенной информации о станциях и путях.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -65,7 +66,7 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех перегонов, включая вложенные объекты станций.
+ * Обрабатывает запрос на получение списка всех перегонов, включая вложенные объекты станций и путей.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -95,6 +96,9 @@ router.get(
           model: TStation,
           as: 'station2',
           attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TBlockTrack,
+          attributes: ['BT_ID', 'BT_Name'],
         }],
       });
       res.status(OK).json(data);
@@ -147,12 +151,24 @@ router.post(
         return res.status(ERR).json({ message: 'Перегон с таким наименованием уже существует' });
       }
 
-      // Ищем в БД перегон, ограниченный указанными в запросе станциями
+      // Ищем в БД перегон, ограниченный указанными в запросе станциями (не допускаем присутствие
+      // в базе перегонов типа А - Б и Б - А, т.к. это один и тот же перегон, следовательно, будет
+      // дублирование связанной с ним информации)
       antiCandidate = await TBlock.findOne({
         where: {
-          [Op.and]: [
-            { Bl_StationID1: station1 },
-            { Bl_StationID2: station2 },
+          [Op.or]: [
+            {
+              [Op.and]: [
+                { Bl_StationID1: station1 },
+                { Bl_StationID2: station2 },
+              ],
+            },
+            {
+              [Op.and]: [
+                { Bl_StationID1: station2 },
+                { Bl_StationID2: station1 },
+              ],
+            },
           ],
         },
       });
@@ -232,20 +248,46 @@ router.post(
   delBlockValidationRules(),
   validate,
   async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { id } = req.body;
 
-      // Удаляем в БД запись
-      const deletedCount = await TBlock.destroy({ where: { Bl_ID: id } });
+      // Перед удалением самого перегона необходимо удалить связанные с ним записи в других таблицах
+
+      // Удаляем информацию о путях перегона
+      await TBlockTrack.destroy({
+        where: {
+          BT_BlockId: id,
+        },
+        transaction: t,
+      });
+
+      // Удаляем в БД запись о перегоне
+      const deletedCount = await TBlock.destroy({
+        where: {
+          Bl_ID: id
+        },
+        transaction: t,
+      });
 
       if (!deletedCount) {
         return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
       }
 
+      await t.commit();
+
       res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
+      await t.rollback();
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -305,26 +347,57 @@ router.post(
         }
       }
 
-      // Ищем станции с указанными в запросе id
-      const conditionArr = [];
-      if (station1) {
-        conditionArr.push({ St_ID: station1 });
-      }
-      if (station2) {
-        conditionArr.push({ St_ID: station2 });
-      }
+      if (station1 || station2) {
+        const st1Id = station1 || candidate.Bl_StationID1;
+        const st2Id = station2 || candidate.Bl_StationID2;
 
-      if (conditionArr.length) {
-        const stationsToBind = await TStation.findAll({
+        // Ищем в БД перегон, ограниченный указанными в запросе станциями (не допускаем присутствие
+        // в базе перегонов типа А - Б и Б - А, т.к. это один и тот же перегон, следовательно, будет
+        // дублирование связанной с ним информации)
+        const antiCandidate = await TBlock.findOne({
           where: {
-            [Op.or]: conditionArr,
+            [Op.or]: [
+              {
+                [Op.and]: [
+                  { Bl_StationID1: st1Id },
+                  { Bl_StationID2: st2Id },
+                ],
+              },
+              {
+                [Op.and]: [
+                  { Bl_StationID1: st2Id },
+                  { Bl_StationID2: st1Id },
+                ],
+              },
+            ],
           },
         });
-        if (
-          !stationsToBind ||
-          (station1 === station2 && stationsToBind.length < 1) ||
-          (station1 !== station2 && stationsToBind.length < conditionArr.length)) {
-          return res.status(ERR).json({ message: 'Указанная(-ые) станция(-ии) не существует(-ют) в базе' });
+        // Если находим, то процесс создания продолжать не можем
+        if (antiCandidate) {
+          return res.status(ERR).json({ message: 'Перегон, ограниченный указанными станциями, уже существует' });
+        }
+
+        // Ищем станции с указанными в запросе id
+        const conditionArr = [];
+        if (station1) {
+          conditionArr.push({ St_ID: station1 });
+        }
+        if (station2) {
+          conditionArr.push({ St_ID: station2 });
+        }
+
+        if (conditionArr.length) {
+          const stationsToBind = await TStation.findAll({
+            where: {
+              [Op.or]: conditionArr,
+            },
+          });
+          if (
+            !stationsToBind ||
+            (station1 === station2 && stationsToBind.length < 1) ||
+            (station1 !== station2 && stationsToBind.length < conditionArr.length)) {
+            return res.status(ERR).json({ message: 'Указанная(-ые) станция(-ии) не существует(-ют) в базе' });
+          }
         }
       }
 
