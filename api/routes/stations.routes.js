@@ -10,6 +10,7 @@ const {
 const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
+const { TStationTrack } = require('../models/TStationTrack');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 const { Op } = require('sequelize');
@@ -28,7 +29,7 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех станций.
+ * Обрабатывает запрос на получение списка всех станций со вложенным списком путей.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -49,8 +50,11 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TStation.findAll({
-        raw: true,
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        include: [{
+          model: TStationTrack,
+          attributes: ['ST_ID', 'ST_Name'],
+        }],
       });
       res.status(OK).json(data);
 
@@ -66,6 +70,9 @@ router.get(
  * Обрабатывает запрос на получение списка станций по заданным id этих станций.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * stationIds - массив id станций (обязателен)
  */
 router.post(
   '/shortDefinitData',
@@ -206,6 +213,7 @@ router.post(
       });
       await TDNCTrainSectorStation.destroy({ where: { DNCTSS_StationID: id }, transaction: t });
       await TECDTrainSectorStation.destroy({ where: { ECDTSS_StationID: id }, transaction: t });
+      await TStationTrack.destroy({ where: { ST_StationId: id, }, transaction: t });
       await TStation.destroy({ where: { St_ID: id }, transaction: t });
 
       await t.commit();

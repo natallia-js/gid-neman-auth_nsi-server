@@ -13,6 +13,7 @@ import stationsTableColumns from './StationsTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import expandIcon from '../ExpandIcon';
+import StationTracksTable from './StationTracksTable';
 
 const { Text, Title } = Typography;
 
@@ -363,6 +364,12 @@ const StationsTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
+                <Title level={4}>Пути станции</Title>
+                <StationTracksTable
+                  stationId={record[STATION_FIELDS.KEY]}
+                  stationTracks={record[STATION_FIELDS.TRACKS]}
+                  setTableDataCallback={setTableData}
+                />
               </div>
             ),
             rowExpandable: _record => true,

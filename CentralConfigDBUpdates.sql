@@ -269,6 +269,19 @@ CREATE TABLE TECDSectorWorkPoligons
 )
 go
 
+/* Пути станций */
+CREATE TABLE TStationTracks
+(
+  ST_ID int IDENTITY (1,1),
+  ST_StationId int NOT NULL,
+  ST_Name varchar(16) NOT NULL,
+  CONSTRAINT XPK_TStationTracks PRIMARY KEY CLUSTERED (ST_ID ASC),
+  CONSTRAINT XRef_TStationFromStationTrack FOREIGN KEY (ST_StationId) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+go
+
 /* Пути перегонов */
 CREATE TABLE TBlockTracks
 (

@@ -54,8 +54,11 @@ export const ServerAPI = Object.freeze({
 
   GET_STATIONS_DATA: ServerAddress + '/api/nsi/stations/data',
   ADD_STATION_DATA: ServerAddress + '/api/nsi/stations/add',
+  ADD_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/add',
   DEL_STATION_DATA: ServerAddress + '/api/nsi/stations/del',
+  DEL_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/del',
   MOD_STATION_DATA: ServerAddress + '/api/nsi/stations/mod',
+  MOD_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/mod',
 
   GET_SERVICES_DATA: ServerAddress + '/api/nsi/services/data',
   ADD_SERVICE_DATA: ServerAddress + '/api/nsi/services/add',
@@ -184,6 +187,12 @@ export const STATION_FIELDS = Object.freeze({
   NAME_AND_CODE: 'nameCode',
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
+  TRACKS: 'TStationTracks',
+});
+
+export const STATION_TRACK_FIELDS = Object.freeze({
+  KEY: 'key',
+  NAME: 'name',
 });
 
 // ----------------------------------------

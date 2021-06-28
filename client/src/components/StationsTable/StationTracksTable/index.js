@@ -3,17 +3,17 @@ import { useHttp } from '../../../hooks/http.hook';
 import { AuthContext } from '../../../context/AuthContext';
 import { Table, Form, Button } from 'antd';
 import EditableTableCell from '../../EditableTableCell';
-import NewBlockTrackModal from '../../NewBlockTrackModal';
-import { ServerAPI, BLOCK_TRACK_FIELDS, BLOCK_FIELDS } from '../../../constants';
+import NewStationTrackModal from '../../NewStationTrackModal';
+import { ServerAPI, STATION_TRACK_FIELDS, STATION_FIELDS } from '../../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
-import blockTracksTableColumns from './BlockTracksTableColumns';
-import getAppBlockTrackObjFromDBBlockTrackObj from '../../../mappers/getAppBlockTrackObjFromDBBlockTrackObj';
+import stationTracksTableColumns from './StationTracksTableColumns';
+import getAppStationTrackObjFromDBStationTrackObj from '../../../mappers/getAppStationTrackObjFromDBStationTrackObj';
 
 
 /**
- * Компонент таблицы с информацией о путях перегона.
+ * Компонент таблицы с информацией о путях станции.
  */
-const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
+const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
@@ -27,16 +27,16 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record[BLOCK_TRACK_FIELDS.KEY] === editingKey;
+  const isEditing = (record) => record[STATION_TRACK_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
-  const [isAddNewBlockTrackModalVisible, setIsAddNewBlockTrackModalVisible] = useState(false);
+  const [isAddNewStationTrackModalVisible, setIsAddNewStationTrackModalVisible] = useState(false);
 
   // Ошибки добавления информации о новом пути
-  const [blockTrackFieldsErrs, setBlockTrackFieldsErrs] = useState(null);
+  const [stationTrackFieldsErrs, setStationTrackFieldsErrs] = useState(null);
 
-  // Ошибки редактирования информации о путях перегона
-  const [modBlockTrackFieldsErrs, setModBlockTrackFieldsErrs] = useState(null);
+  // Ошибки редактирования информации о путях станции
+  const [modStationTrackFieldsErrs, setModStationTrackFieldsErrs] = useState(null);
 
   const message = useCustomMessage();
 
@@ -50,8 +50,8 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
   /**
    * Чистит все сообщения добавления информации о пути (ошибки и успех).
    */
-  const clearAddBlockTrackMessages = () => {
-    setBlockTrackFieldsErrs(null);
+  const clearAddStationTrackMessages = () => {
+    setStationTrackFieldsErrs(null);
   }
 
 
@@ -60,25 +60,25 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
    *
    * @param {object} track
    */
-  const handleAddNewBlockTrack = async (track) => {
+  const handleAddNewStationTrack = async (track) => {
     setRecsBeingAdded((value) => value + 1);
 
     try {
       // Делаем запрос на сервер с целью добавления информации о пути
-      const res = await request(ServerAPI.ADD_BLOCK_TRACK_DATA, 'POST', { blockId, ...track }, {
+      const res = await request(ServerAPI.ADD_STATION_TRACK_DATA, 'POST', { stationId, ...track }, {
         Authorization: `Bearer ${auth.token}`
       });
 
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
-        value.map((block) => {
-          if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
-            const newBlockTracks = block[BLOCK_FIELDS.TRACKS].slice();
-            newBlockTracks.push(getAppBlockTrackObjFromDBBlockTrackObj(res.blockTrack));
-            block[BLOCK_FIELDS.TRACKS] = newBlockTracks;
+        value.map((station) => {
+          if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
+            const newStationTracks = station[STATION_FIELDS.TRACKS].slice();
+            newStationTracks.push(getAppStationTrackObjFromDBStationTrackObj(res.stationTrack));
+            station[STATION_FIELDS.TRACKS] = newStationTracks;
           }
-          return block;
+          return station;
         })
       );
 
@@ -88,7 +88,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
-        setBlockTrackFieldsErrs(errs);
+        setStationTrackFieldsErrs(errs);
       }
     }
 
@@ -97,28 +97,28 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
 
 
   /**
-   * Удаляет информацию о пути перегона из БД.
+   * Удаляет информацию о пути станции из БД.
    *
-   * @param {number} blockTrackId
+   * @param {number} stationTrackId
    */
-  const handleDelBlockTrack = async (blockTrackId) => {
-    setRecsBeingProcessed((value) => [...value, blockTrackId]);
+  const handleDelStationTrack = async (stationTrackId) => {
+    setRecsBeingProcessed((value) => [...value, stationTrackId]);
 
     try {
-      // Делаем запрос на сервер с целью удаления всей информации о пути перегона
-      const res = await request(ServerAPI.DEL_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId }, {
+      // Делаем запрос на сервер с целью удаления всей информации о пути станции
+      const res = await request(ServerAPI.DEL_STATION_TRACK_DATA, 'POST', { id: stationTrackId }, {
         Authorization: `Bearer ${auth.token}`
       });
 
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
-        value.map((block) => {
-          if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
-            block[BLOCK_FIELDS.TRACKS] =
-              block[BLOCK_FIELDS.TRACKS].filter((track) => String(track[BLOCK_TRACK_FIELDS.KEY]) !== String(blockTrackId))
+        value.map((station) => {
+          if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
+            station[STATION_FIELDS.TRACKS] =
+              station[STATION_FIELDS.TRACKS].filter((track) => String(track[STATION_TRACK_FIELDS.KEY]) !== String(stationTrackId))
           }
-          return block;
+          return station;
         })
       );
 
@@ -126,7 +126,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
 
-    setRecsBeingProcessed((value) => value.filter((id) => id !== blockTrackId));
+    setRecsBeingProcessed((value) => value.filter((id) => id !== stationTrackId));
   }
 
 
@@ -135,12 +135,12 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
    *
    * @param {object} record
    */
-  const handleStartEditBlockTrack = (record) => {
+  const handleStartEditStationTrack = (record) => {
     form.setFieldsValue({
-      [BLOCK_TRACK_FIELDS.NAME]: '',
+      [STATION_TRACK_FIELDS.NAME]: '',
       ...record,
     });
-    setEditingKey(record[BLOCK_TRACK_FIELDS.KEY]);
+    setEditingKey(record[STATION_TRACK_FIELDS.KEY]);
   };
 
 
@@ -150,7 +150,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
    */
    const finishEditing = () => {
     setEditingKey('');
-    setModBlockTrackFieldsErrs(null);
+    setModStationTrackFieldsErrs(null);
   };
 
 
@@ -163,11 +163,11 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
 
 
   /**
-   * Редактирует информацию о пути перегона в БД.
+   * Редактирует информацию о пути станции в БД.
    *
-   * @param {number} blockTrackId
+   * @param {number} stationTrackId
    */
-  const handleEditBlockTrack = async (blockTrackId) => {
+  const handleEditStationTrack = async (stationTrackId) => {
     let rowData;
 
     try {
@@ -178,27 +178,27 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
       return;
     }
 
-    setRecsBeingProcessed((value) => [...value, blockTrackId]);
+    setRecsBeingProcessed((value) => [...value, stationTrackId]);
 
     try {
-      // Делаем запрос на сервер с целью редактирования информации о пути перегона
-      const res = await request(ServerAPI.MOD_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId, ...rowData }, {
+      // Делаем запрос на сервер с целью редактирования информации о пути станции
+      const res = await request(ServerAPI.MOD_STATION_TRACK_DATA, 'POST', { id: stationTrackId, ...rowData }, {
         Authorization: `Bearer ${auth.token}`
       });
 
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
-        value.map((block) => {
-          if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
-            block[BLOCK_FIELDS.TRACKS] = block[BLOCK_FIELDS.TRACKS].map((track) => {
-              if (String(track[BLOCK_TRACK_FIELDS.KEY]) === String(blockTrackId)) {
-                return { ...track, ...getAppBlockTrackObjFromDBBlockTrackObj(res.blockTrack) };
+        value.map((station) => {
+          if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
+            station[STATION_FIELDS.TRACKS] = station[STATION_FIELDS.TRACKS].map((track) => {
+              if (String(track[STATION_TRACK_FIELDS.KEY]) === String(stationTrackId)) {
+                return { ...track, ...getAppStationTrackObjFromDBStationTrackObj(res.stationTrack) };
               }
               return track;
             });
           }
-          return block;
+          return station;
         })
       );
 
@@ -210,40 +210,40 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
-        setModBlockTrackFieldsErrs(errs);
+        setModStationTrackFieldsErrs(errs);
       }
     }
 
-    setRecsBeingProcessed((value) => value.filter((id) => id !== blockTrackId));
+    setRecsBeingProcessed((value) => value.filter((id) => id !== stationTrackId));
   }
 
 
   // --------------------------------------------------------------
-  // Для работы с диалоговым окном ввода информации о новом пути перегона
+  // Для работы с диалоговым окном ввода информации о новом пути станции
 
-  const showAddNewBlockTrackModal = () => {
-    setIsAddNewBlockTrackModalVisible(true);
+  const showAddNewStationTrackModal = () => {
+    setIsAddNewStationTrackModalVisible(true);
   };
 
-  const handleAddNewBlockTrackOk = (block) => {
-    handleAddNewBlockTrack(block);
+  const handleAddNewStationTrackOk = (station) => {
+    handleAddNewStationTrack(station);
   };
 
-  const handleAddNewBlockTrackCancel = () => {
-    setIsAddNewBlockTrackModalVisible(false);
+  const handleAddNewStationTrackCancel = () => {
+    setIsAddNewStationTrackModalVisible(false);
   };
 
   // --------------------------------------------------------------
 
 
-  // Описание столбцов таблицы путей перегона
-  const columns = blockTracksTableColumns({
+  // Описание столбцов таблицы путей станции
+  const columns = stationTracksTableColumns({
     isEditing,
     editingKey,
-    handleEditBlockTrack,
+    handleEditStationTrack,
     handleCancelMod,
-    handleStartEditBlockTrack,
-    handleDelBlockTrack,
+    handleStartEditStationTrack,
+    handleDelStationTrack,
     recsBeingProcessed,
   });
 
@@ -264,7 +264,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
         title: col.title,
         editing: isEditing(record),
         required: true,
-        errMessage: modBlockTrackFieldsErrs ? modBlockTrackFieldsErrs[col.dataIndex] : null,
+        errMessage: modStationTrackFieldsErrs ? modStationTrackFieldsErrs[col.dataIndex] : null,
       }),
     };
   });
@@ -272,12 +272,12 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
 
   return (
     <Form form={form} component={false}>
-      <NewBlockTrackModal
-        isModalVisible={isAddNewBlockTrackModalVisible}
-        handleAddNewBlockTrackOk={handleAddNewBlockTrackOk}
-        handleAddNewBlockTrackCancel={handleAddNewBlockTrackCancel}
-        blockTrackFieldsErrs={blockTrackFieldsErrs}
-        clearAddBlockTrackMessages={clearAddBlockTrackMessages}
+      <NewStationTrackModal
+        isModalVisible={isAddNewStationTrackModalVisible}
+        handleAddNewStationTrackOk={handleAddNewStationTrackOk}
+        handleAddNewStationTrackCancel={handleAddNewStationTrackCancel}
+        stationTrackFieldsErrs={stationTrackFieldsErrs}
+        clearAddStationTrackMessages={clearAddStationTrackMessages}
         recsBeingAdded={recsBeingAdded}
       />
       <Button
@@ -285,7 +285,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
         style={{
           marginBottom: 16,
         }}
-        onClick={showAddNewBlockTrackModal}
+        onClick={showAddNewStationTrackModal}
       >
         Добавить запись
       </Button>
@@ -297,7 +297,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
           },
         }}
         bordered
-        dataSource={blockTracks}
+        dataSource={stationTracks}
         columns={mergedColumns}
         rowClassName="editable-row"
         pagination={{
@@ -306,10 +306,10 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
         sticky={true}
         onRow={(record) => {
           return {
-            onDoubleClick: () => { handleStartEditBlockTrack(record) },
+            onDoubleClick: () => { handleStartEditStationTrack(record) },
             onKeyUp: event => {
               if (event.key === 'Enter') {
-                handleEditBlockTrack(record[BLOCK_TRACK_FIELDS.KEY]);
+                handleEditStationTrack(record[STATION_TRACK_FIELDS.KEY]);
               }
             }
           };
@@ -320,4 +320,4 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
 };
 
 
-export default BlockTracksTable;
+export default StationTracksTable;
