@@ -36,7 +36,7 @@ export const Navbar = () => {
       <p><Text strong>Служба:</Text> {auth.userInfo.service}</p>
       <p><Text strong>Должность:</Text> {auth.userInfo.post}</p>
       <p><Text strong>Роли:</Text></p>
-      {auth.userRoles.map((role) => <p>{role}</p>)}
+      {auth.userRoles.map((role, index) => <p key={index}>{role}</p>)}
     </div>
   );
 
