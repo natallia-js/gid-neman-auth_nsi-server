@@ -50,7 +50,7 @@ export const OrderPatternPreview = ({ orderPattern }) => {
               ?
               <span
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
-                style={{ marginRight: 5, marginBottom: 5 }}
+                style={{ marginRight: 5, marginBottom: 5, display: 'inline-block' }}
               >
                 {getOrderPatternElementView(patternElement)}
               </span>
