@@ -58,6 +58,8 @@ export const OrderPatternsTree = (props) => {
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
 
+  const [selectedTreeKeys, setSelectedTreeKeys] = useState([]);
+
 
   /**
    * Обработка события выбора узла в дереве шаблонов.
@@ -66,6 +68,8 @@ export const OrderPatternsTree = (props) => {
    * @param {Object} info - информация о выделенных узлах
    */
   const onSelect = (selectedKeys, info) => {
+    setSelectedTreeKeys(selectedKeys);
+
     if (!selectedKeys || !selectedKeys.length) {
       if (selectedOrderCategory) {
         setSelectedOrderCategory(null);
@@ -400,6 +404,7 @@ export const OrderPatternsTree = (props) => {
         };
       });
       setEditedOrderCategory(null);
+      setSelectedTreeKeys([`${selectedOrderCategory.service}${selectedOrderCategory.orderType}${res.newTitle}`]);
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -421,6 +426,7 @@ export const OrderPatternsTree = (props) => {
           showLine={true}
           treeData={existingOrderAffiliationTree}
           onSelect={onSelect}
+          selectedKeys={selectedTreeKeys}
         />
       </Col>
       <Col span={15}>
