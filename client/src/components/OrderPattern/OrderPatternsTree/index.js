@@ -11,8 +11,10 @@ import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import objectId from '../../../generators/objectId.generator';
 import { OrderPatternsNodeType } from '../constants';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../../../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
+import { useSearchTree } from '../../../hooks/searchTree.hook';
 
 const { Text, Title } = Typography;
+const { Search } = Input;
 
 
 /**
@@ -59,6 +61,14 @@ export const OrderPatternsTree = (props) => {
   const message = useCustomMessage();
 
   const [selectedTreeKeys, setSelectedTreeKeys] = useState([]);
+
+  const {
+    expandedKeys,
+    autoExpandParent,
+    onExpand,
+    onChangeSearchValue,
+    loop
+  } = useSearchTree(existingOrderAffiliationTree);
 
 
   /**
@@ -421,11 +431,19 @@ export const OrderPatternsTree = (props) => {
 
     <Row justify="space-around">
       <Col span={8}>
+        <Search
+          style={{ marginBottom: 8 }}
+          placeholder="Найти узел в дереве шаблонов"
+          onChange={onChangeSearchValue}
+        />
         <Tree
           switcherIcon={<DownSquareTwoTone style={{ fontSize: InterfaceDesign.EXPANDED_ICON_SIZE }} />}
           showLine={true}
-          treeData={existingOrderAffiliationTree}
+          treeData={loop(existingOrderAffiliationTree)}
+          expandedKeys={expandedKeys}
+          autoExpandParent={autoExpandParent}
           onSelect={onSelect}
+          onExpand={onExpand}
           selectedKeys={selectedTreeKeys}
         />
       </Col>

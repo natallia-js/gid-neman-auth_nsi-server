@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Tabs, Typography, Row, Col } from 'antd';
 import { OrderPatternsTree } from '../components/OrderPattern/OrderPatternsTree';
 import { CreateOrderPattern } from '../components/OrderPattern/CreateOrderPattern';
+import { CreateOrderPatternConnections } from '../components/OrderPattern/CreateOrderPatternConnections';
 import { ServerAPI, ORDER_PATTERN_FIELDS } from '../constants';
 import { useHttp } from '../hooks/http.hook';
 import { AuthContext } from '../context/AuthContext';
@@ -16,6 +17,7 @@ const { Text, Title } = Typography;
 const PageTabs = {
   VIEW_ORDER_PATTERS: 1,
   CREATE_ORDER_PATTERN: 2,
+  CREATE_ORDER_PATTERN_CONNECTIONS: 3,
 };
 
 
@@ -276,6 +278,11 @@ export const OrderPatternsPage = () => {
               services={services}
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               onCreateOrderPattern={handleCreateOrderPattern}
+            />
+          </TabPane>
+          <TabPane tab="Создать связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>
+            <CreateOrderPatternConnections
+              existingOrderAffiliationTree={existingOrderAffiliationTree}
             />
           </TabPane>
         </Tabs>
