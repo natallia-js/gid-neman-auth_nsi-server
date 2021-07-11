@@ -62,11 +62,11 @@ export const useSearchTree = (initialTree) => {
           <span>{item.title}</span>
         );
       if (item.children) {
-        return { title, key: item.key, children: loop(item.children) };
+        return { ...item, title, children: loop(item.children) };
       }
       return {
+        ...item,
         title,
-        key: item.key,
       };
     }));
 

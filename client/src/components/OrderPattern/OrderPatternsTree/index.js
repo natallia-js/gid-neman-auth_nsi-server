@@ -25,7 +25,8 @@ export const OrderPatternsTree = (props) => {
     existingOrderAffiliationTree,
     onEditOrderCategoryTitle,
     onEditOrderPattern,
-    onDeleteOrderPattern
+    onDeleteOrderPattern,
+    getNodeTitleByNodeKey,
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -67,7 +68,7 @@ export const OrderPatternsTree = (props) => {
     autoExpandParent,
     onExpand,
     onChangeSearchValue,
-    loop
+    loop,
   } = useSearchTree(existingOrderAffiliationTree);
 
 
@@ -91,7 +92,7 @@ export const OrderPatternsTree = (props) => {
       if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) {
         setSelectedPattern({
           [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
-          [ORDER_PATTERN_FIELDS.TITLE]: info.node.title,
+          [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
           [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
         });
         if (selectedOrderCategory) {
@@ -104,7 +105,7 @@ export const OrderPatternsTree = (props) => {
         if (info.node.type === OrderPatternsNodeType.ORDER_CATEGORY) {
           setSelectedOrderCategory({
             ...info.node.additionalInfo,
-            category: info.node.title,
+            category: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
           });
         } else if (selectedOrderCategory) {
           setSelectedOrderCategory(null);

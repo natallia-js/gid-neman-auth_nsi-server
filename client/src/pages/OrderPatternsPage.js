@@ -246,6 +246,29 @@ export const OrderPatternsPage = () => {
   };
 
 
+  /**
+   *
+   * @param {*} key
+   * @param {*} tree
+   * @returns
+   */
+  const getNodeTitleByNodeKey = (key, tree) => {
+    const stack = [...tree];
+
+    while (stack.length) {
+      const curr = stack.pop();
+
+      if (curr.key === key) {
+        return curr.title;
+      }
+
+      if (curr.children) {
+        stack.push(...curr.children);
+      }
+    }
+  };
+
+
   if (!dataLoaded) {
     return (
       <Row align="middle">
@@ -271,6 +294,7 @@ export const OrderPatternsPage = () => {
               onEditOrderCategoryTitle={handleEditOrderCategoryTitle}
               onEditOrderPattern={handleEditOrderPattern}
               onDeleteOrderPattern={handleDeleteOrderPattern}
+              getNodeTitleByNodeKey={getNodeTitleByNodeKey}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
@@ -283,6 +307,7 @@ export const OrderPatternsPage = () => {
           <TabPane tab="Создать связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>
             <CreateOrderPatternConnections
               existingOrderAffiliationTree={existingOrderAffiliationTree}
+              getNodeTitleByNodeKey={getNodeTitleByNodeKey}
             />
           </TabPane>
         </Tabs>

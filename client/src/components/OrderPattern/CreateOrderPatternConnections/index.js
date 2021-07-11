@@ -17,6 +17,7 @@ const { Search } = Input;
 export const CreateOrderPatternConnections = (props) => {
   const {
     existingOrderAffiliationTree,
+    getNodeTitleByNodeKey
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -36,7 +37,7 @@ export const CreateOrderPatternConnections = (props) => {
     autoExpandParent,
     onExpand,
     onChangeSearchValue,
-    loop
+    loop,
   } = useSearchTree(existingOrderAffiliationTree);
 
 
@@ -55,7 +56,7 @@ export const CreateOrderPatternConnections = (props) => {
       if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) {
         setSelectedPattern({
           [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
-          [ORDER_PATTERN_FIELDS.TITLE]: info.node.title,
+          [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
           [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
         });
       } else {
