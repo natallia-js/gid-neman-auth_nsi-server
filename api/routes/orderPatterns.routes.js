@@ -31,6 +31,9 @@ const {
  * Параметр запроса (id пользователя), если указан, то определяет дополнительные шаблоны, которые
  * необходимо включить в выборку: личные шаблоны указанного пользователя.
  *
+ * Параметр запроса (getChildPatterns), если указан, то определяет необходимость включения в
+ * выборку информации о дочерних шаблонах.
+ *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список всех неприватных шаблонов распоряжений,
  * иное же лицо получит полный список тех неприватных шаблонов распоряжений, которые закреплены за его службой,
@@ -53,9 +56,14 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { userId } = req.body;
+      const { userId, getChildPatterns } = req.body;
 
       const serviceName = req.user.service;
+
+      var dataProjection = {
+        __v: false,
+        childPatterns: !!getChildPatterns,
+      };
 
       let data;
       if (!isMainAdmin(req)) {
@@ -67,10 +75,10 @@ router.post(
         } else {
           matchFilter.personalPattern = { $exists: false };
         }
-        data = await OrderPattern.find(matchFilter);
+        data = await OrderPattern.find(matchFilter, dataProjection);
       } else {
         // Извлекаем информацию обо всех шаблонах распоряжений, кроме приватных
-        data = await OrderPattern.find({ personalPattern: { $exists: false } });
+        data = await OrderPattern.find({ personalPattern: { $exists: false } }, dataProjection);
       }
 
       res.status(OK).json(data);

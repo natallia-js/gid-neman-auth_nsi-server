@@ -46,6 +46,8 @@ export const OrderPatternsPage = () => {
   // Получаем доступ к контекстным данным авторизации пользователя
   const auth = useContext(AuthContext);
 
+  const [lastChangedOrderPattern, setLastChangedOrderPattern] = useState(null);
+
 
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
@@ -235,6 +237,10 @@ export const OrderPatternsPage = () => {
         ...orderPattern,
       };
     }));
+    setLastChangedOrderPattern({
+      edit: true,
+      pattern: orderPattern,
+    });
   };
 
 
@@ -243,6 +249,10 @@ export const OrderPatternsPage = () => {
    */
   const handleDeleteOrderPattern = (orderPatternId) => {
     setOrderPatterns((value) => value.filter((pattern) => pattern[ORDER_PATTERN_FIELDS.KEY] !== orderPatternId));
+    setLastChangedOrderPattern({
+      delete: true,
+      orderPatternId,
+    });
   };
 
 
@@ -308,6 +318,7 @@ export const OrderPatternsPage = () => {
             <CreateOrderPatternConnections
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
+              lastChangedOrderPattern={lastChangedOrderPattern}
             />
           </TabPane>
         </Tabs>

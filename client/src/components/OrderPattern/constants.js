@@ -25,6 +25,24 @@ export const OrderPatternElementType = Object.freeze({
   LINEBREAK: 'linebreak',
 });
 
+export const OrderPatternElementTypeShortTitles = Object.freeze({
+  TEXT: 'т.',
+  INPUT: 'п.в.',
+  SELECT: 'в.с.',
+  DATE: 'д.',
+  TIME: 'в.',
+  DATETIME: 'д.-в.',
+  LINEBREAK: 'п.с.',
+});
+
+export const GetOrderPatternElementTypeShortTitle = (elementType) => {
+  const key = Object.keys(OrderPatternElementType).find((key) => OrderPatternElementType[key] === elementType);
+  if (key) {
+    return OrderPatternElementTypeShortTitles[key];
+  }
+  return null;
+};
+
 export const PossibleElementSizes = Object.freeze({
   SMALL: 'SMALL',
   MEDIUM: 'MEDIUM',

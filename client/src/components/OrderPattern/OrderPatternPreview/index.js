@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from 'antd';
-import { OrderPatternElementType, ElementSizesCorrespondence } from '../constants';
+import { OrderPatternElementType } from '../constants';
 import getOrderPatternElementView from '../getOrderPatternElementView';
 import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../../constants';
 
@@ -43,14 +43,14 @@ export const OrderPatternPreview = ({ orderPattern }) => {
       <Title level={4} className="center">Предварительный просмотр</Title>
       {
         orderPatternArrays.map((array, index) => (
-          <div key={index} style={{ minHeight: '1.5rem' }}>
+          <div key={index} className="order-pattern-text">
           {
             array.map((patternElement) => (
               patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] === OrderPatternElementType.TEXT
               ?
               <span
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
-                style={{ marginRight: 5, marginBottom: 5, display: 'inline-block' }}
+                style={{ marginRight: 5, marginBottom: 5 }}
               >
                 {getOrderPatternElementView(patternElement)}
               </span>
@@ -58,7 +58,7 @@ export const OrderPatternPreview = ({ orderPattern }) => {
               <div
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
                 style={{
-                  width: ElementSizesCorrespondence[patternElement[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]],
+                  width: 'auto',
                   marginRight: 5,
                   marginBottom: 2,
                   display: 'inline-block',

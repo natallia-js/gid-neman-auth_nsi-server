@@ -143,7 +143,7 @@ async function start() {
     createStationTrackModel(sequelize);
 
     // This creates the tables if they don't exist (and does nothing if they already exist)
-    await sequelize.sync({ alter: true });
+    //await sequelize.sync({ alter: true });
 
     // ----------------------------------------------------
 

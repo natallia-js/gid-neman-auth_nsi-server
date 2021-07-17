@@ -21,11 +21,11 @@ const getOrderPatternElementView = (element) => {
     case OrderPatternElementType.SELECT:
       return <Select style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }} size="small" />;
     case OrderPatternElementType.DATE:
-      return <DatePicker format={DateFormat} size="small" />;
+      return <DatePicker format={DateFormat} size="small" placeholder="" />;
     case OrderPatternElementType.TIME:
-      return <TimePicker format={TimeFormat} size="small" />;
+      return <TimePicker format={TimeFormat} size="small" placeholder="" />;
     case OrderPatternElementType.DATETIME:
-      return <DatePicker showTime format={DateTimeFormat} size="small" />;
+      return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
     case OrderPatternElementType.LINEBREAK:
       return <EnterOutlined />;
     default:

@@ -25,7 +25,21 @@ const schema = new Schema({
     },
   ],
   // id пользователя, которому необходимо показывать данный шаблон
-  personalPattern: { type: Types.ObjectId, required: false }
+  personalPattern: { type: Types.ObjectId, required: false },
+  // Список дочерних шаблонов (шаблонов, связанных с текущим и применяемых после текущего)
+  childPatterns: [
+    {
+      // id дочернего шаблона
+      childPatternId: { type: Types.ObjectId, required: true },
+      // таблица соответствия параметров базового и дочернего шаблонов
+      patternsParamsMatchingTable: [
+        {
+          baseParamId: { type: Types.ObjectId, required: true },
+          childParamId: { type: Types.ObjectId, required: true },
+        },
+      ],
+    },
+  ],
 });
 
 /*
