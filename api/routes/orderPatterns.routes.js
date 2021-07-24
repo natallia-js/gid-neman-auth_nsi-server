@@ -62,8 +62,10 @@ router.post(
 
       var dataProjection = {
         __v: false,
-        childPatterns: !!getChildPatterns,
       };
+      if (!(!!getChildPatterns)) {
+        dataProjection.childPatterns = false;
+      }
 
       let data;
       if (!isMainAdmin(req)) {
@@ -204,7 +206,6 @@ router.post(
       const { id } = req.body;
 
       const candidate = await OrderPattern.findById(id);
-
       if (!candidate) {
         return res.status(ERR).json({ message: 'Указанный шаблон распоряжения не найден' });
       }

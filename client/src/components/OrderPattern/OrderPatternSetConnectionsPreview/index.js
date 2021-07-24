@@ -57,9 +57,39 @@ export const OrderPatternSetConnectionsPreview = (props) => {
   }, [nullSelectedElement]);
 
 
-  const handleSelectPatternElement = (element) => {
+  const handleSelectPatternElement = (element, notation) => {
     setSelectedPatternElement(element);
-    selectPatternElementCallback(element);
+    selectPatternElementCallback(element, notation);
+  };
+
+
+  const getPatternElementNotation = (patternElement, arrayIndex, elementIndex) => {
+    return `${arrayIndex}${elementIndex} - \
+      ${GetOrderPatternElementTypeShortTitle(patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE])}`;
+  };
+
+
+  const getPatternElementNotationById = (elementId) => {
+    let foundElement;
+    let arrayIndex;
+    let elementIndex;
+    orderPatternArrays.forEach((array, index) => {
+      array.forEach((patternElement, elIndex) => {
+        if (patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === elementId) {
+          foundElement = patternElement;
+          arrayIndex = index;
+          elementIndex = elIndex;
+          return;
+        }
+      });
+      if (foundElement) {
+        return;
+      }
+    });
+    if (foundElement) {
+      return getPatternElementNotation(foundElement, arrayIndex, elementIndex);
+    }
+    return null;
   };
 
 
@@ -69,7 +99,7 @@ export const OrderPatternSetConnectionsPreview = (props) => {
         orderPatternArrays.map((array, index) => (
           <div key={index} className="order-pattern-text">
           {
-            array.map((patternElement) => (
+            array.map((patternElement, elementIndex) => (
               patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] === OrderPatternElementType.TEXT
               ?
               <span
@@ -85,7 +115,11 @@ export const OrderPatternSetConnectionsPreview = (props) => {
                   <div>
                     <p>
                       { !allowChoosePatternElement ? 'Выбор элемента недоступен' :
-                        <a href="#!" onClick={() => handleSelectPatternElement(patternElement)}
+                        <a
+                          href="#!"
+                          onClick={() =>
+                            handleSelectPatternElement(patternElement, getPatternElementNotation(patternElement, index, elementIndex))
+                          }
                         >
                           { basePattern ? 'Базовый элемент' : 'Дочерний элемент' }
                         </a>
@@ -113,7 +147,7 @@ export const OrderPatternSetConnectionsPreview = (props) => {
                     left: 2,
                     top: 0,
                   }}>
-                    {GetOrderPatternElementTypeShortTitle(patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE])}
+                    {getPatternElementNotation(patternElement, index, elementIndex)}
                   </span>
                 </div>
               </Popover>

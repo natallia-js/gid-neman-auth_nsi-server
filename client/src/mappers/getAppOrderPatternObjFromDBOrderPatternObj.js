@@ -1,5 +1,6 @@
 import { ORDER_PATTERN_FIELDS } from '../constants';
 import getAppOrderPatternElementObjFromDBOrderPatternElementObj from './getAppOrderPatternElementObjFromDBOrderPatternElementObj';
+import getAppChildPatternObjFromDBChildPatternObj from './getAppChildPatternObjFromDBChildPatternObj';
 
 /**
  * Преобразует объект шаблона распоряжения, полученный из БД, в объект шаблона распоряжения, с которым
@@ -17,6 +18,8 @@ const getAppOrderPatternObjFromDBOrderPatternObj = (dbOrderPatternObj) => {
       [ORDER_PATTERN_FIELDS.TITLE]: dbOrderPatternObj.title,
       [ORDER_PATTERN_FIELDS.ELEMENTS]: !dbOrderPatternObj.elements ? [] :
         dbOrderPatternObj.elements.map((element) => getAppOrderPatternElementObjFromDBOrderPatternElementObj(element)),
+      [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: !dbOrderPatternObj.childPatterns ? [] :
+        dbOrderPatternObj.childPatterns.map((childPattern) => getAppChildPatternObjFromDBChildPatternObj(childPattern)),
     };
   }
   return null;

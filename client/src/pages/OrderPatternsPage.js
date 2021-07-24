@@ -17,7 +17,8 @@ const { Text, Title } = Typography;
 const PageTabs = {
   VIEW_ORDER_PATTERS: 1,
   CREATE_ORDER_PATTERN: 2,
-  CREATE_ORDER_PATTERN_CONNECTIONS: 3,
+  CHILD_PATTERNS: 3,
+  CREATE_ORDER_PATTERN_CONNECTIONS: 4,
 };
 
 
@@ -58,10 +59,10 @@ export const OrderPatternsPage = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по созданным шаблонам распоряжений
-      let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST',
+        { getChildPatterns: true },
+        { Authorization: `Bearer ${auth.token}` }
+      );
       let tableData = res.map((orderPattern) => getAppOrderPatternObjFromDBOrderPatternObj(orderPattern));
       setOrderPatterns(tableData);
 
@@ -69,7 +70,6 @@ export const OrderPatternsPage = () => {
       res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
       setServices(tableData);
 
@@ -129,6 +129,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             }],
           }],
@@ -153,6 +154,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             }],
           });
@@ -172,6 +174,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             });
           } else {
@@ -180,6 +183,7 @@ export const OrderPatternsPage = () => {
               key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
               pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
               type: OrderPatternsNodeType.ORDER_PATTERN,
+              childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
             });
           }
         }
@@ -314,11 +318,12 @@ export const OrderPatternsPage = () => {
               onCreateOrderPattern={handleCreateOrderPattern}
             />
           </TabPane>
-          <TabPane tab="Создать связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>
+          <TabPane tab="Связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>
             <CreateOrderPatternConnections
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
               lastChangedOrderPattern={lastChangedOrderPattern}
+              onEditOrderPattern={handleEditOrderPattern}
             />
           </TabPane>
         </Tabs>

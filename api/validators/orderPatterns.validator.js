@@ -23,6 +23,24 @@ const { check, body } = require('express-validator');
   return true;
 }
 
+/**
+ * Пользовательская функция проверки списка элементов соответствия параметров базового и дочернего
+ * шаблонов распоряжений.
+ *
+ * @param {array} val - массив элементов соответствия параметров базового и дочернего шаблонов распоряжений
+ */
+ const checkCorrespPatternsElements = (val) => {
+  val.forEach((el) => {
+    if ((typeof el.baseParamId !== 'string') || !el.baseParamId.length) {
+      throw new Error('Не определен идентификатор параметра базового шаблона');
+    }
+    if ((typeof el.childParamId !== 'string') || !el.childParamId.length) {
+      throw new Error('Не определен идентификатор параметра дочернего шаблона');
+    }
+  });
+  return true;
+}
+
 const addOrderPatternValidationRules = () => {
   return [
     check('service')
@@ -94,9 +112,26 @@ const modOrderPatternsCategoryValidationRules = () => {
   ];
 };
 
+const addOrderChildPatternValidationRules = () => {
+  return [
+    check('basePatternId')
+      .exists()
+      .withMessage('Не указан id базового шаблона распоряжения'),
+    check('childPatternId')
+      .exists()
+      .withMessage('Не указан id дочернего шаблона распоряжения'),
+    check('patternsParamsMatchingTable')
+      .isArray()
+      .withMessage('Список соответствия параметров базового и дочернего шаблонов должен быть массивом')
+      .bail()
+      .custom((val) => checkCorrespPatternsElements(val)),
+  ];
+};
+
 module.exports = {
   addOrderPatternValidationRules,
   delOrderPatternValidationRules,
   modOrderPatternValidationRules,
   modOrderPatternsCategoryValidationRules,
+  addOrderChildPatternValidationRules,
 };

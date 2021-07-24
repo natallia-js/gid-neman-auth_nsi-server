@@ -134,6 +134,7 @@ export const ServerAPI = Object.freeze({
   DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
   MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
   MOD_ORDER_CATEGORY_TITLE: ServerAddress + '/api/orderPatterns/modCategoryTitle',
+  ADD_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/addChildPattern',
 });
 
 // ----------------------------------------
@@ -280,6 +281,7 @@ export const ORDER_PATTERN_FIELDS = Object.freeze({
   CATEGORY: 'category',
   TITLE: 'title',
   ELEMENTS: 'elements',
+  CHILD_PATTERNS: 'childPatterns',
 });
 
 export const ORDER_PATTERN_ELEMENT_FIELDS = Object.freeze({
@@ -288,6 +290,16 @@ export const ORDER_PATTERN_ELEMENT_FIELDS = Object.freeze({
   SIZE: 'size',
   REF: 'ref',
   VALUE: 'value',
+});
+
+export const CHILD_ORDER_PATTERN_FIELDS = Object.freeze({
+  CHILD_KEY: 'childPatternId',
+  MATCH_PATTERN_PARAMS: 'patternsParamsMatchingTable',
+});
+
+export const ORDER_PATTERNS_MATCHING_FIELDS = Object.freeze({
+  BASE_PARAM_KEY: 'baseParamId',
+  CHILD_PARAM_KEY: 'childParamId',
 });
 
 // ----------------------------------------

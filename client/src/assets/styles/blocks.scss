@@ -21,20 +21,21 @@
 }
 
 @mixin order-pattern-element-block-to-select($color) {
-  font-weight: 700;
   color: $color;
   display: inline-block;
   position: relative;
 }
 
 .not-selected-order-pattern-element-block {
-  @include order-pattern-element-block-to-select(var(--border-color));
-  @include order-pattern-element-block(var(--border-color));
+  @include order-pattern-element-block-to-select(var(--border-color2));
+  @include order-pattern-element-block(var(--border-color2));
+  font-weight: 500;
 }
 
 .selected-order-pattern-element-block {
   @include order-pattern-element-block-to-select(var(--order-pattern-cursor-color));
   @include order-pattern-element-block(var(--order-pattern-cursor-color));
+  font-weight: 700;
 }
 
 .order-pattern-block {
