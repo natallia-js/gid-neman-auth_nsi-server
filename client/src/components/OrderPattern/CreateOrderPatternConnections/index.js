@@ -60,6 +60,9 @@ export const CreateOrderPatternConnections = (props) => {
 
   const [recsBeingProcessed, setRecsBeingProcessed] = useState(0);
 
+  const [baseElementIdsToGetNotation, setBaseElementIdsToGetNotation] = useState(null);
+  const [childElementIdsToGetNotation, setChildElementIdsToGetNotation] = useState(null);
+
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
@@ -142,11 +145,6 @@ export const CreateOrderPatternConnections = (props) => {
   }, [lastChangedOrderPattern]);
 
 
-  const getParamNotation = (pattern, paramId) => {
-    //
-  };
-
-
   useEffect(() => {
     setSelectedChildPatternTitle(null);
     setSelectedBasePatternElement(null);
@@ -156,28 +154,62 @@ export const CreateOrderPatternConnections = (props) => {
     if (!selectedBasePattern) {
       setSelectBasePattern(PatternToChoose.BASE);
       setCorrespPatternElementsArray([]);
+
     } else if (selectedChildPattern) {
+      // определяем дочерний шаблон, наименование которого необходимо отобразить в выпадающем списке
+      // наименований дочерних шаблонов текущего базового шаблона
       const childPatternToSelect = selectedBasePattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS].find((pattern) =>
         pattern[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY] === selectedChildPattern[ORDER_PATTERN_FIELDS.KEY]
       );
       if (childPatternToSelect) {
-        setCorrespPatternElementsArray(childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.MATCH_PATTERN_PARAMS]);
+        setSelectedChildPatternTitle(getNodeTitleByNodeKey(childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY], existingOrderAffiliationTree));
+        // помимо наименования дочернего шаблона, необходимо также вывести корректную таблицу связей
+        // параметров базового и дочернего шаблонов
+        const arr = childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.MATCH_PATTERN_PARAMS];
+        setCorrespPatternElementsArray(arr);
+        setBaseElementIdsToGetNotation(arr.map((element) => element.baseParamId));
+        setChildElementIdsToGetNotation(arr.map((element) => element.childParamId));
 
-        console.log('found', childPatternToSelect)
+      } else {
+        setSelectedChildPatternTitle(null);
+        setCorrespPatternElementsArray([]);
       }
-      /*setCorrespPatternElementsArray((value) => {
-        return [
-          ...value,
-          {
-            baseParamId: selectedBasePatternElement.element[ORDER_PATTERN_ELEMENT_FIELDS.KEY],
-            baseParamNotation: selectedBasePatternElement.notation,
-            childParamId: selectedChildPatternElement.element[ORDER_PATTERN_ELEMENT_FIELDS.KEY],
-            childParamNotation: selectedChildPatternElement.notation,
-          },
-        ];
-      });*/
     }
   }, [selectedBasePattern]);
+
+
+  useEffect(() => {
+    //
+  }, [selectedChildPattern]);
+
+
+  const getBaseElementsNotationsByIds = (notationsArr) => {
+    setCorrespPatternElementsArray((value) => value.map((element) => {
+      const notation = notationsArr.find((el) => el.id === element.baseParamId);
+      if (!notation) {
+        return element;
+      }
+      return {
+        ...element,
+        baseParamNotation: notation.notation,
+      };
+    }));
+  };
+
+
+  const getChildElementsNotationsByIds = (notationsArr) => {
+    setCorrespPatternElementsArray((value) => value.map((element) => {
+      const notation = notationsArr.find((el) => el.id === element.childParamId);
+      console.log(notation)
+      if (!notation) {
+        return element;
+      }
+      return {
+        ...element,
+        childParamNotation: notation.notation,
+      };
+    }));
+  };
 
 
   /**
@@ -400,6 +432,8 @@ export const CreateOrderPatternConnections = (props) => {
                     basePattern={true}
                     allowChoosePatternElement={selectedBasePattern && selectedChildPattern}
                     nullSelectedElement={nullSelectedElements}
+                    elementIdsToGetNotation={baseElementIdsToGetNotation}
+                    getElementNotationsByIdsCallback={getBaseElementsNotationsByIds}
                   />
                 }
                 </Col>
@@ -420,6 +454,8 @@ export const CreateOrderPatternConnections = (props) => {
                     basePattern={false}
                     allowChoosePatternElement={selectedBasePattern && selectedChildPattern && selectedBasePatternElement}
                     nullSelectedElement={nullSelectedElements}
+                    elementIdsToGetNotation={childElementIdsToGetNotation}
+                    getElementNotationsByIdsCallback={getChildElementsNotationsByIds}
                   />
                 }
                 </Col>

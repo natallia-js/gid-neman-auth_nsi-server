@@ -15,6 +15,8 @@ export const OrderPatternSetConnectionsPreview = (props) => {
     basePattern = true,
     allowChoosePatternElement = false,
     nullSelectedElement = false,
+    elementIdsToGetNotation = null,
+    getElementNotationsByIdsCallback,
   } = props;
 
   const [orderPatternArrays, setOrderPatternArrays] = useState([]);
@@ -91,6 +93,19 @@ export const OrderPatternSetConnectionsPreview = (props) => {
     }
     return null;
   };
+
+
+  useEffect(() => {
+    if (!elementIdsToGetNotation || !elementIdsToGetNotation.length) {
+      return;
+    }
+    getElementNotationsByIdsCallback(elementIdsToGetNotation.map((id) => {
+      return {
+        id,
+        notation: getPatternElementNotationById(id),
+      };
+    }));
+  }, [elementIdsToGetNotation]);
 
 
   return (
