@@ -134,7 +134,8 @@ export const ServerAPI = Object.freeze({
   DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
   MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
   MOD_ORDER_CATEGORY_TITLE: ServerAddress + '/api/orderPatterns/modCategoryTitle',
-  ADD_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/addChildPattern',
+  SET_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/setChildPattern',
+  DEL_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/delChildPattern',
 });
 
 // ----------------------------------------

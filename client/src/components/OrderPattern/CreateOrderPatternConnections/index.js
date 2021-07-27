@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Tree, Row, Col, Input, Space, Typography, Radio, Button, Select } from 'antd';
+import { Tree, Row, Col, Input, Space, Typography, Radio, Button, Select, Popconfirm } from 'antd';
 import {
   ORDER_PATTERN_FIELDS,
   ORDER_PATTERN_ELEMENT_FIELDS,
@@ -33,6 +33,7 @@ export const CreateOrderPatternConnections = (props) => {
   const {
     existingOrderAffiliationTree,
     getNodeTitleByNodeKey,
+    getPatternNodeByKey,
     lastChangedOrderPattern,
     onEditOrderPattern,
   } = props;
@@ -48,19 +49,27 @@ export const CreateOrderPatternConnections = (props) => {
 
   // element + notation
   const [selectedBasePatternElement, setSelectedBasePatternElement] = useState(null);
+
   // element + notation
   const [selectedChildPatternElement, setSelectedChildPatternElement] = useState(null);
 
   // true - отменить текущее выделение элементов шаблонов (базового и дочернего)
   const [nullSelectedElements, setNullSelectedElements] = useState(false);
 
+  // Массив соответствия параметров текущего базового и дочернего шаблонов
   const [correspPatternElementsArray, setCorrespPatternElementsArray] = useState([]);
 
+  // Наименование текущего дочернего шаблона, связанного с текущим базовым шаблоном,
+  // отображаемое в списке наименований дочерних шаблонов, связанных с текущим базовым шаблоном
   const [selectedChildPatternTitle, setSelectedChildPatternTitle] = useState(null);
 
+  // Количество запросов, отправленных на сервер, на которые не получен ответ
   const [recsBeingProcessed, setRecsBeingProcessed] = useState(0);
 
+  // Массив id параметров базового шаблона, для которых необходимо получить условное обозначение
   const [baseElementIdsToGetNotation, setBaseElementIdsToGetNotation] = useState(null);
+
+  // Массив id параметров дочернего шаблона, для которых необходимо получить условное обозначение
   const [childElementIdsToGetNotation, setChildElementIdsToGetNotation] = useState(null);
 
   // Пользовательский хук для получения информации от сервера
@@ -113,73 +122,73 @@ export const CreateOrderPatternConnections = (props) => {
         setNullSelectedElements(true);
         setCorrespPatternElementsArray([]);
       }
-    } else if (lastChangedOrderPattern.edit) {console.log(lastChangedOrderPattern.pattern)
+    } else if (lastChangedOrderPattern.edit) {
       const editedPatternKey = lastChangedOrderPattern.pattern[ORDER_PATTERN_FIELDS.KEY];
-      /*const changePatternFunc = (value) => {
-        return {
-          ...value,
-          [ORDER_PATTERN_FIELDS.TITLE]: lastChangedOrderPattern.pattern[ORDER_PATTERN_FIELDS.TITLE],
-          [ORDER_PATTERN_FIELDS.ELEMENTS]: lastChangedOrderPattern.pattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-          [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: lastChangedOrderPattern.pattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
-        };
-      };*/
       let editedSelectedPattern = false;
       if (selectedBasePattern && selectedBasePattern[ORDER_PATTERN_FIELDS.KEY] === editedPatternKey) {
-        setSelectedBasePattern(/*changePatternFunc*/ lastChangedOrderPattern.pattern);
+        setSelectedBasePattern(lastChangedOrderPattern.pattern);
         editedSelectedPattern = true;
       }
       if (selectedChildPattern && selectedChildPattern[ORDER_PATTERN_FIELDS.KEY] === editedPatternKey) {
-        setSelectedChildPattern(/*changePatternFunc*/ lastChangedOrderPattern.pattern);
+        setSelectedChildPattern(lastChangedOrderPattern.pattern);
         editedSelectedPattern = true;
       }
       if (editedSelectedPattern) {
         setSelectedBasePatternElement(null);
         setSelectedChildPatternElement(null);
         setNullSelectedElements(true);
-
-
-        // ????????????????????????????????????????
-        setCorrespPatternElementsArray([]);
       }
     }
   }, [lastChangedOrderPattern]);
 
 
+  const onBaseAndChildPatternElementsSelected = () => {
+    // определяем дочерний шаблон, наименование которого необходимо отобразить в выпадающем списке
+    // наименований дочерних шаблонов текущего базового шаблона
+    const childPatternToSelect = selectedBasePattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS].find((pattern) =>
+      pattern[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY] === selectedChildPattern[ORDER_PATTERN_FIELDS.KEY]
+    );
+    if (childPatternToSelect) {
+      setSelectedChildPatternTitle(getNodeTitleByNodeKey(childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY], existingOrderAffiliationTree));
+      // помимо наименования дочернего шаблона, необходимо также вывести корректную таблицу связей
+      // параметров базового и дочернего шаблонов
+      const arr = childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.MATCH_PATTERN_PARAMS];
+      setCorrespPatternElementsArray(arr);
+      setBaseElementIdsToGetNotation(arr.map((element) => element.baseParamId));
+      setChildElementIdsToGetNotation(arr.map((element) => element.childParamId));
+
+    } else {
+      setSelectedChildPatternTitle(null);
+      setCorrespPatternElementsArray([]);
+    }
+  };
+
+
   useEffect(() => {
-    setSelectedChildPatternTitle(null);
     setSelectedBasePatternElement(null);
     setSelectedChildPatternElement(null);
     setNullSelectedElements(true);
 
     if (!selectedBasePattern) {
-      setSelectBasePattern(PatternToChoose.BASE);
       setCorrespPatternElementsArray([]);
-
+      setSelectedChildPatternTitle(null);
     } else if (selectedChildPattern) {
-      // определяем дочерний шаблон, наименование которого необходимо отобразить в выпадающем списке
-      // наименований дочерних шаблонов текущего базового шаблона
-      const childPatternToSelect = selectedBasePattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS].find((pattern) =>
-        pattern[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY] === selectedChildPattern[ORDER_PATTERN_FIELDS.KEY]
-      );
-      if (childPatternToSelect) {
-        setSelectedChildPatternTitle(getNodeTitleByNodeKey(childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY], existingOrderAffiliationTree));
-        // помимо наименования дочернего шаблона, необходимо также вывести корректную таблицу связей
-        // параметров базового и дочернего шаблонов
-        const arr = childPatternToSelect[CHILD_ORDER_PATTERN_FIELDS.MATCH_PATTERN_PARAMS];
-        setCorrespPatternElementsArray(arr);
-        setBaseElementIdsToGetNotation(arr.map((element) => element.baseParamId));
-        setChildElementIdsToGetNotation(arr.map((element) => element.childParamId));
-
-      } else {
-        setSelectedChildPatternTitle(null);
-        setCorrespPatternElementsArray([]);
-      }
+      onBaseAndChildPatternElementsSelected();
     }
   }, [selectedBasePattern]);
 
 
   useEffect(() => {
-    //
+    setSelectedBasePatternElement(null);
+    setSelectedChildPatternElement(null);
+    setNullSelectedElements(true);
+
+    if (!selectedChildPattern) {
+      setCorrespPatternElementsArray([]);
+      setSelectedChildPatternTitle(null);
+    } else if (selectedBasePattern) {
+      onBaseAndChildPatternElementsSelected();
+    }
   }, [selectedChildPattern]);
 
 
@@ -200,7 +209,6 @@ export const CreateOrderPatternConnections = (props) => {
   const getChildElementsNotationsByIds = (notationsArr) => {
     setCorrespPatternElementsArray((value) => value.map((element) => {
       const notation = notationsArr.find((el) => el.id === element.childParamId);
-      console.log(notation)
       if (!notation) {
         return element;
       }
@@ -223,6 +231,14 @@ export const CreateOrderPatternConnections = (props) => {
       return;
     }
     if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) {
+      // не можем допустить, чтобы базовый и дочерний шаблоны совпадали
+      if (
+          (selectBasePattern && selectedChildPattern && selectedChildPattern[ORDER_PATTERN_FIELDS.KEY] === selectedKeys[0]) ||
+          (!selectBasePattern && selectedBasePattern && selectedBasePattern[ORDER_PATTERN_FIELDS.KEY] === selectedKeys[0])
+      ) {
+        message(MESSAGE_TYPES.ERROR, 'Базовый и дочерний шаблоны не могут совпадать');
+        return;
+      }
       const selectedPattern = {
         [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
         [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
@@ -241,8 +257,20 @@ export const CreateOrderPatternConnections = (props) => {
   };
 
 
-  const handleChangeChildPatternInList = (selectedValue) => {
+  const handleChangeChildPatternInList = (selectedValue, option) => {
     setSelectedChildPatternTitle(selectedValue);
+
+    if (!selectedValue) {
+      setSelectedChildPattern(null);
+    } else {
+      const node = getPatternNodeByKey(option.key, existingOrderAffiliationTree);
+      setSelectedChildPattern({
+        [ORDER_PATTERN_FIELDS.KEY]: option.key,
+        [ORDER_PATTERN_FIELDS.TITLE]: selectedValue,
+        [ORDER_PATTERN_FIELDS.ELEMENTS]: node.pattern,
+        [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: node.childPatterns,
+      });
+    }
   };
 
 
@@ -296,11 +324,15 @@ export const CreateOrderPatternConnections = (props) => {
   };
 
 
+  /**
+   * Отправляет на сервер изменения в связях параметров базового и дочернего шаблонов
+   * с целью сохранения их в БД.
+   */
   const handleSaveOrderPatternsConnections = async () => {
     setRecsBeingProcessed((value) => value + 1);
 
     try {
-      const res = await request(ServerAPI.ADD_CHILD_ORDER_PATTERN, 'POST',
+      const res = await request(ServerAPI.SET_CHILD_ORDER_PATTERN, 'POST',
         {
           basePatternId: selectedBasePattern[ORDER_PATTERN_FIELDS.KEY],
           childPatternId: selectedChildPattern[ORDER_PATTERN_FIELDS.KEY],
@@ -318,21 +350,35 @@ export const CreateOrderPatternConnections = (props) => {
 
       const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.baseCandidate);
       onEditOrderPattern(editedAndTransformedPattern);
-/*
-      const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.orderPattern);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
+
+    setRecsBeingProcessed((value) => value - 1);
+  };
+
+
+  /**
+   *
+   */
+  const handleDelConnection = async () => {
+    setRecsBeingProcessed((value) => value + 1);
+
+    try {
+      const res = await request(ServerAPI.DEL_CHILD_ORDER_PATTERN, 'POST',
+        {
+          basePatternId: selectedBasePattern[ORDER_PATTERN_FIELDS.KEY],
+          childPatternId: selectedChildPattern[ORDER_PATTERN_FIELDS.KEY],
+        },
+        { Authorization: `Bearer ${auth.token}` }
+      );
+
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+
+      const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.baseCandidate);
       onEditOrderPattern(editedAndTransformedPattern);
 
-      setSelectedPattern((value) => {
-        return {
-          ...value,
-          [ORDER_PATTERN_FIELDS.TITLE]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.TITLE],
-          [ORDER_PATTERN_FIELDS.ELEMENTS]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-        };
-      })
-      setEditedPattern(null);
-      setPatternEdited(false);
-      setInsertOrderElementPos(0);
-*/
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
@@ -372,11 +418,13 @@ export const CreateOrderPatternConnections = (props) => {
               <Title level={4}>Текущие дочерние шаблоны</Title>
               <Select
                 style={{ width: '100%' }}
+                allowClear={true}
                 onChange={handleChangeChildPatternInList}
                 options={[
-                  { value: null },
+                  { key: null, value: null },
                   ...selectedBasePattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS].map((child) => {
                     return {
+                      key: child[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY],
                       value: getNodeTitleByNodeKey(child[CHILD_ORDER_PATTERN_FIELDS.CHILD_KEY], existingOrderAffiliationTree),
                     };
                   })
@@ -384,6 +432,25 @@ export const CreateOrderPatternConnections = (props) => {
                 value={selectedChildPatternTitle}
               />
             </>
+          }
+          {
+            selectedChildPatternTitle &&
+            <Popconfirm
+              title="Удалить связь?"
+              onConfirm={handleDelConnection}
+              okText="Да"
+              cancelText="Отмена"
+            >
+              <Button
+                type="primary"
+                size="small"
+                style={{
+                  marginBottom: 16,
+                }}
+              >
+                Удалить связь с дочерним шаблоном
+              </Button>
+            </Popconfirm>
           }
           {
             selectedBasePattern && selectedChildPattern && !selectedBasePatternElement &&
@@ -400,7 +467,7 @@ export const CreateOrderPatternConnections = (props) => {
             selectedBasePattern && selectedChildPattern && selectedBasePatternElement && selectedChildPatternElement &&
             <div>
               <Text type="warning">
-                Вы можете изменить выбор в отношении как элемента базового шаблона, так и элемента дочернего шаблона либо
+                Вы можете изменить выбор в отношении как элемента базового шаблона, так и элемента дочернего шаблона либо:
               </Text>
               <Button
                 type="primary"

@@ -22,6 +22,7 @@ export const OrderPatternElementType = Object.freeze({
   DATE: 'date',
   TIME: 'time',
   DATETIME: 'datetime',
+  DR_TRAIN_TABLE: 'drTrainTable',
   LINEBREAK: 'linebreak',
 });
 
@@ -32,6 +33,7 @@ export const OrderPatternElementTypeShortTitles = Object.freeze({
   DATE: 'д.',
   TIME: 'в.',
   DATETIME: 'д.-в.',
+  DR_TRAIN_TABLE: 'т.п.ДР',
   LINEBREAK: 'п.с.',
 });
 

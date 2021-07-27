@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Radio, Row, Col, Input, Select, Button, DatePicker, TimePicker, Space } from 'antd';
+import { Radio, Row, Col, Input, Select, Button, DatePicker, TimePicker, Space, Table } from 'antd';
 import {
   DateFormat,
   TimeFormat,
@@ -10,6 +10,7 @@ import {
 } from '../constants';
 import { ElementSizeChooser } from '../EditOrderPatternElement/ElementSizeChooser';
 import { EnterOutlined } from '@ant-design/icons';
+import drTrainTableColumns from '../drTrainTableColumns';
 
 /**
  * Позволяет создать новый либо отредактировать существующий элемент шаблона распоряжения.
@@ -156,6 +157,13 @@ export const EditOrderPatternElement = (props) => {
         return <TimePicker format={TimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.DATETIME:
         return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
+      case OrderPatternElementType.DR_TRAIN_TABLE:
+        return <Table
+          bordered
+          dataSource={[]}
+          columns={drTrainTableColumns()}
+          sticky={true}
+        />;
       case OrderPatternElementType.LINEBREAK:
         return <EnterOutlined />;
       default:
@@ -191,6 +199,9 @@ export const EditOrderPatternElement = (props) => {
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.DATETIME}>
                 Дата-время
+              </Radio.Button>
+              <Radio.Button value={OrderPatternElementType.DR_TRAIN_TABLE}>
+                Таблица "Поезд ДР"
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.LINEBREAK}>
                 Перенос строки

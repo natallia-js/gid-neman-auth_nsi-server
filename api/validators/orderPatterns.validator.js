@@ -128,10 +128,22 @@ const addOrderChildPatternValidationRules = () => {
   ];
 };
 
+const delOrderChildPatternValidationRules = () => {
+  return [
+    check('basePatternId')
+      .exists()
+      .withMessage('Не указан id базового шаблона распоряжения'),
+    check('childPatternId')
+      .exists()
+      .withMessage('Не указан id дочернего шаблона распоряжения'),
+  ];
+};
+
 module.exports = {
   addOrderPatternValidationRules,
   delOrderPatternValidationRules,
   modOrderPatternValidationRules,
   modOrderPatternsCategoryValidationRules,
   addOrderChildPatternValidationRules,
+  delOrderChildPatternValidationRules,
 };

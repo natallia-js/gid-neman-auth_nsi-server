@@ -19,13 +19,13 @@ export const useSearchTree = (initialTree) => {
    *
    */
   const onChangeSearchValue = useCallback((e) => {
-    const { value } = e.target;
+    const value = e.target.value.toLowerCase();
     const expandedKeysArray = [];
     if (value !== '') {
       const getExpandedKeys = (tree) => {
         for (let i = 0; i < tree.length; i += 1) {
           const node = tree[i];
-          if (node.title.indexOf(value) > -1) {
+          if (node.title.toLowerCase().indexOf(value) > -1) {
             expandedKeysArray.push(node.key);
           }
           if (node.children) {
@@ -48,14 +48,16 @@ export const useSearchTree = (initialTree) => {
    */
   const loop = useCallback((data) =>
     data.map((item) => {
-      const index = item.title.indexOf(searchTreeValue);
+      const index = item.title.toLowerCase().indexOf(searchTreeValue);
       const beforeStr = item.title.substr(0, index);
       const afterStr = item.title.substr(index + searchTreeValue.length);
       const title =
         index > -1 ? (
           <span>
             {beforeStr}
-            <span className="tree-search-value">{searchTreeValue}</span>
+            <span className="tree-search-value">
+              {item.title.substring(index, index + searchTreeValue.length)}
+            </span>
             {afterStr}
           </span>
         ) : (

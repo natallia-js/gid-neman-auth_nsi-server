@@ -283,6 +283,23 @@ export const OrderPatternsPage = () => {
   };
 
 
+  const getPatternNodeByKey = (key, tree) => {
+    const stack = [...tree];
+
+    while (stack.length) {
+      const curr = stack.pop();
+
+      if (curr.key === key) {
+        return curr;
+      }
+
+      if (curr.children) {
+        stack.push(...curr.children);
+      }
+    }
+  };
+
+
   if (!dataLoaded) {
     return (
       <Row align="middle">
@@ -322,6 +339,7 @@ export const OrderPatternsPage = () => {
             <CreateOrderPatternConnections
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
+              getPatternNodeByKey={getPatternNodeByKey}
               lastChangedOrderPattern={lastChangedOrderPattern}
               onEditOrderPattern={handleEditOrderPattern}
             />

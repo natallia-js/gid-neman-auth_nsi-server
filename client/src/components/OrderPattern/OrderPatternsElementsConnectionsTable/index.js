@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, } from 'antd';
+import { Table } from 'antd';
 import orderPatternElementsConnectionsTableColumns from './OrderPatternElementsConnectionsTableColumns';
 
 
