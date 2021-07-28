@@ -410,6 +410,7 @@ export const CreateOrderPatternConnections = (props) => {
         />
       </Col>
       <Col span={15}>
+        { recsBeingProcessed > 0 && <Text type="warning">На сервер отправлено {recsBeingProcessed} запросов. Ожидаю ответ...</Text> }
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           {
             selectedBasePattern && selectedBasePattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS] &&
