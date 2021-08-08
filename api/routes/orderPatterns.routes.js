@@ -28,7 +28,7 @@ const {
  * Обрабатывает запрос на получение списка всех шаблонов распоряжений, которые являются общими
  * (не приватными! т.е. не созданными конкретным лицом лично для себя) для использования.
  *
- * Параметр запроса (id пользователя), если указан, то определяет дополнительные шаблоны, которые
+ * Параметр запроса (userId - id пользователя), если указан, то определяет дополнительные шаблоны, которые
  * необходимо включить в выборку: личные шаблоны указанного пользователя.
  *
  * Параметр запроса (getChildPatterns), если указан, то определяет необходимость включения в
@@ -111,7 +111,9 @@ router.post(
  *            type - тип элемента шаблона (обязателен),
  *            size - размер элемента шаблона (не обязательный параметр),
  *            ref - описание содержимого элемента шаблона (не обязательный параметр),
- *            value - значение элемента шаблона (не обязательный параметр)
+ *            value - значение элемента шаблона (не обязательный параметр),
+ * isPersonalPattern - если true, то создаваемый шаблон принадлежит конкретному лицу, его создавшему;
+ *                     в противном случае создаваемый шаблон является общедоступным
  */
  router.post(
   '/add',
@@ -133,7 +135,7 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { _id, service, type, category, title, elements } = req.body;
+      const { _id, service, type, category, title, elements, isPersonalPattern } = req.body;
 
       // Служба, которой принадлежит лицо, запрашивающее действие
       const serviceName = req.user.service;
@@ -153,10 +155,21 @@ router.post(
 
       // Создаем в БД запись с данными о новом распоряжении
       let orderPattern;
+      const newPatternObject = {
+        service,
+        type,
+        category,
+        title,
+        elements,
+        lastPatternUpdater: req.user.userId,
+      };
+      if (Boolean(isPersonalPattern)) {
+        newPatternObject.personalPattern = req.user.userId;
+      }
       if (_id) {
-        orderPattern = new OrderPattern({ _id, service, type, category, title, elements });
+        orderPattern = new OrderPattern({ _id, ...newPatternObject });
       } else {
-        orderPattern = new OrderPattern({ service, type, category, title, elements });
+        orderPattern = new OrderPattern(newPatternObject);
       }
       await orderPattern.save();
 
@@ -292,6 +305,7 @@ router.post(
       // Редактируем в БД запись
       delete req.body.id;
       candidate = Object.assign(candidate, req.body);
+      candidate.lastPatternUpdater = req.user.userId;
       await candidate.save();
 
       res.status(OK).json({ message: 'Информация успешно изменена', orderPattern: candidate });

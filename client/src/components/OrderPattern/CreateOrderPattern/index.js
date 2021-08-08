@@ -242,6 +242,7 @@ export const CreateOrderPattern = (props) => {
           ...values,
           [ORDER_PATTERN_FIELDS.CATEGORY]: orderCategory,
           [ORDER_PATTERN_FIELDS.ELEMENTS]: orderPattern,
+          isPersonalPattern: false,
         },
         { Authorization: `Bearer ${auth.token}` }
       );

@@ -63,7 +63,10 @@ const addOrderPatternValidationRules = () => {
       .isArray()
       .withMessage('Список элементов шаблона распоряжения должен быть массивом')
       .bail() // stops running validations if any of the previous ones have failed
-      .custom((val) => checkPatternElements(val))
+      .custom((val) => checkPatternElements(val)),
+    check('isPersonalPattern')
+      .exists()
+      .withMessage('Не указан признак принадлежности шаблона распоряжения'),
   ];
 };
 

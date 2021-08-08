@@ -24,7 +24,10 @@ const schema = new Schema({
       value: { type: String, required: false },
     },
   ],
-  // id пользователя, которому необходимо показывать данный шаблон
+  // id пользователя, который последним внес изменения в шаблон
+  lastPatternUpdater: { type: Types.ObjectId, required: true },
+  // id пользователя, которому необходимо показывать данный шаблон (полагается, что данный шаблон
+  // пользователь создал для себя)
   personalPattern: { type: Types.ObjectId, required: false },
   // Список дочерних шаблонов (шаблонов, связанных с текущим и применяемых после текущего)
   childPatterns: [
