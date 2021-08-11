@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 
 export const useSearchTree = (initialTree) => {
@@ -9,16 +9,16 @@ export const useSearchTree = (initialTree) => {
   /**
    *
    */
-  const onExpand = useCallback((expandedKeys) => {
+  const onExpand = (expandedKeys) => {
     setExpandedKeys(expandedKeys);
     setAutoExpandParent(false);
-  });
+  };
 
 
   /**
    *
    */
-  const onChangeSearchValue = useCallback((e) => {
+  const onChangeSearchValue = (e) => {
     const value = e.target.value.toLowerCase();
     const expandedKeysArray = [];
     if (value !== '') {
@@ -38,7 +38,7 @@ export const useSearchTree = (initialTree) => {
     setExpandedKeys(expandedKeysArray);
     setSearchTreeValue(value);
     setAutoExpandParent(true);
-  });
+  };
 
 
   /**
@@ -46,7 +46,7 @@ export const useSearchTree = (initialTree) => {
    * @param {*} data
    * @returns
    */
-  const loop = useCallback((data) =>
+  const loop = (data) =>
     data.map((item) => {
       const index = item.title.toLowerCase().indexOf(searchTreeValue);
       const beforeStr = item.title.substr(0, index);
@@ -70,7 +70,7 @@ export const useSearchTree = (initialTree) => {
         ...item,
         title,
       };
-    }));
+    });
 
 
   return {

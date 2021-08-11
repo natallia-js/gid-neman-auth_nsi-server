@@ -94,10 +94,34 @@ export const EditOrderPatternElement = (props) => {
         (!selectedPatternElement.value || selectedPatternElement.value.trim() === '')) {
       return;
     }
+    let elementValue = selectedPatternElement.value;
+    let elementSize = selectedPatternElement.size;
+    let changed = false;
     if (selectedPatternElement.type !== OrderPatternElementType.TEXT) {
-      selectedPatternElement.value = null;
+      elementValue = null;
+      changed = true;
     }
-    submitOrderPatternElementCallback(selectedPatternElement);
+    if ([OrderPatternElementType.DATE, OrderPatternElementType.TIME, OrderPatternElementType.DATETIME]
+      .includes(selectedPatternElement.type) && selectedPatternElement.size !== PossibleElementSizes.AUTO) {
+      elementSize = PossibleElementSizes.AUTO;
+      changed = true;
+    }
+    let changedSelectedPatternElement = null;
+    if (changed) {
+      changedSelectedPatternElement = {
+        ...selectedPatternElement,
+        value: elementValue,
+        size: elementSize,
+      };
+      setSelectedPatternElement((el) => {
+        return {
+          ...el,
+          value: elementValue,
+          size: elementSize,
+        };
+      });
+    }
+    submitOrderPatternElementCallback(changedSelectedPatternElement || selectedPatternElement);
   };
 
 
