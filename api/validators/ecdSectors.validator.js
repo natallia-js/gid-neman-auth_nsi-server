@@ -1,5 +1,13 @@
 const { check, body } = require('express-validator');
 
+const getDefiniteECDSectorValidationRules = () => {
+  return [
+    check('sectorId')
+      .exists()
+      .withMessage('Не указан id участка ЭЦД'),
+  ];
+};
+
 const getDefiniteECDSectorsValidationRules = () => {
   return [
     check('ecdSectorIds')
@@ -42,6 +50,7 @@ const modECDSectorValidationRules = () => {
 };
 
 module.exports = {
+  getDefiniteECDSectorValidationRules,
   getDefiniteECDSectorsValidationRules,
   addECDSectorValidationRules,
   delECDSectorValidationRules,

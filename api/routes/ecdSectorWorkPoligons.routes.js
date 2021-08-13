@@ -8,7 +8,6 @@ const validate = require('../validators/validate');
 const { TECDSector } = require('../models/TECDSector');
 const User = require('../models/User');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
-const { Op } = require('sequelize');
 
 const router = Router();
 

@@ -67,6 +67,55 @@ router.get(
 
 
 /**
+ * Обрабатывает запрос на получение списка заданных станций (по заданным id этих станций)
+ * со вложенным списком путей.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * stationIds - массив id станций (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_STATIONS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getDefiniteStationsValidationRules(),
+  validate,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { stationIds } = req.body;
+
+      const data = await TStation.findAll({
+        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        where: { St_ID: stationIds },
+        include: [{
+          model: TStationTrack,
+          attributes: ['ST_ID', 'ST_Name'],
+        }],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обрабатывает запрос на получение списка станций по заданным id этих станций.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.

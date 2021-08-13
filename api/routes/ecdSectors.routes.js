@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefiniteECDSectorValidationRules,
   getDefiniteECDSectorsValidationRules,
   addECDSectorValidationRules,
   delECDSectorValidationRules,
@@ -15,6 +16,8 @@ const { TECDTrainSector } = require('../models/TECDTrainSector');
 const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
+const { TStationTrack } = require('../models/TStationTrack');
+const { TBlockTrack } = require('../models/TBlockTrack');
 const { Op } = require('sequelize');
 
 const router = Router();
@@ -106,6 +109,87 @@ router.get(
       const data = await TECDSector.findAll({
         raw: true,
         attributes: ['ECDS_ID', 'ECDS_Title'],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех участков ЭЦД со вложенными списками поездных участков,
+ * которые, в свою очередь, содержат вложенные списки станций и перегонов.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - id участка ЭЦД (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getDefiniteECDSectorValidationRules(),
+  validate,
+  async (req, res) => {
+    try {
+      const { sectorId } = req.body;
+
+      const data = await TECDSector.findOne({
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: sectorId },
+        include: [
+          {
+            model: TECDTrainSector,
+            as: 'TECDTrainSectors',
+            attributes: ['ECDTS_ID', 'ECDTS_Title'],
+            include: [
+              {
+                model: TStation,
+                as: 'TStations',
+                attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+                include: [
+                  // TECDTrainSectorStation включается в выборку здесь автоматически, ничего писать не
+                  // нужно. Если написать, будут ошибки. Это промежуточная таблица в отношении many-to-many
+                  {
+                    model: TStationTrack,
+                    as: 'TStationTracks',
+                    attributes: ['ST_ID', 'ST_Name'],
+                  },
+                ],
+              },
+              {
+                model: TBlock,
+                as: 'TBlocks',
+                attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+                include: [
+                  // TECDTrainSectorBlock включается в выборку здесь автоматически, ничего писать не
+                  // нужно. Если написать, будут ошибки. Это промежуточная таблица в отношении many-to-many
+                  {
+                    model: TBlockTrack,
+                    as: 'TBlockTracks',
+                    attributes: ['BT_ID', 'BT_Name'],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       });
       res.status(OK).json(data);
 

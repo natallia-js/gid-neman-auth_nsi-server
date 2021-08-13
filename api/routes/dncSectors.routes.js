@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefiniteDNCSectorValidationRules,
   getDefiniteDNCSectorsValidationRules,
   addDNCSectorValidationRules,
   delDNCSectorValidationRules,
@@ -15,6 +16,8 @@ const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
+const { TStationTrack } = require('../models/TStationTrack');
+const { TBlockTrack } = require('../models/TBlockTrack');
 const { Op } = require('sequelize');
 
 const router = Router();
@@ -72,7 +75,7 @@ router.get(
           },
         ],
       });
-      res.status(OK).json(data.map(d => d.dataValues));
+      res.status(OK).json(data ? data.map(d => d.dataValues) : []);
 
     } catch (error) {
       console.log(error);
@@ -106,6 +109,87 @@ router.get(
       const data = await TDNCSector.findAll({
         raw: true,
         attributes: ['DNCS_ID', 'DNCS_Title'],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех участков ДНЦ со вложенными списками поездных участков,
+ * которые, в свою очередь, содержат вложенные списки станций и перегонов.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - id участка ДНЦ (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_DNCSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getDefiniteDNCSectorValidationRules(),
+  validate,
+  async (req, res) => {
+    try {
+      const { sectorId } = req.body;
+
+      const data = await TDNCSector.findOne({
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+        where: { DNCS_ID: sectorId },
+        include: [
+          {
+            model: TDNCTrainSector,
+            as: 'TDNCTrainSectors',
+            attributes: ['DNCTS_ID', 'DNCTS_Title'],
+            include: [
+              {
+                model: TStation,
+                as: 'TStations',
+                attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+                include: [
+                  // TDNCTrainSectorStation включается в выборку здесь автоматически, ничего писать не
+                  // нужно. Если написать, будут ошибки. Это промежуточная таблица в отношении many-to-many
+                  {
+                    model: TStationTrack,
+                    as: 'TStationTracks',
+                    attributes: ['ST_ID', 'ST_Name'],
+                  },
+                ],
+              },
+              {
+                model: TBlock,
+                as: 'TBlocks',
+                attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+                include: [
+                  // TDNCTrainSectorBlock включается в выборку здесь автоматически, ничего писать не
+                  // нужно. Если написать, будут ошибки. Это промежуточная таблица в отношении many-to-many
+                  {
+                    model: TBlockTrack,
+                    as: 'TBlockTracks',
+                    attributes: ['BT_ID', 'BT_Name'],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       });
       res.status(OK).json(data);
 
