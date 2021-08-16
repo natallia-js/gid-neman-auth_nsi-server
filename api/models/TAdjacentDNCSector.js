@@ -39,5 +39,5 @@ function createAdjacentDNCSectorModel(sequelize) {
 
 module.exports = {
   createAdjacentDNCSectorModel,
-  TAdjacentDNCSector
+  TAdjacentDNCSector,
 };

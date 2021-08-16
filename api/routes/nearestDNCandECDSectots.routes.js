@@ -65,6 +65,112 @@ router.get(
 
 
 /**
+ * Обрабатывает запрос на получение списка всех ближайших участков ЭЦД заданного участка ДНЦ.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - id участка ДНЦ (обязателен)
+ */
+ router.post(
+  '/dncDefinitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_DNCSECTORS_ACTION, GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const { sectorId } = req.body;
+
+      let ecdSectorIds = await TNearestDNCandECDSector.findAll({
+        raw: true,
+        attributes: ['NDE_ECDSectorID'],
+        where: { NDE_DNCSectorID: sectorId },
+      });
+
+      if (!ecdSectorIds || !ecdSectorIds.length) {
+        return res.status(OK).json([]);
+      }
+
+      ecdSectorIds = ecdSectorIds.map((element) => element.NDE_ECDSectorID);
+
+      const data = await TECDSector.findAll({
+        raw: true,
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: ecdSectorIds },
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех ближайших участков ДНЦ заданного участка ЭЦД.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - id участка ЭЦД (обязателен)
+ */
+ router.post(
+  '/ecdDefinitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_DNCSECTORS_ACTION, GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const { sectorId } = req.body;
+
+      let dncSectorIds = await TNearestDNCandECDSector.findAll({
+        raw: true,
+        attributes: ['NDE_DNCSectorID'],
+        where: { NDE_ECDSectorID: sectorId },
+      });
+
+      if (!dncSectorIds || !dncSectorIds.length) {
+        return res.status(OK).json([]);
+      }
+
+      dncSectorIds = dncSectorIds.map((element) => element.NDE_DNCSectorID);
+
+      const data = await TDNCSector.findAll({
+        raw: true,
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+        where: { DNCS_ID: dncSectorIds },
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обработка запроса на добавление информации о близости участков ЭЦД к данному участку ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.

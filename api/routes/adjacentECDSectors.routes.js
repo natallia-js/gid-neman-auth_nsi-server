@@ -60,6 +60,68 @@ router.get(
 
 
 /**
+ * Обрабатывает запрос на получение списка всех смежных участков ЭЦД заданного участка ЭЦД.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorId - id участка ЭЦД (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      const { sectorId } = req.body;
+
+      let data = await TAdjacentECDSector.findAll({
+        raw: true,
+        where: {
+          [Op.or]: [
+            { AECDS_ECDSectorID1: sectorId },
+            { AECDS_ECDSectorID2: sectorId },
+          ],
+        },
+        attributes: ['AECDS_ECDSectorID1', 'AECDS_ECDSectorID2'],
+      });
+
+      if (!data || !data.length) {
+        return res.status(OK).json([]);
+      }
+
+      const ecdSectorIds = data.map((info) => {
+        if (info.AECDS_ECDSectorID1 === sectorId) {
+          return info.AECDS_ECDSectorID2;
+        }
+        return info.AECDS_ECDSectorID1;
+      });
+      data = await TECDSector.findAll({
+        raw: true,
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: ecdSectorIds },
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обработка запроса на добавление смежных участков ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
