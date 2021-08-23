@@ -7,7 +7,9 @@ const PROJECT_CONSTANTS = Object.freeze({
   UNPROCESSABLE_ENTITY: 402,
   UNKNOWN_ERR: 500,
   UNKNOWN_ERR_MESS: 'Что-то пошло не так, попробуйте снова',
+  USER_NOT_FOUND_ERR_MESS: 'Пользователь не найден',
   UNAUTHORIZED_ERR_MESS: 'Пользователь не имеет права на выполнение данного действия',
+  NOT_LOGGED_IN_ERR_MESS: 'Пользователь вышел из системы',
   NOT_MAIN_ADMIN_ERR_MESS: 'На выполнение данного действия требуются права главного администратора',
   CREDENTIALS_ERR_MESS: 'Не (верно) определены полномочия, которые необходимо проверить у пользователя',
   SUCCESS_ADD_MESS: 'Информация успешно сохранена',
@@ -66,10 +68,19 @@ const AUTH_NSI_UTIL_CREDENTIALS = Object.freeze({
   MOD_ORDER_PATTERN_ACTION: 'MOD_ORDER_PATTERN_ACTION',
 });
 
+const WEBSOCKET_CONSTANTS = Object.freeze({
+  PING_PONG_INTERVAL: 20000,
+  CHECK_CLIENTS_ONLINE_STATE_INTERVAL: 20000,
+  CONNECTION_OK_MESSAGE: 'connection OK',
+  UPGRADE_ERROR_MESSAGE: 'HTTP/1.1 401 Unauthorized\r\n\r\n',
+});
+
 module.exports = {
   ...PROJECT_CONSTANTS,
 
   ...AUTH_NSI_UTIL_CREDENTIALS,
+
+  ...WEBSOCKET_CONSTANTS,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

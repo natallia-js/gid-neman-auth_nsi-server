@@ -707,6 +707,11 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
+      if (!user.online) {
+        user.online = true;
+        await user.save();
+      }
+
       res.status(OK).json({
         token,
         userId: user._id,

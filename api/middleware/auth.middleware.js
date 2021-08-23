@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
 const config = require('config');
+const {
+  UNAUTHORIZED,
+  UNAUTHORIZED_ERR_MESS,
+} = require('../constants');
 
 const { CONFIG_JWT_SECRET_PARAM_NAME } = require('../constants');
 const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
@@ -30,7 +34,7 @@ module.exports = (req, res, next) => {
     const token = req.headers.authorization.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ message: 'Пользователь не авторизован' });
+      return res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
     }
 
     // Function 'verify()' acts synchronously if a callback is not supplied.
@@ -43,6 +47,6 @@ module.exports = (req, res, next) => {
     next();
 
   } catch (e) {
-    res.status(401).json({ message: 'Пользователь не авторизован' });
+    res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
   }
 }

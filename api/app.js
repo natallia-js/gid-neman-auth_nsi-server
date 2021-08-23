@@ -1,4 +1,6 @@
 const express = require('express');
+const setupWebSocket = require('./webSocket/setup');
+const http = require('http');
 const cors = require('cors');
 const config = require('config');
 const mongoose = require('mongoose');
@@ -33,6 +35,13 @@ app.use(express.json({ extended: true }));
 
 // CORS middleware
 app.use(cors());
+
+// initialize a simple http server
+const server = http.createServer(app);
+
+// pass the same server to our websocket setup function;
+// the websocket server will run on the same port accepting ws:// connections
+setupWebSocket(server);
 
 // Для связи с конфигурационной БД ЦИВК (MS SQL)
 let sequelize;
@@ -149,7 +158,7 @@ async function start() {
     // ----------------------------------------------------
 
     // Запускаем http-сервер на указанном порту
-    app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 
   } catch (e) {
     console.log('Server Error', e.message);
