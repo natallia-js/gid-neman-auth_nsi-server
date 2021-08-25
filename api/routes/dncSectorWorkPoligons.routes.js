@@ -58,6 +58,55 @@ router.get(
 
 
 /**
+ * Обрабатывает запрос на получение информации обо всех пользователях, у которых рабочий полигон -
+ * участок ДНЦ с одним из заданных id.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorIds - id участков ДНЦ (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_USERS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { sectorIds } = req.body;
+
+      const userIds = await TDNCSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['DNCSWP_UserID'],
+        where: { DNCSWP_DNCSID: sectorIds },
+      });
+
+      let data;
+      if (userIds) {
+        data = await User.find({ _id: userIds });
+      }
+
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обработка запроса на изменение списка рабочих полигонов-участков ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.

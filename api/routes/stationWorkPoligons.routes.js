@@ -8,7 +8,6 @@ const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
 const User = require('../models/User');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
-const { Op } = require('sequelize');
 
 const router = Router();
 
@@ -49,6 +48,69 @@ router.get(
         attributes: ['SWP_UserID', 'SWP_StID'],
       });
       res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение id всех пользователей, у которых рабочий полигон -
+ * станция с одним из заданных id.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * stationIds - id станций (обязателен)
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_USERS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { stationIds } = req.body;
+
+      const userIds = await TStationWorkPoligon.findAll({
+        raw: true,
+        attributes: ['SWP_UserID'],
+        where: { SWP_StID: stationIds },
+      });
+
+      let data;
+      if (userIds) {
+        data = await User.find({ _id: userIds.map((item) => item.SWP_UserID) });
+      }
+
+      if (data) {
+        data = data.map((user) => {
+          return {
+            _id: user._id,
+            name: user.name,
+            fatherName: user.fatherName,
+            surname: user.surname,
+            online: user.online,
+            post: user.post,
+            service: user.service,
+          };
+        });
+      }
+
+      res.status(OK).json(data || []);
 
     } catch (error) {
       console.log(error);
