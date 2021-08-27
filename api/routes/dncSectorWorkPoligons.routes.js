@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefinitUsersValidationRules,
   changeDNCSectorWorkPoligonsValidationRules,
 } = require('../validators/dncSectorWorkPoligons.validator');
 const validate = require('../validators/validate');
@@ -65,6 +66,8 @@ router.get(
  *
  * Параметры тела запроса:
  * sectorIds - id участков ДНЦ (обязателен)
+ * onlyOnline - true, если необходимо получить список лишь тех пользователей, которые в данный
+ *              момент online; false - если необходимо получить список всех пользователей
  */
  router.post(
   '/definitData',
@@ -80,20 +83,42 @@ router.get(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка параметров запроса
+  getDefinitUsersValidationRules(),
+  validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { sectorIds } = req.body;
+      const { sectorIds, onlyOnline } = req.body;
 
-      const userIds = await TDNCSectorWorkPoligon.findAll({
+      const users = await TDNCSectorWorkPoligon.findAll({
         raw: true,
-        attributes: ['DNCSWP_UserID'],
+        attributes: ['DNCSWP_UserID', 'DNCSWP_DNCSID'],
         where: { DNCSWP_DNCSID: sectorIds },
       });
 
       let data;
-      if (userIds) {
-        data = await User.find({ _id: userIds });
+      if (users) {
+        const searchCondition = { _id: users.map((item) => item.DNCSWP_UserID) };
+        if (onlyOnline) {
+          searchCondition.online = true;
+        }
+        data = await User.find(searchCondition);
+      }
+
+      if (data) {
+        data = data.map((user) => {
+          return {
+            _id: user._id,
+            name: user.name,
+            fatherName: user.fatherName,
+            surname: user.surname,
+            online: user.online,
+            post: user.post,
+            service: user.service,
+            dncSectorId: users.find((item) => String(item.DNCSWP_UserID) === String(user._id)).DNCSWP_DNCSID,
+          };
+        });
       }
 
       res.status(OK).json(data);

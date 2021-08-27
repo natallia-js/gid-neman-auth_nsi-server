@@ -1,5 +1,19 @@
 const { check } = require('express-validator');
 
+const getDefinitUsersValidationRules = () => {
+  return [
+    check('stationIds')
+      .exists()
+      .withMessage('Не указан массив id станций')
+      .bail()
+      .isArray()
+      .withMessage('Список id станций должен быть массивом'),
+    check('onlyOnline')
+      .isBoolean()
+      .withMessage('Значение параметра запроса onlyOnline должно принимать логическое значение'),
+  ];
+};
+
 const changeStationWorkPoligonsValidationRules = () => {
   return [
     check('userId')
@@ -15,5 +29,6 @@ const changeStationWorkPoligonsValidationRules = () => {
 };
 
 module.exports = {
+  getDefinitUsersValidationRules,
   changeStationWorkPoligonsValidationRules,
 };

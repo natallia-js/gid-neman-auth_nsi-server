@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefinitUsersValidationRules,
   changeStationWorkPoligonsValidationRules,
 } = require('../validators/stationWorkPoligons.validator');
 const validate = require('../validators/validate');
@@ -65,6 +66,8 @@ router.get(
  *
  * Параметры тела запроса:
  * stationIds - id станций (обязателен)
+ * onlyOnline - true, если необходимо получить список лишь тех пользователей, которые в данный
+ *              момент online; false - если необходимо получить список всех пользователей
  */
  router.post(
   '/definitData',
@@ -80,20 +83,27 @@ router.get(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка параметров запроса
+  getDefinitUsersValidationRules(),
+  validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds } = req.body;
+      const { stationIds, onlyOnline } = req.body;
 
-      const userIds = await TStationWorkPoligon.findAll({
+      const users = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_UserID'],
+        attributes: ['SWP_UserID', 'SWP_StID'],
         where: { SWP_StID: stationIds },
       });
 
       let data;
-      if (userIds) {
-        data = await User.find({ _id: userIds.map((item) => item.SWP_UserID) });
+      if (users) {
+        const searchCondition = { _id: users.map((item) => item.SWP_UserID) };
+        if (onlyOnline) {
+          searchCondition.online = true;
+        }
+        data = await User.find(searchCondition);
       }
 
       if (data) {
@@ -106,6 +116,7 @@ router.get(
             online: user.online,
             post: user.post,
             service: user.service,
+            stationId: users.find((item) => String(item.SWP_UserID) === String(user._id)).SWP_StID,
           };
         });
       }
