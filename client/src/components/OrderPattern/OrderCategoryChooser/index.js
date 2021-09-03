@@ -27,6 +27,14 @@ export const OrderCategoryChooser = ({
   // реакция на смену способа ввода категории распоряжения
   const onChangeUserChoice = (e) => {
     setUserChoice(e.target.value);
+    switch (e.target.value) {
+      case OrderCategoryType.EXISTING:
+        onChangeValue(selectValue);
+        break;
+      case OrderCategoryType.NEW:
+        onChangeValue(inputValue);
+        break;
+    }
   };
 
   const onExistingOrderCategoryChange = (value) => {

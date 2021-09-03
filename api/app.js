@@ -72,6 +72,8 @@ app.use('/api/nsi/services', (req, _res, next) => { req.sequelize = sequelize; n
 app.use('/api/nsi/posts', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/posts.routes'));
 app.use('/api/orderPatterns', require('./routes/orderPatterns.routes'));
 app.use('/api/orderPatternConnections', require('./routes/orderPatternConnections.routes'));
+app.use('/api/lastOrdersParams', require('./routes/lastOrdersParams.routes'));
+app.use('/api/orders', require('./routes/orders.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

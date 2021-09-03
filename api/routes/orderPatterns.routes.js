@@ -31,6 +31,11 @@ const {
  * Параметр запроса (userId - id пользователя), если указан, то определяет дополнительные шаблоны, которые
  * необходимо включить в выборку: личные шаблоны указанного пользователя.
  *
+ * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют дополнительные шаблоны,
+ * которые необходимо включить в выборку: шаблоны пользователей указанного рабочего полигона (для пользователя
+ * с userId также в выборку будут включены лишь созданные им шаблоны на заданном полигоне, т.е. значение
+ * параметра userId, если указано, будет проигнорировано).
+ *
  * Параметр запроса (getChildPatterns), если указан, то определяет необходимость включения в
  * выборку информации о дочерних шаблонах.
  *
@@ -56,7 +61,7 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { userId, getChildPatterns } = req.body;
+      const { userId, workPoligonType, workPoligonId, getChildPatterns } = req.body;
 
       const serviceName = req.user.service;
 
@@ -69,14 +74,29 @@ router.post(
 
       let data;
       if (!isMainAdmin(req)) {
-        // Ищем шаблоны распоряжений, принадлежащих заданной службе, а также, если указан userId,
-        // шаблоны пользователя с id = userId
+        // Ищем шаблоны распоряжений, принадлежащих заданной службе
         const matchFilter = { service: serviceName };
-        if (userId) {
+        // Ищем шаблоны распоряжений, принадлежащих указанному рабочему полигону
+        if (workPoligonType && workPoligonId) {
+          matchFilter.$or = [
+            {
+              personalPattern: { $exists: false },
+            },
+            {
+              $and: [
+                { workPoligon: { $exists: true } },
+                { "workPoligon.id": workPoligonId },
+                { "workPoligon.type": workPoligonType },
+              ],
+            },
+          ];
+        } else if (userId) {
+          // Ищем шаблоны распоряжений, принадлежащих пользователю с id = userId
           matchFilter.$or = [{ personalPattern: { $exists: false } }, { personalPattern: userId }];
         } else {
           matchFilter.personalPattern = { $exists: false };
         }
+
         data = await OrderPattern.find(matchFilter, dataProjection);
       } else {
         // Извлекаем информацию обо всех шаблонах распоряжений, кроме приватных
@@ -114,6 +134,7 @@ router.post(
  *            value - значение элемента шаблона (не обязательный параметр),
  * isPersonalPattern - если true, то создаваемый шаблон принадлежит конкретному лицу, его создавшему;
  *                     в противном случае создаваемый шаблон является общедоступным
+ * workPoligonId, workPoligonType - id и тип рабочего полигона пользователей
  */
  router.post(
   '/add',
@@ -135,7 +156,17 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { _id, service, type, category, title, elements, isPersonalPattern } = req.body;
+      const {
+        _id,
+        service,
+        type,
+        category,
+        title,
+        elements,
+        isPersonalPattern,
+        workPoligonId,
+        workPoligonType,
+      } = req.body;
 
       // Служба, которой принадлежит лицо, запрашивающее действие
       const serviceName = req.user.service;
@@ -165,6 +196,12 @@ router.post(
       };
       if (Boolean(isPersonalPattern)) {
         newPatternObject.personalPattern = req.user.userId;
+      }
+      if (Boolean(workPoligonId) && Boolean(workPoligonType)) {
+        newPatternObject.workPoligon = {
+          id: workPoligonId,
+          type: workPoligonType,
+        };
       }
       if (_id) {
         orderPattern = new OrderPattern({ _id, ...newPatternObject });
