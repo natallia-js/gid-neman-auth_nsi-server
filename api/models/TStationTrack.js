@@ -5,18 +5,22 @@ const MODEL_NAME = 'TStationTrack';
 
 class TStationTrack extends Model {}
 
+// Схема таблицы станционных путей
 function createStationTrackModel(sequelize) {
   TStationTrack.init({
+    // id пути станции
     ST_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // наименование пути
     ST_Name: {
       type: DataTypes.STRING(16),
       allowNull: false,
     },
+    // id станции
     ST_StationId: {
       type: DataTypes.INTEGER,
       allowNull: false,

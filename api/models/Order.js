@@ -16,18 +16,24 @@ const schema = new Schema({
   },
   // Время (временной интервал) действия распоряжения
   timeSpan: {
-    end: { type: Date, required: false },
     start: { type: Date, required: false },
+    end: { type: Date, required: false },
     tillCancellation: { type: Boolean, required: false },
   },
   // Наименование и текст распоряжения
   orderText: {
+    // наименование
     orderTitle: { type: String, required: true },
+    // источник (шаблон / не шаблон)
     orderTextSource: { type: String, required: true },
+    // массив элементов текста
     orderText: [
       {
+        // тип элемента
         type: { type: String, required: true },
+        // смысл элемента (просто текст, список станций, список номеров распоряжений ...)
         ref: { type: String, required: false },
+        // значение элемента
         value: { type: String, required: false },
       },
     ],
@@ -35,26 +41,60 @@ const schema = new Schema({
   // Список участков ДНЦ, на которые необходимо передать распоряжение
   dncToSend: [
     {
-      id: { type: Number, required: false },
+      // id участка
+      id: { type: Number, required: true },
+      // тип участка ("участок ДНЦ")
+      type: { type: String, required: true },
+      // наименование участка (на момент издания распоряжения)
+      placeTitle: { type: String, required: true },
+      // ФИО ДНЦ
       fio: { type: String, required: false },
-      sendOriginalToDNC: { type: Number, required: false },
+      // true - передать оригинал, false - передать копию
+      sendOriginal: { type: Boolean, required: true },
+      // дата-время доставки распоряжения адресату
+      // (заполняется, когда распоряжение дойдет до рабочего места пользователя)
+      deliverDateTime: { type: Date, required: false, default: null },
+      // дата-время подтверждения адресатом получения распоряжения
+      // (заполняется, когда пользователь подтвердит получение распоряжения)
+      confirmDateTime: { type: Date, required: false, default: null },
     },
   ],
-  // Список участков ДСП, на которые необходимо передать распоряжение
+  // Список станций, на которые необходимо передать распоряжение
   dspToSend: [
     {
-      id: { type: Number, required: false },
+      // id станции
+      id: { type: Number, required: true },
+      // тип участка ("станция")
+      type: { type: String, required: true },
+      // наименование станции (на момент издания распоряжения)
+      placeTitle: { type: String, required: true },
+      // ФИО ДСП
       fio: { type: String, required: false },
-      sendOriginalToDSP: { type: Number, required: false },
+      // true - передать оригинал, false - передать копию
+      sendOriginal: { type: Boolean, required: true },
+      // дата-время доставки распоряжения адресату
+      // (заполняется, когда распоряжение дойдет до рабочего места пользователя)
+      deliverDateTime: { type: Date, required: false, default: null },
+      // дата-время подтверждения адресатом получения распоряжения
+      // (заполняется, когда пользователь подтвердит получение распоряжения)
+      confirmDateTime: { type: Date, required: false, default: null },
     },
+    // ... будут еще адресаты - участки ЭЦД, ...
   ],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение
   workPoligon: {
     id: { type: Number, required: true },
     type: { type: String, required: true },
   },
-  // id пользователя, издавшего распоряжение
-  creatorId: { type: Types.ObjectId, required: true },
+  // пользователь, издавший распоряжение
+  creator: {
+    // id пользователя
+    id: { type: Types.ObjectId, required: true },
+    // должность пользователя (на момент издания распоряжения)
+    post: { type: String, required: true },
+    // ФИО пользователя (на момент издания распоряжения)
+    fio: { type: String, required: true },
+  },
 });
 
 

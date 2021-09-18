@@ -6,8 +6,10 @@ const MODEL_NAME = 'TNearestDNCandECDSector';
 
 class TNearestDNCandECDSector extends Model {}
 
+// Схема таблицы ближайших участков ДНЦ и ЭЦД
 function createNearestDNCandECDSectorModel(sequelize) {
   TNearestDNCandECDSector.init({
+    // id участка ЭЦД
     NDE_ECDSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -19,6 +21,7 @@ function createNearestDNCandECDSectorModel(sequelize) {
       onDelete: 'NO ACTION',
       onUpdate: 'NO ACTION',
     },
+    // id участка ДНЦ
     NDE_DNCSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,

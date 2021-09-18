@@ -7,24 +7,29 @@ const UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR = 'XUniqueStationPositionInECDTrai
 
 class TECDTrainSectorStation extends Model {}
 
+// Схема таблицы станций поездных участков ЭЦД
 function createECDTrainSectorStationModel(sequelize) {
   TECDTrainSectorStation.init({
+    // id поездного участка ЭЦД
     ECDTSS_TrainSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       unique: UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR,
     },
+    // id станции
     ECDTSS_StationID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
     },
+    // позиция станции на поездном участке
     ECDTSS_StationPositionInTrainSector: {
       type: DataTypes.TINYINT,
       allowNull: false,
       unique: UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR,
     },
+    // принадлежность станции участку ЭЦД
     ECDTSS_StationBelongsToECDSector: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

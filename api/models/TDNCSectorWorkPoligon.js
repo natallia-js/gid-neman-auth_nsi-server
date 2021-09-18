@@ -5,13 +5,16 @@ const MODEL_NAME = 'TDNCSectorWorkPoligon';
 
 class TDNCSectorWorkPoligon extends Model {}
 
+// Схема таблицы рабочих полигонов типа "участок ДНЦ"
 function createDNCSectorWorkPoligonModel(sequelize) {
   TDNCSectorWorkPoligon.init({
+    // id пользователя
     DNCSWP_UserID: {
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
     },
+    // id участка ДНЦ
     DNCSWP_DNCSID: {
       type: DataTypes.INTEGER,
       primaryKey: true,

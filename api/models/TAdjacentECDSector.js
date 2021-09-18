@@ -5,8 +5,10 @@ const MODEL_NAME = 'TAdjacentECDSector';
 
 class TAdjacentECDSector extends Model {}
 
+// Схема таблицы смежных участков ЭЦД
 function createAdjacentECDSectorModel(sequelize) {
   TAdjacentECDSector.init({
+    // id одного участка ЭЦД
     AECDS_ECDSectorID1: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -18,6 +20,7 @@ function createAdjacentECDSectorModel(sequelize) {
       onDelete: 'NO ACTION',
       onUpdate: 'NO ACTION',
     },
+    // id другого участка ЭЦД
     AECDS_ECDSectorID2: {
       type: DataTypes.INTEGER,
       primaryKey: true,

@@ -74,6 +74,7 @@ app.use('/api/orderPatterns', require('./routes/orderPatterns.routes'));
 app.use('/api/orderPatternConnections', require('./routes/orderPatternConnections.routes'));
 app.use('/api/lastOrdersParams', require('./routes/lastOrdersParams.routes'));
 app.use('/api/orders', require('./routes/orders.routes'));
+app.use('/api/workOrders', require('./routes/workOrders.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

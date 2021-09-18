@@ -5,14 +5,17 @@ const UNIQUE_ECDSECTOR_TITLE_CONSTRAINT_NAME = 'XUniqueECDSectorTitle';
 
 class TECDSector extends Model {}
 
+// Схема таблицы участков ЭЦД
 function createECDSectorModel(sequelize) {
   TECDSector.init({
+    // id участка ЭЦД
     ECDS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // наименование участка ЭЦД
     ECDS_Title: {
       type: DataTypes.STRING(32),
       allowNull: false,

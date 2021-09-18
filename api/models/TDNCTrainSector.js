@@ -6,19 +6,23 @@ const UNIQUE_DNCTRAINSECTOR_TITLE_CONSTRAINT_NAME = 'XUniqueDNCTrainSectorTitle'
 
 class TDNCTrainSector extends Model {}
 
+// Схема таблицы поездных участков ДНЦ
 function createDNCTrainSectorModel(sequelize) {
   TDNCTrainSector.init({
+    // id поездного участка
     DNCTS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // наименование поездного участка
     DNCTS_Title: {
       type: DataTypes.STRING(32),
       allowNull: false,
       unique: UNIQUE_DNCTRAINSECTOR_TITLE_CONSTRAINT_NAME,
     },
+    // id участка ДНЦ
     DNCTS_DNCSectorID: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -5,14 +5,17 @@ const UNIQUE_DNCSECTOR_TITLE_CONSTRAINT_NAME = 'XUniqueDNCSectorTitle';
 
 class TDNCSector extends Model {}
 
+// Схема таблицы участков ДНЦ
 function createDNCSectorModel(sequelize) {
   TDNCSector.init({
+    // id участка ДНЦ
     DNCS_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // наименование участка ДНЦ
     DNCS_Title: {
       type: DataTypes.STRING(32),
       allowNull: false,

@@ -5,13 +5,16 @@ const MODEL_NAME = 'TECDSectorWorkPoligon';
 
 class TECDSectorWorkPoligon extends Model {}
 
+// Схема таблицы рабочих полигонов типа "участок ЭЦД"
 function createECDSectorWorkPoligonModel(sequelize) {
   TECDSectorWorkPoligon.init({
+    // id пользователя
     ECDSWP_UserID: {
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
     },
+    // id участка ЭЦД
     ECDSWP_ECDSID: {
       type: DataTypes.INTEGER,
       primaryKey: true,

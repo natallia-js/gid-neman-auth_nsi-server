@@ -470,6 +470,7 @@ export const CreateOrderPatternConnections = (props) => {
               <Text type="warning">
                 Вы можете изменить выбор в отношении как элемента базового шаблона, так и элемента дочернего шаблона либо:
               </Text>
+              <br />
               <Button
                 type="primary"
                 size="small"

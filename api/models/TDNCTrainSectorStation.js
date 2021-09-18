@@ -7,24 +7,29 @@ const UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR = 'XUniqueStationPositionInDNCTrai
 
 class TDNCTrainSectorStation extends Model {}
 
+// Схема таблицы станций поездных участков ДНЦ
 function createDNCTrainSectorStationModel(sequelize) {
   TDNCTrainSectorStation.init({
+    // id поездного участка ДНЦ
     DNCTSS_TrainSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       unique: UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR,
     },
+    // id станции
     DNCTSS_StationID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
     },
+    // позиция станции на поездном участке
     DNCTSS_StationPositionInTrainSector: {
       type: DataTypes.TINYINT,
       allowNull: false,
       unique: UNIQUE_STATION_POSITION_IN_TRAIN_SECTOR,
     },
+    // принадлежность станции участку ДНЦ
     DNCTSS_StationBelongsToDNCSector: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

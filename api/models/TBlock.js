@@ -7,24 +7,29 @@ const UNIQUE_BLOCK_STATIONS_CONSTRAINT_NAME = 'XUniqueBlockStations';
 
 class TBlock extends Model {}
 
+// Схема таблицы перегонов
 function createBlockModel(sequelize) {
   TBlock.init({
+    // id перегона
     Bl_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // название перегона
     Bl_Title: {
       type: DataTypes.STRING(64),
       allowNull: false,
       unique: UNIQUE_BLOCK_TITLE_CONSTRAINT_NAME,
     },
+    // id станции
     Bl_StationID1: {
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: UNIQUE_BLOCK_STATIONS_CONSTRAINT_NAME,
     },
+    // id станции
     Bl_StationID2: {
       type: DataTypes.INTEGER,
       allowNull: false,

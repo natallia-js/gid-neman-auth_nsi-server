@@ -5,18 +5,22 @@ const MODEL_NAME = 'TBlockTrack';
 
 class TBlockTrack extends Model {}
 
+// Схема таблицы путей перегонов
 function createBlockTrackModel(sequelize) {
   TBlockTrack.init({
+    // id пути
     BT_ID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
+    // название пути
     BT_Name: {
       type: DataTypes.STRING(16),
       allowNull: false,
     },
+    // id перегона
     BT_BlockId: {
       type: DataTypes.INTEGER,
       allowNull: false,

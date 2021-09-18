@@ -7,24 +7,29 @@ const UNIQUE_BLOCK_POSITION_IN_TRAIN_SECTOR = 'XUniqueBlockPositionInDNCTrainSec
 
 class TDNCTrainSectorBlock extends Model {}
 
+// Схема таблицы перегонов поездных участков ДНЦ
 function createDNCTrainSectorBlockModel(sequelize) {
   TDNCTrainSectorBlock.init({
+    // id поездного участка ДНЦ
     DNCTSB_TrainSectorID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       unique: UNIQUE_BLOCK_POSITION_IN_TRAIN_SECTOR,
     },
+    // id перегона
     DNCTSB_BlockID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
     },
+    // позиция перегона на поездном участке
     DNCTSB_BlockPositionInTrainSector: {
       type: DataTypes.TINYINT,
       allowNull: false,
       unique: UNIQUE_BLOCK_POSITION_IN_TRAIN_SECTOR,
     },
+    // принадлежность перегона участку ДНЦ
     DNCTSB_BlockBelongsToDNCSector: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

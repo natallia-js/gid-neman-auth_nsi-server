@@ -5,8 +5,10 @@ const MODEL_NAME = 'TAdjacentDNCSector';
 
 class TAdjacentDNCSector extends Model {}
 
+// Схема таблицы смежных участков ДНЦ
 function createAdjacentDNCSectorModel(sequelize) {
   TAdjacentDNCSector.init({
+    // id одного участка ДНЦ
     ADNCS_DNCSectorID1: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -18,6 +20,7 @@ function createAdjacentDNCSectorModel(sequelize) {
       onDelete: 'NO ACTION',
       onUpdate: 'NO ACTION',
     },
+    // id другого участка ДНЦ
     ADNCS_DNCSectorID2: {
       type: DataTypes.INTEGER,
       primaryKey: true,

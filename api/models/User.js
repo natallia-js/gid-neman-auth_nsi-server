@@ -24,8 +24,6 @@ const schema = new Schema({
   roles: [Types.ObjectId],
   // true - пользователь в системе, false - пользователь не в системе
   online: { type: Boolean, required: true, default: false },
-
-  /*links: [{ type: Types.ObjectId, ref: 'Role' }]*/
 });
 
 

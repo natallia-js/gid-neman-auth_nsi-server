@@ -5,13 +5,16 @@ const MODEL_NAME = 'TStationWorkPoligon';
 
 class TStationWorkPoligon extends Model {}
 
+// Схема таблицы рабочих полигонов типа "станция"
 function createStationWorkPoligonModel(sequelize) {
   TStationWorkPoligon.init({
+    // id пользователя
     SWP_UserID: {
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
     },
+    // id станции
     SWP_StID: {
       type: DataTypes.INTEGER,
       primaryKey: true,
