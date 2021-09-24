@@ -79,7 +79,27 @@ const schema = new Schema({
       // (заполняется, когда пользователь подтвердит получение распоряжения)
       confirmDateTime: { type: Date, required: false, default: null },
     },
-    // ... будут еще адресаты - участки ЭЦД, ...
+  ],
+  // Список участков ЭЦД, на которые необходимо передать распоряжение
+  ecdToSend: [
+    {
+      // id участка
+      id: { type: Number, required: true },
+      // тип участка ("участок ДНЦ")
+      type: { type: String, required: true },
+      // наименование участка (на момент издания распоряжения)
+      placeTitle: { type: String, required: true },
+      // ФИО ДНЦ
+      fio: { type: String, required: false },
+      // true - передать оригинал, false - передать копию
+      sendOriginal: { type: Boolean, required: true },
+      // дата-время доставки распоряжения адресату
+      // (заполняется, когда распоряжение дойдет до рабочего места пользователя)
+      deliverDateTime: { type: Date, required: false, default: null },
+      // дата-время подтверждения адресатом получения распоряжения
+      // (заполняется, когда пользователь подтвердит получение распоряжения)
+      confirmDateTime: { type: Date, required: false, default: null },
+    },
   ],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение
   workPoligon: {

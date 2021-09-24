@@ -123,6 +123,7 @@ const addOrderValidationRules = () => {
       .custom((val) => checkOrderText(val)),
     // ...dncToSend
     // ...dspToSend
+    // ...ecdToSend
     check('workPoligon')
       .exists()
       .withMessage('Не указан рабочий полигон издателя распоряжения')

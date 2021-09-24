@@ -1,4 +1,5 @@
 const {
+  PING_MESSAGE,
   PING_PONG_INTERVAL,
   CHECK_CLIENTS_ONLINE_STATE_INTERVAL,
 } = require('../constants');
@@ -12,7 +13,7 @@ function ping(ctx) {
       return ctx.terminate();
     }
     ctx.isAlive = false;
-    ctx.send('ping');
+    ctx.send(PING_MESSAGE);
   }, PING_PONG_INTERVAL);
   return timerId;
 }

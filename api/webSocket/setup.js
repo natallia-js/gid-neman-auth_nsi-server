@@ -1,8 +1,11 @@
 const WebSocket = require('ws');
-const { ping, setClientsOnlineStatus } = require('./pipeline');
+const { ping, /*setClientsOnlineStatus*/ } = require('./pipeline');
 const {
   CONNECTION_OK_MESSAGE,
   UPGRADE_ERROR_MESSAGE,
+  PONG_MESSAGE_PATTERN,
+  GET_ONLINE_USERS_MESSAGE_PATTERN,
+  ONLINE_USERS,
 } = require('../constants');
 
 
@@ -11,7 +14,7 @@ function setupWebSocket(server) {
   // websocket server instance
   const wss = new WebSocket.Server({ noServer: true, clientTracking: true });
 
-  setClientsOnlineStatus(wss.clients);
+  // setClientsOnlineStatus(wss.clients);
 
   // hookup broadcast pipeline
   // broadcastPipeline(wss.clients);
@@ -53,13 +56,30 @@ function setupWebSocket(server) {
       if (!message) {
         return;
       }
+      ctx.isAlive = true;
       const messageString = JSON.parse(message);
-      if (messageString.match(/^pong /)) {
-        ctx.isAlive = true;
+
+      // PONG-ответ клиента
+      if (messageString.match(PONG_MESSAGE_PATTERN)) {
         const clientID = messageString.slice(5);
         if (ctx.clientID !== clientID) {
           ctx.clientID = (clientID === 'null') ? null : clientID;
         }
+        return;
+      }
+      // Запрос клиента на получение списка online-пользователей среди указанных (заданных с помощью id)
+      if (messageString.match(GET_ONLINE_USERS_MESSAGE_PATTERN)) {
+        const usersIds = JSON.parse(messageString.slice(7));
+        if (Array.isArray(usersIds)) {
+          let onlineUsersIds = [];
+          for (let client of wss.clients.values()) {
+            if (usersIds.includes(client.clientID)) {
+              onlineUsersIds.push(client.clientID);
+            }
+          }
+          ctx.send(ONLINE_USERS(onlineUsersIds));console.log('onlineUsersIds',onlineUsersIds)
+        }
+        return;
       }
     });
 

@@ -78,8 +78,16 @@ const DY58_SERVER_CREDENTIALS = Object.freeze({
 const WEBSOCKET_CONSTANTS = Object.freeze({
   PING_PONG_INTERVAL: 20000,
   CHECK_CLIENTS_ONLINE_STATE_INTERVAL: 20000,
+
+  // Сообщения, посылаемые клиентам
   CONNECTION_OK_MESSAGE: 'connection OK',
   UPGRADE_ERROR_MESSAGE: 'HTTP/1.1 401 Unauthorized\r\n\r\n',
+  PING_MESSAGE: 'ping',
+  ONLINE_USERS: (usersIds) => `online ${JSON.stringify(usersIds)}`,
+
+  // Сообщения, принимаемые от клиентов
+  PONG_MESSAGE_PATTERN: /^pong /,
+  GET_ONLINE_USERS_MESSAGE_PATTERN: /^online /,
 });
 
 module.exports = {

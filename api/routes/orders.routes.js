@@ -56,6 +56,11 @@ const {
  *     fio - ФИО ДСП
  *     id - id станции
  *     sendOriginal - true - отправить оригинал, false - отправить копию
+ * ecdToSend - массив участков ЭЦД, на которые необходимо отправить распоряжение;
+ *   элемент массива - объект с параметрами:
+ *     fio - ФИО ЭЦД
+ *     id - id участка ЭЦД
+ *     sendOriginal - true - отправить оригинал, false - отправить копию
  * workPoligon - рабочий полигон пользователя - объект с параметрами:
  *   id - id рабочего полигона
  *   type - тип рабочего полигона
@@ -98,6 +103,7 @@ const {
         orderText,
         dncToSend,
         dspToSend,
+        ecdToSend,
         workPoligon,
         creator,
       } = req.body;
@@ -112,6 +118,7 @@ const {
         orderText,
         dncToSend,
         dspToSend,
+        ecdToSend,
         workPoligon,
         creator,
       });
@@ -151,6 +158,19 @@ const {
           orderId: order._id,
           timeSpan: { ...order.timeSpan },
           sendOriginal: dspSector.sendOriginal,
+        });
+        workOrders.push(workOrder);
+      });
+      order.ecdToSend.forEach((ecdSector) => {
+        const workOrder = new WorkOrder({
+          senderWorkPoligon: { ...workPoligon },
+          recipientWorkPoligon: {
+            id: ecdSector.id,
+            type: ecdSector.type,
+          },
+          orderId: order._id,
+          timeSpan: { ...order.timeSpan },
+          sendOriginal: ecdSector.sendOriginal,
         });
         workOrders.push(workOrder);
       });

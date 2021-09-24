@@ -1,5 +1,19 @@
 const { check } = require('express-validator');
 
+const getDefinitUsersValidationRules = () => {
+  return [
+    check('sectorIds')
+      .exists()
+      .withMessage('Не указан массив id участков ЭЦД')
+      .bail()
+      .isArray()
+      .withMessage('Список id участков ЭЦД должен быть массивом'),
+    check('onlyOnline')
+      .isBoolean()
+      .withMessage('Значение параметра запроса onlyOnline должно принимать логическое значение'),
+  ];
+};
+
 const changeECDSectorWorkPoligonsValidationRules = () => {
   return [
     check('userId')
@@ -15,5 +29,6 @@ const changeECDSectorWorkPoligonsValidationRules = () => {
 };
 
 module.exports = {
+  getDefinitUsersValidationRules,
   changeECDSectorWorkPoligonsValidationRules,
 };

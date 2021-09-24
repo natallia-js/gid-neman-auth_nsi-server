@@ -556,6 +556,10 @@ router.post(
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
+        /*if (user.online) {
+          user.online = false;
+          await user.save();
+        }*/
         return res.status(ERR).json({ message: 'Неверный пароль, попробуйте снова' });
       }
 
@@ -631,14 +635,11 @@ router.post(
       if (user.roles) {
         // Для каждой из ролей, закрепленных за данным пользователем,
         for (let roleId of user.roles) {
-
           // ... определяем наличие данной роли в коллекции ролей БД
           const foundRole = await Role.findOne({ _id: roleId });
-
           if (!foundRole) {
             continue;
           }
-
           // Формируем массив аббревиатур ролей пользователя
           addUserRole(foundRole.englAbbreviation);
 
@@ -708,10 +709,10 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
-      if (!user.online) {
+      /*if (!user.online) {
         user.online = true;
         await user.save();
-      }
+      }*/
 
       res.status(OK).json({
         token,
@@ -736,6 +737,51 @@ router.post(
     }
   }
 );
+
+
+/**
+ * Обработка запроса на выход из системы.
+ *
+ * Параметры тела запроса:
+ * id - id пользователя (обязателен),
+ */
+ /*router.post(
+  '/logout',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем возможность выполнения запрашиваемого действия
+  (req, res, next) => {
+    if (String(req.user.userId) !== String(req.body.id)) {
+      return res.status(ERR).json({ message: 'Выход из системы от имени другого лица недопустим' });
+    }
+    next();
+  },
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { id } = req.body;
+
+      // Ищем в БД пользователя, который прислал запрос на выход из системы
+      const user = await User.findOne({ _id: id });
+
+      // Если не находим, то процесс выхода из системы продолжать не можем
+      if (!user) {
+        return res.status(ERR).json({ message: 'Пользователь не найден' });
+      }
+
+      if (user.online) {
+        user.online = false;
+        await user.save();
+      }
+
+      res.status(OK).json({ id });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);*/
 
 
 /**

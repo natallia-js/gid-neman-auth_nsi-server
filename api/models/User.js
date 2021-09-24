@@ -22,8 +22,8 @@ const schema = new Schema({
   service: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId],
-  // true - пользователь в системе, false - пользователь не в системе
-  online: { type: Boolean, required: true, default: false },
+  // true - пользователь доступен (в системе), false - пользователь не доступен
+  // online: { type: Boolean, required: true, default: false },
 });
 
 

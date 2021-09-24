@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefinitUsersValidationRules,
   changeECDSectorWorkPoligonsValidationRules,
 } = require('../validators/ecdSectorWorkPoligons.validator');
 const validate = require('../validators/validate');
@@ -47,6 +48,79 @@ router.get(
         raw: true,
         attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
       });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение информации обо всех пользователях, у которых рабочий полигон -
+ * участок ЭЦД с одним из заданных id.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * sectorIds - id участков ЭЦД (обязателен)
+ * onlyOnline - true, если необходимо получить список лишь тех пользователей, которые в данный
+ *              момент online; false - если необходимо получить список всех пользователей
+ */
+ router.post(
+  '/definitData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_USERS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getDefinitUsersValidationRules(),
+  validate,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { sectorIds, onlyOnline } = req.body;
+
+      const users = await TECDSectorWorkPoligon.findAll({
+        raw: true,
+        attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
+        where: { ECDSWP_ECDSID: sectorIds },
+      });
+
+      let data;
+      if (users) {
+        const searchCondition = { _id: users.map((item) => item.ECDSWP_UserID) };
+        if (onlyOnline) {
+          searchCondition.online = true;
+        }
+        data = await User.find(searchCondition);
+      }
+
+      if (data) {
+        data = data.map((user) => {
+          return {
+            _id: user._id,
+            name: user.name,
+            fatherName: user.fatherName,
+            surname: user.surname,
+            online: user.online,
+            post: user.post,
+            service: user.service,
+            ecdSectorId: users.find((item) => String(item.ECDSWP_UserID) === String(user._id)).ECDSWP_ECDSID,
+          };
+        });
+      }
+
       res.status(OK).json(data);
 
     } catch (error) {
