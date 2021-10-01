@@ -31,6 +31,9 @@ const schema = new Schema({
     end: { type: Date, required: false },
     tillCancellation: { type: Boolean, required: false },
   },
+  // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
+  //  и логически связанного с ним)
+  nextRelatedOrderId: { type: Types.ObjectId, required: false },
 });
 
 

@@ -12,6 +12,8 @@ const schema = new Schema({
   ordersType: { type: String, required: true },
   // Номер последнего распоряжения заданного типа
   lastOrderNumber: { type: Number, required: true },
+  // Дата и время издания последнего распоряжения заданного типа
+  lastOrderDateTime: { type: Date, required: true },
 });
 
 

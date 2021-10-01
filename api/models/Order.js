@@ -115,6 +115,9 @@ const schema = new Schema({
     // ФИО пользователя (на момент издания распоряжения)
     fio: { type: String, required: true },
   },
+  // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
+  //  и логически связанного с ним)
+  nextRelatedOrderId: { type: Types.ObjectId, required: false },
 });
 
 

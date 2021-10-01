@@ -26,7 +26,7 @@ const {
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют рабочий полигон,
- * информацию по которому необходимо извлечь.
+ * информацию по которому необходимо извлечь. В противном случае информация извлекаться не будет.
  */
  router.post(
   '/data',
@@ -57,10 +57,20 @@ const {
             { timeSpan: { $exists: true } },
             {
               $or: [
-                { "timeSpan.end": { $exists: false } },
-                { "timeSpan.end": null },
-                { "timeSpan.end": { $gte: new Date() } },
-              ]
+                {
+                  $or: [
+                    { deliverDateTime: null },
+                    { confirmDateTime: null },
+                  ],
+                },
+                {
+                  $or: [
+                    { "timeSpan.end": { $exists: false } },
+                    { "timeSpan.end": null },
+                    { "timeSpan.end": { $gte: new Date() } },
+                  ],
+                },
+              ],
             },
           ],
         };
@@ -85,6 +95,100 @@ const {
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на подтверждение доставки распоряжений на конкретный рабочий полигон.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры запроса:
+ *   workPoligonType, workPoligonId - определяют рабочий полигон, с которого приходит подтверждение
+ *   orderIds - идентификаторы подтверждаемых распоряжений
+ *   deliverDateTime - дата и время, когда клиентское место получило распоряжения
+ */
+router.post(
+  '/reportOnDelivery',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    // Действия выполняем в транзакции
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { workPoligonType, workPoligonId, orderIds, deliverDateTime } = req.body;
+
+      // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений, а также
+      // в общей коллеции распоряжений
+
+      await WorkOrder.update({
+        $and: [
+          { orderId: orderIds },
+          { recipientWorkPoligon: { $exists: true } },
+          { "recipientWorkPoligon.id": workPoligonId },
+          { "recipientWorkPoligon.type": workPoligonType },
+        ]},
+        { $set: { deliverDateTime } }
+      ).session(session);
+
+      const orders = await Order.find({ _id: orderIds }).session(session);
+
+      if (orders && orders.length) {
+        const findSector = (sectors) => {
+          if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
+            return sectors.find((el) => el.id === workPoligonId);
+          }
+          return null;
+        };
+        for (let order of orders) {
+          let sector = findSector(order.dspToSend);
+          if (sector) {
+            sector.deliverDateTime = deliverDateTime;
+          } else {
+            sector = findSector(order.dncToSend);
+            if (sector) {
+              sector.deliverDateTime = deliverDateTime;
+            } else {
+              sector = findSector(order.ecdToSend);
+              if (sector) {
+                sector.deliverDateTime = deliverDateTime;
+              }
+            }
+          }
+          if (sector) {
+            // By default, `save()` uses the associated session
+            await order.save();
+          }
+        }
+      }
+
+      await session.commitTransaction();
+
+      res.status(OK).json({ message: 'Информация успешно сохранена' });
+
+    } catch (error) {
+      console.log(error);
+
+      await session.abortTransaction();
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

@@ -69,6 +69,7 @@ const {
  *   id - id пользователя
  *   post - должность
  *   fio - ФИО
+ * prevOrderId - id ранее изданного распоряжения, с которым связано текущее распоряжение
  */
  router.post(
   '/add',
@@ -106,6 +107,7 @@ const {
         ecdToSend,
         workPoligon,
         creator,
+        prevOrderId,
       } = req.body;
 
       // Создаем в БД запись с данными о новом распоряжении
@@ -124,17 +126,40 @@ const {
       });
       await order.save({ session });
 
+      // Ранее изданное распоряжение связываем с текущим, если это необходимо
+      if (prevOrderId) {
+        await Order.findOneAndUpdate(
+          // filter
+          { _id: prevOrderId },
+          // update
+          { nextRelatedOrderId: order._id },
+        ).session(session);
+        await WorkOrder.findOneAndUpdate(
+          // filter
+          { orderId: prevOrderId },
+          // update
+          { nextRelatedOrderId: order._id },
+        ).session(session);
+      }
+
+      // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
       /*let doc =*/ await LastOrdersParam.findOneAndUpdate(
         // filter
         { 'workPoligon.id': workPoligon.id, 'workPoligon.type': workPoligon.type, ordersType: type },
         // update
-        { lastOrderNumber: number },
+        { lastOrderNumber: number, lastOrderDateTime: createDateTime },
         { upsert: true, new: true }
       ).session(session);
 
       // DeprecationWarning: Mongoose: `findOneAndUpdate()` and `findOneAndDelete()` without the `useFindAndModify` option set to false are deprecated. See: https://mongoosejs.com/docs/deprecations.html#findandmodify
 
+      // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений
       const workOrders = [];
+      const newOrderTimeSpan = {
+        start: timeSpan && timeSpan.start ? timeSpan.start : createDateTime,
+        end: timeSpan ? timeSpan.end : null,
+        tillCancellation: timeSpan && typeof timeSpan.tillCancellation === 'boolean' ? timeSpan.tillCancellation : true,
+      };
       order.dncToSend.forEach((dncSector) => {
         const workOrder = new WorkOrder({
           senderWorkPoligon: { ...workPoligon },
@@ -143,7 +168,7 @@ const {
             type: dncSector.type,
           },
           orderId: order._id,
-          timeSpan: { ...order.timeSpan },
+          timeSpan: newOrderTimeSpan,
           sendOriginal: dncSector.sendOriginal,
         });
         workOrders.push(workOrder);
@@ -156,7 +181,7 @@ const {
             type: dspSector.type,
           },
           orderId: order._id,
-          timeSpan: { ...order.timeSpan },
+          timeSpan: newOrderTimeSpan,
           sendOriginal: dspSector.sendOriginal,
         });
         workOrders.push(workOrder);
@@ -169,11 +194,22 @@ const {
             type: ecdSector.type,
           },
           orderId: order._id,
-          timeSpan: { ...order.timeSpan },
+          timeSpan: newOrderTimeSpan,
           sendOriginal: ecdSector.sendOriginal,
         });
         workOrders.push(workOrder);
       });
+      // себе
+      workOrders.push(new WorkOrder({
+        senderWorkPoligon: { ...workPoligon },
+        recipientWorkPoligon: { ...workPoligon },
+        orderId: order._id,
+        timeSpan: newOrderTimeSpan,
+        sendOriginal: true,
+        deliverDateTime: new Date(),
+        confirmDateTime: new Date(),
+      }));
+
       await WorkOrder.insertMany(workOrders, { session });
 
       await session.commitTransaction();
