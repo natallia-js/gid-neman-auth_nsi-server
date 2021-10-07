@@ -89,7 +89,7 @@ const schema = new Schema({
       type: { type: String, required: true },
       // наименование участка (на момент издания распоряжения)
       placeTitle: { type: String, required: true },
-      // ФИО ДНЦ
+      // ФИО ЭЦД
       fio: { type: String, required: false },
       // true - передать оригинал, false - передать копию
       sendOriginal: { type: Boolean, required: true },
@@ -99,6 +99,15 @@ const schema = new Schema({
       // дата-время подтверждения адресатом получения распоряжения
       // (заполняется, когда пользователь подтвердит получение распоряжения)
       confirmDateTime: { type: Date, required: false, default: null },
+    },
+  ],
+  // Список остальных адресатов
+  otherToSend: [
+    {
+      placeTitle: { type: String, required: true },
+      post: { type: String, required: true },
+      fio: { type: String, required: false },
+      sendOriginal: { type: Boolean, required: true },
     },
   ],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение
@@ -115,6 +124,9 @@ const schema = new Schema({
     // ФИО пользователя (на момент издания распоряжения)
     fio: { type: String, required: true },
   },
+  // От имени кого издано распоряжение (данное поле присутствует/заполняется лишь тогда,
+  // когда распоряжение издается не от своего имени; пример: ДНЦ издается заявку от имени ДСП)
+  createdOnBehalfOf: { type: String, required: false },
   // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
   //  и логически связанного с ним)
   nextRelatedOrderId: { type: Types.ObjectId, required: false },

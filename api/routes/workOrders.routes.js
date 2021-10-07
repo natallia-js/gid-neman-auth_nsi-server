@@ -85,6 +85,7 @@ const {
                 senderWorkPoligon: correspWorkDataObject.senderWorkPoligon,
                 deliverDateTime: correspWorkDataObject.deliverDateTime,
                 confirmDateTime: correspWorkDataObject.confirmDateTime,
+                sendOriginal: correspWorkDataObject.sendOriginal,
               };
             }
             return { ...item._doc };
