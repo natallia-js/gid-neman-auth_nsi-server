@@ -41,6 +41,7 @@ const {
  *   tillCancellation - true / false (распоряжение действует / не действует до отмены)
  * orderText - текст распоряжения (обязательно) - объект с полями:
  *   orderTextSource - источник текста (шаблон / не шаблон)
+ *   patternId - id шаблона распоряжения, если источник текста - шаблон
  *   orderTitle - наименование распоряжения
  *   orderText - массив объектов с параметрами:
  *     ref - строка, содержащая смысловое значение параметра в шаблоне
@@ -120,8 +121,51 @@ const {
         prevOrderId,
       } = req.body;
 
+      const newOrderObjectId = new mongoose.Types.ObjectId();
+
+      // Полагаем по умолчанию, что распоряжение принадлежит цепочке, в которой оно одно
+      let orderChainInfo = {
+        chainId: newOrderObjectId,
+        chainStartDateTime: timeSpan && timeSpan.start ? timeSpan.start : createDateTime,
+        chainEndDateTime: timeSpan && timeSpan.end ? timeSpan.end : null,
+      };
+
+      // Если необходимо связать создаваемое распоряжение с ранее изданным, то ищем
+      // ранее изданное распоряжение. У него нам необходимо взять информацию о цепочке
+      // распоряжений, которой будет принадлежать новое распоряжение. А также связать
+      // данное распоряжение с создаваемым.
+      if (prevOrderId) {
+        const prevOrder = await Order.findOneAndUpdate(
+          // filter
+          { _id: prevOrderId },
+          // update
+          { nextRelatedOrderId: newOrderObjectId },
+        ).session(session);
+        if (!prevOrder) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Новое распоряжение не сохранено в базе данных: не найдено распоряжение, предшествующее ему' });
+        }
+        await WorkOrder.update(
+          { orderId: prevOrderId },
+          { nextRelatedOrderId: newOrderObjectId },
+        ).session(session);
+        // редактируем информацию о цепочке нового распоряжения
+        orderChainInfo.chainId = prevOrder.orderChain.chainId;
+        orderChainInfo.chainStartDateTime = prevOrder.orderChain.chainStartDateTime;
+        // обновляем информацию о конечной дате у всех распоряжений цепочки
+        await Order.update(
+          { "orderChain.chainId": orderChainInfo.chainId },
+          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
+        ).session(session);
+        await WorkOrder.update(
+          { "orderChain.chainId": orderChainInfo.chainId },
+          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
+        ).session(session);
+      }
+
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({
+        _id: newOrderObjectId,
         type,
         number,
         createDateTime,
@@ -135,35 +179,18 @@ const {
         workPoligon,
         creator,
         createdOnBehalfOf,
+        orderChain: orderChainInfo,
       });
       await order.save({ session });
 
-      // Ранее изданное распоряжение связываем с текущим, если это необходимо
-      if (prevOrderId) {
-        await Order.findOneAndUpdate(
-          // filter
-          { _id: prevOrderId },
-          // update
-          { nextRelatedOrderId: order._id },
-        ).session(session);
-        await WorkOrder.update(
-          // filter
-          { orderId: prevOrderId },
-          // update
-          { nextRelatedOrderId: order._id },
-        ).session(session);
-      }
-
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
-      /*let doc =*/ await LastOrdersParam.findOneAndUpdate(
+      await LastOrdersParam.findOneAndUpdate(
         // filter
         { 'workPoligon.id': workPoligon.id, 'workPoligon.type': workPoligon.type, ordersType: type },
         // update
         { lastOrderNumber: number, lastOrderDateTime: createDateTime },
         { upsert: true, new: true }
       ).session(session);
-
-      // DeprecationWarning: Mongoose: `findOneAndUpdate()` and `findOneAndDelete()` without the `useFindAndModify` option set to false are deprecated. See: https://mongoosejs.com/docs/deprecations.html#findandmodify
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений
       const workOrders = [];
@@ -172,43 +199,29 @@ const {
         end: timeSpan ? timeSpan.end : null,
         tillCancellation: timeSpan && typeof timeSpan.tillCancellation === 'boolean' ? timeSpan.tillCancellation : true,
       };
-      order.dncToSend.forEach((dncSector) => {
-        const workOrder = new WorkOrder({
+      const getToSendObject = (sectorInfo) => {
+        return {
           senderWorkPoligon: { ...workPoligon },
           recipientWorkPoligon: {
-            id: dncSector.id,
-            type: dncSector.type,
+            id: sectorInfo.id,
+            type: sectorInfo.type,
           },
+          sendOriginal: sectorInfo.sendOriginal,
           orderId: order._id,
           timeSpan: newOrderTimeSpan,
-          sendOriginal: dncSector.sendOriginal,
-        });
+          orderChain: orderChainInfo,
+        };
+      };
+      order.dncToSend.forEach((dncSector) => {
+        const workOrder = new WorkOrder(getToSendObject(dncSector));
         workOrders.push(workOrder);
       });
       order.dspToSend.forEach((dspSector) => {
-        const workOrder = new WorkOrder({
-          senderWorkPoligon: { ...workPoligon },
-          recipientWorkPoligon: {
-            id: dspSector.id,
-            type: dspSector.type,
-          },
-          orderId: order._id,
-          timeSpan: newOrderTimeSpan,
-          sendOriginal: dspSector.sendOriginal,
-        });
+        const workOrder = new WorkOrder(getToSendObject(dspSector));
         workOrders.push(workOrder);
       });
       order.ecdToSend.forEach((ecdSector) => {
-        const workOrder = new WorkOrder({
-          senderWorkPoligon: { ...workPoligon },
-          recipientWorkPoligon: {
-            id: ecdSector.id,
-            type: ecdSector.type,
-          },
-          orderId: order._id,
-          timeSpan: newOrderTimeSpan,
-          sendOriginal: ecdSector.sendOriginal,
-        });
+        const workOrder = new WorkOrder(getToSendObject(ecdSector));
         workOrders.push(workOrder);
       });
       // себе
@@ -220,6 +233,7 @@ const {
         sendOriginal: true,
         deliverDateTime: new Date(),
         confirmDateTime: new Date(),
+        orderChain: orderChainInfo,
       }));
 
       await WorkOrder.insertMany(workOrders, { session });
