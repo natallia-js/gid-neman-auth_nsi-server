@@ -24,6 +24,7 @@ const getOrderPatternElementView = (element) => {
         <Input
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
+          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
         />
       </Tooltip>;
     case OrderPatternElementType.SELECT:
@@ -33,25 +34,39 @@ const getOrderPatternElementView = (element) => {
         <Select
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
+          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
         />
       </Tooltip>;
     case OrderPatternElementType.DATE:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
       >
-        <DatePicker format={DateFormat} size="small" placeholder="" />
+        <DatePicker
+          format={DateFormat}
+          size="small"
+          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        />
       </Tooltip>;
     case OrderPatternElementType.TIME:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
       >
-        <TimePicker format={TimeFormat} size="small" placeholder="" />
+        <TimePicker
+          format={TimeFormat}
+          size="small"
+          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        />
       </Tooltip>;
     case OrderPatternElementType.DATETIME:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
       >
-        <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />
+        <DatePicker
+          showTime
+          format={DateTimeFormat}
+          size="small"
+          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        />
       </Tooltip>;
     case OrderPatternElementType.DR_TRAIN_TABLE:
       return <Table
