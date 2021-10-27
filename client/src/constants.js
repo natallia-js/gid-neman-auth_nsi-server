@@ -130,6 +130,7 @@ export const ServerAPI = Object.freeze({
   MOD_ECD_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/ecdSectors/change',
 
   GET_ORDER_PATTERNS_LIST: ServerAddress + '/api/orderPatterns/data',
+  GET_ORDER_PATTERNS_ELEMENTS_REFS: ServerAddress + '/api/orderPatternElementRefs/data',
   ADD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/add',
   DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
   MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
@@ -291,6 +292,12 @@ export const ORDER_PATTERN_ELEMENT_FIELDS = Object.freeze({
   SIZE: 'size',
   REF: 'ref',
   VALUE: 'value',
+});
+
+export const ORDER_PATTERN_ELEMENT_REFS_FIELDS = Object.freeze({
+  KEY: '_id',
+  ELEMENT_TYPE: 'elementType',
+  REFS: 'possibleRefs',
 });
 
 export const CHILD_ORDER_PATTERN_FIELDS = Object.freeze({

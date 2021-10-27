@@ -9,6 +9,7 @@ import {
   ElementSizesCorrespondence,
 } from '../constants';
 import { ElementSizeChooser } from '../EditOrderPatternElement/ElementSizeChooser';
+import { ElementRefChooser } from '../EditOrderPatternElement/ElementRefChooser';
 import { EnterOutlined } from '@ant-design/icons';
 import drTrainTableColumns from '../drTrainTableColumns';
 
@@ -24,6 +25,7 @@ import drTrainTableColumns from '../drTrainTableColumns';
 export const EditOrderPatternElement = (props) => {
   const {
     element = null,
+    orderPatternElRefs,
     submitOrderPatternElementCallback,
     okButtonText,
   } = props;
@@ -133,6 +135,19 @@ export const EditOrderPatternElement = (props) => {
       return {
         ...el,
         value: e.target.value,
+      };
+    });
+  };
+
+
+  /**
+   * Обрабатываем событие смены смысла элемента шаблона.
+   */
+  const changePatternElementRef = (ref) => {
+    setSelectedPatternElement((el) => {
+      return {
+        ...el,
+        ref,
       };
     });
   };
@@ -251,6 +266,20 @@ export const EditOrderPatternElement = (props) => {
               <ElementSizeChooser
                 chosenSize={selectedPatternElement.size}
                 handleChangeSizeCallback={(value) => changePatternElementSize(value)}
+              />
+            </Col>
+          </Row>
+        }
+        {
+          (![OrderPatternElementType.TEXT, OrderPatternElementType.DR_TRAIN_TABLE, OrderPatternElementType.LINEBREAK]
+            .includes(selectedPatternElement.type)) &&
+          <Row>
+            <Col span={24}>
+              <ElementRefChooser
+                orderPatternElRefs={orderPatternElRefs}
+                elementType={selectedPatternElement.type}
+                chosenRef={selectedPatternElement.ref}
+                handleChangeRefCallback={(value) => changePatternElementRef(value)}
               />
             </Col>
           </Row>

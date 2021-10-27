@@ -7,6 +7,7 @@ import { ServerAPI, ORDER_PATTERN_FIELDS } from '../constants';
 import { useHttp } from '../hooks/http.hook';
 import { AuthContext } from '../context/AuthContext';
 import getAppServiceObjFromDBServiceObj from '../mappers/getAppServiceObjFromDBServiceObj';
+import getAppOrderPatternElRefObjFromDBOrderPatternElRefObj from '../mappers/getAppOrderPatternElRefObjFromDBOrderPatternElRefObj';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
 import Loader from '../components/Loader';
 import { OrderPatternsNodeType } from '../components/OrderPattern/constants';
@@ -34,6 +35,9 @@ export const OrderPatternsPage = () => {
 
   // Массив объектов служб
   const [services, setServices] = useState(null);
+
+  // Массив возможных смысловых значений элементов шаблонов распоряжений
+  const [orderPatternElRefs, setOrderPatternElRefs] = useState(null);
 
   //
   const [existingOrderAffiliationTree, setExistingOrderAffiliationTree] = useState([]);
@@ -72,6 +76,14 @@ export const OrderPatternsPage = () => {
       });
       tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
       setServices(tableData);
+
+      // Делаем запрос на сервер с целью получения списков возможных смысловых значений
+      // элементов шаблонов распоряжений
+      res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+      tableData = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref));
+      setOrderPatternElRefs(tableData);
 
       setLoadDataErr(null);
 
@@ -322,6 +334,7 @@ export const OrderPatternsPage = () => {
           <TabPane tab="Шаблоны по категориям" key={PageTabs.VIEW_ORDER_PATTERS}>
             <OrderPatternsTree
               existingOrderAffiliationTree={existingOrderAffiliationTree}
+              orderPatternElRefs={orderPatternElRefs}
               onEditOrderCategoryTitle={handleEditOrderCategoryTitle}
               onEditOrderPattern={handleEditOrderPattern}
               onDeleteOrderPattern={handleDeleteOrderPattern}
@@ -330,6 +343,7 @@ export const OrderPatternsPage = () => {
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
             <CreateOrderPattern
+              orderPatternElRefs={orderPatternElRefs}
               services={services}
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               onCreateOrderPattern={handleCreateOrderPattern}

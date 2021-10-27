@@ -13,6 +13,10 @@ const { TBlock } = require('../models/TBlock');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
+const { TDNCTrainSector } = require('../models/TDNCTrainSector');
+const { TECDTrainSector } = require('../models/TECDTrainSector');
+const { TDNCSector } = require('../models/TDNCSector');
+const { TECDSector } = require('../models/TECDSector');
 const { Op } = require('sequelize');
 
 const router = Router();
@@ -74,6 +78,8 @@ router.get(
  *
  * Параметры тела запроса:
  * stationIds - массив id станций (обязателен)
+ * includeSectors - true (включать в выборку участки ДНЦ/ЭЦД, в составе которых фигурирует станция) либо
+ *                  false (дополнительной информации в выборку не включать)
  */
  router.post(
   '/definitData',
@@ -95,16 +101,90 @@ router.get(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds } = req.body;
+      const { stationIds, includeSectors } = req.body;
 
-      const data = await TStation.findAll({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
-        where: { St_ID: stationIds },
-        include: [{
-          model: TStationTrack,
-          attributes: ['ST_ID', 'ST_Name'],
-        }],
-      });
+      let data = [];
+      if (!includeSectors) {
+        data = await TStation.findAll({
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+          where: { St_ID: stationIds },
+          include: [{
+            model: TStationTrack,
+            attributes: ['ST_ID', 'ST_Name'],
+          }],
+        });
+      } else {
+        // Получаем список станций
+        data = await TStation.findAll({
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+          where: { St_ID: stationIds },
+          include: [{
+            model: TStationTrack,
+            attributes: ['ST_ID', 'ST_Name'],
+          }],
+        }) || [];
+        // Получаем информацию по поездным и диспетчерским участкам ДНЦ
+        const dncTrainSectorsConnections = await TDNCTrainSectorStation.findAll({
+          raw: true,
+          attributes: ['DNCTSS_TrainSectorID', 'DNCTSS_StationID', 'DNCTSS_StationBelongsToDNCSector'],
+          where: { DNCTSS_StationID: stationIds },
+        }) || [];
+        const dncTrainSectors = await TDNCTrainSector.findAll({
+          raw: true,
+          attributes: ['DNCTS_ID', 'DNCTS_Title', 'DNCTS_DNCSectorID'],
+          where: { DNCTS_ID: dncTrainSectorsConnections.map((item) => item.DNCTSS_TrainSectorID) },
+        }) || [];
+        const dncSectors = await TDNCSector.findAll({
+          raw: true,
+          attributes: ['DNCS_ID', 'DNCS_Title'],
+          where: { DNCS_ID: dncTrainSectors.map((item) => item.DNCTS_DNCSectorID) },
+        });
+        // Получаем информацию по поездным и диспетчерским участкам ЭЦД
+        const ecdTrainSectorsConnections = await TECDTrainSectorStation.findAll({
+          raw: true,
+          attributes: ['ECDTSS_TrainSectorID', 'ECDTSS_StationID', 'ECDTSS_StationBelongsToECDSector'],
+          where: { ECDTSS_StationID: stationIds },
+        }) || [];
+        const ecdTrainSectors = await TECDTrainSector.findAll({
+          raw: true,
+          attributes: ['ECDTS_ID', 'ECDTS_Title', 'ECDTS_ECDSectorID'],
+          where: { ECDTS_ID: ecdTrainSectorsConnections.map((item) => item.ECDTSS_TrainSectorID) },
+        }) || [];
+        const ecdSectors = await TECDSector.findAll({
+          raw: true,
+          attributes: ['ECDS_ID', 'ECDS_Title'],
+          where: { ECDS_ID: ecdTrainSectors.map((item) => item.ECDTS_ECDSectorID) },
+        });
+        // Формируем итоговые массивы данных
+        data.forEach((station) => {
+          station.dataValues.dncTrainSectors = dncTrainSectorsConnections
+            .filter((item) => item.DNCTSS_StationID === station.St_ID)
+            .map((item) => {
+              const dncTrainSector = dncTrainSectors.find((el) => el.DNCTS_ID === item.DNCTSS_TrainSectorID) || {};
+              const dncSector = dncSectors.find((el) => el.DNCS_ID === dncTrainSector.DNCTS_DNCSectorID) || {};
+              return {
+                trainSectorId: dncTrainSector.DNCTS_ID,
+                trainSectorTitle: dncTrainSector.DNCTS_Title,
+                stationBelongsToTrainSector: item.DNCTSS_StationBelongsToDNCSector,
+                dncSectorId: dncSector.DNCS_ID,
+                dncSectorTitle: dncSector.DNCS_Title,
+              };
+            });
+          station.dataValues.ecdTrainSectors = ecdTrainSectorsConnections
+            .filter((item) => item.ECDTSS_StationID === station.St_ID)
+            .map((item) => {
+              const ecdTrainSector = ecdTrainSectors.find((el) => el.ECDTS_ID === item.ECDTSS_TrainSectorID) || {};
+              const ecdSector = ecdSectors.find((el) => el.ECDS_ID === ecdTrainSector.ECDTS_ECDSectorID) || {};
+              return {
+                trainSectorId: ecdTrainSector.ECDTS_ID,
+                trainSectorTitle: ecdTrainSector.ECDTS_Title,
+                stationBelongsToTrainSector: item.ECDTSS_StationBelongsToECDSector,
+                ecdSectorId: ecdSector.ECDS_ID,
+                ecdSectorTitle: ecdSector.ECDS_Title,
+              };
+            });
+        });
+      }
       res.status(OK).json(data);
 
     } catch (error) {

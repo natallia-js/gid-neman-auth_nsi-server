@@ -22,6 +22,7 @@ const { Search } = Input;
  */
 export const OrderPatternsTree = (props) => {
   const {
+    orderPatternElRefs,
     existingOrderAffiliationTree,
     onEditOrderCategoryTitle,
     onEditOrderPattern,
@@ -531,6 +532,7 @@ export const OrderPatternsTree = (props) => {
                     <EditOrderPattern
                       orderPattern={editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
                       insertOrderElementPos={insertOrderElementPos}
+                      orderPatternElRefs={orderPatternElRefs}
                       setCursorBeforeElementCallback={setCursorBeforeElement}
                       setCursorAfterElementCallback={setCursorAfterElement}
                       delPatternElementCallback={delPatternElement}
@@ -538,6 +540,7 @@ export const OrderPatternsTree = (props) => {
                     />
                     <Text strong>Определите элементы шаблона</Text>
                     <EditOrderPatternElement
+                      orderPatternElRefs={orderPatternElRefs}
                       submitOrderPatternElementCallback={addNewPatternElement}
                       okButtonText="Добавить в шаблон"
                     />

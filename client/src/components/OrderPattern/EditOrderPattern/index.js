@@ -19,6 +19,7 @@ export const EditOrderPattern = (props) => {
   const {
     orderPattern,
     insertOrderElementPos,
+    orderPatternElRefs,
     setCursorBeforeElementCallback,
     setCursorAfterElementCallback,
     delPatternElementCallback,
@@ -147,6 +148,7 @@ export const EditOrderPattern = (props) => {
             <Text strong>Редактирование элемента шаблона</Text>
             <EditOrderPatternElement
               element={orderPattern.find((el) => el[ORDER_PATTERN_ELEMENT_FIELDS.KEY] === editedPatternElementId)}
+              orderPatternElRefs={orderPatternElRefs}
               submitOrderPatternElementCallback={
                 (editedPatternElement) => editPatternElementCallback(editedPatternElementId, editedPatternElement)
               }

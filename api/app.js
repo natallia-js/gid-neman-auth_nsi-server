@@ -26,6 +26,8 @@ const { createECDSectorWorkPoligonModel } = require('./models/TECDSectorWorkPoli
 const { createBlockTrackModel } = require('./models/TBlockTrack');
 const { createStationTrackModel } = require('./models/TStationTrack');
 
+const OrderPatternElementRef = require('./models/OrderPatternElementRef');
+
 // Создаем объект приложения express
 const app = express();
 
@@ -75,6 +77,7 @@ app.use('/api/orderPatternConnections', require('./routes/orderPatternConnection
 app.use('/api/lastOrdersParams', require('./routes/lastOrdersParams.routes'));
 app.use('/api/orders', require('./routes/orders.routes'));
 app.use('/api/workOrders', require('./routes/workOrders.routes'));
+app.use('/api/orderPatternElementRefs', require('./routes/orderPatternElementRefs.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

@@ -87,7 +87,7 @@ const EditableTableCell = ({
             {
               required: true,
               validator: async (_, value) => {
-                if (!value || value.length < 1) {
+                if (typeof value !== 'boolean' && (!value || value.length < 1)) {
                   setRequiredErrMess(`Не задано значение поля "${title}"!`);
                 } else {
                   setRequiredErrMess(null);

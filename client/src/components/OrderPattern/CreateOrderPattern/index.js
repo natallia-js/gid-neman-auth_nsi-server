@@ -21,13 +21,19 @@ const ERR_VALIDATE_STATUS = 'error';
 /**
  * Возвращает компонент, представляющий собой страницу создания шаблона распоряжения.
  *
+ * orderPatternElRefs - массив возможных смысловых значений элементов шаблонов распоряжений
  * services - массив всех служб
  * existingOrderAffiliationTree - массив, представляющий собой дерево принадлежности созданных распоряжений
  *   (уровни дерева: служба -> тип распоряжения -> категория распоряжения)
  * onCreateOrderPattern - callback для передачи "наверх" сформированного и успешно сохраненного в БД шаблона распоряжения
  */
 export const CreateOrderPattern = (props) => {
-  const { services, existingOrderAffiliationTree, onCreateOrderPattern } = props;
+  const {
+    orderPatternElRefs,
+    services,
+    existingOrderAffiliationTree,
+    onCreateOrderPattern,
+  } = props;
 
   // Массив элементов создаваемого шаблона
   const [orderPattern, setOrderPattern] = useState([]);
@@ -399,6 +405,7 @@ export const CreateOrderPattern = (props) => {
             <Space direction="vertical" size={12}>
               <Text strong>Определите элементы шаблона</Text>
               <EditOrderPatternElement
+                orderPatternElRefs={orderPatternElRefs}
                 submitOrderPatternElementCallback={addNewPatternElement}
                 okButtonText="Добавить в шаблон"
               />
@@ -415,6 +422,7 @@ export const CreateOrderPattern = (props) => {
                 <EditOrderPattern
                   orderPattern={orderPattern}
                   insertOrderElementPos={insertOrderElementPos}
+                  orderPatternElRefs={orderPatternElRefs}
                   setCursorBeforeElementCallback={setCursorBeforeElement}
                   setCursorAfterElementCallback={setCursorAfterElement}
                   delPatternElementCallback={delPatternElement}
