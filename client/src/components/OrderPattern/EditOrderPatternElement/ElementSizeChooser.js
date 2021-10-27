@@ -18,7 +18,7 @@ export const ElementSizeChooser = ({ chosenSize, handleChangeSizeCallback }) => 
 
   return (
     <Form
-      layout="horizontal"
+      layout="vertical"
       size='small'
       form={form}
       name="element-size-form"

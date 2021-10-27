@@ -35,7 +35,7 @@ export const ElementRefChooser = (props) => {
 
   return (
     <Form
-      layout="horizontal"
+      layout="vertical"
       size='small'
       form={form}
       name="element-ref-form"

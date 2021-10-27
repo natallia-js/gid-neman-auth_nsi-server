@@ -251,47 +251,41 @@ export const EditOrderPatternElement = (props) => {
         {/* Вид выбранного элемента шаблона */}
         <Row>
           <Col style={{ width: '100%' }}>
-            {selectedPatternElement.type === OrderPatternElementType.TEXT
-              ?
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <span>Введите текст:</span>
-                {getSelectedPatternElementView()}
-              </Space>
-              :
-              <Space direction="horizontal" size={8} style={{ width: '100%' }}>
-                <span>Образец:</span>
-                {getSelectedPatternElementView()}
-              </Space>
-            }
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              {selectedPatternElement.type === OrderPatternElementType.TEXT
+                ?
+                <><span>Введите текст</span>{getSelectedPatternElementView()}</>
+                :
+                <><span>Образец</span>{getSelectedPatternElementView()}</>
+              }
+            </Space>
           </Col>
         </Row>
         {/* Свойства выбранного элемента шаблона */}
+        <Row>
         {
           (selectedPatternElement.type === OrderPatternElementType.INPUT ||
            selectedPatternElement.type === OrderPatternElementType.SELECT) &&
-          <Row>
-            <Col>
-              <ElementSizeChooser
-                chosenSize={selectedPatternElement.size}
-                handleChangeSizeCallback={(value) => changePatternElementSize(value)}
-              />
-            </Col>
-          </Row>
+          <Col flex="100px">
+            <ElementSizeChooser
+              chosenSize={selectedPatternElement.size}
+              handleChangeSizeCallback={(value) => changePatternElementSize(value)}
+            />
+          </Col>
         }
         {
           (![OrderPatternElementType.TEXT, OrderPatternElementType.DR_TRAIN_TABLE, OrderPatternElementType.LINEBREAK]
             .includes(selectedPatternElement.type)) &&
-          <Row>
-            <Col span={24}>
-              <ElementRefChooser
-                orderPatternElRefs={orderPatternElRefs}
-                elementType={selectedPatternElement.type}
-                chosenRef={selectedPatternElement.ref}
-                handleChangeRefCallback={(value) => changePatternElementRef(value)}
-              />
-            </Col>
-          </Row>
+          <Col flex="auto">
+            <ElementRefChooser
+              orderPatternElRefs={orderPatternElRefs}
+              elementType={selectedPatternElement.type}
+              chosenRef={selectedPatternElement.ref}
+              handleChangeRefCallback={(value) => changePatternElementRef(value)}
+            />
+          </Col>
         }
+        </Row>
         <Row>
           <Col>
             <Button
