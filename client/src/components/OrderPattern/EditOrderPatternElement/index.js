@@ -249,14 +249,22 @@ export const EditOrderPatternElement = (props) => {
           </Col>
         </Row>
         {/* Вид выбранного элемента шаблона */}
-        <div>
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              {selectedPatternElement.type === OrderPatternElementType.TEXT ?
-              <span>Введите текст:</span> :
-              <span>Образец:</span>}
-              {getSelectedPatternElementView()}
-            </Space>
-        </div>
+        <Row>
+          <Col style={{ width: '100%' }}>
+            {selectedPatternElement.type === OrderPatternElementType.TEXT
+              ?
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <span>Введите текст:</span>
+                {getSelectedPatternElementView()}
+              </Space>
+              :
+              <Space direction="horizontal" size={8} style={{ width: '100%' }}>
+                <span>Образец:</span>
+                {getSelectedPatternElementView()}
+              </Space>
+            }
+          </Col>
+        </Row>
         {/* Свойства выбранного элемента шаблона */}
         {
           (selectedPatternElement.type === OrderPatternElementType.INPUT ||
