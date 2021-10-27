@@ -41,7 +41,7 @@ export const ElementRefChooser = (props) => {
       name="element-ref-form"
     >
       <Form.Item
-        label="Значение"
+        label="Смысловое значение"
         name={chosenRefSelectName}
       >
         <Select

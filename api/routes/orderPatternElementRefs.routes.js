@@ -37,7 +37,6 @@ const {
   async (_req, res) => {
     try {
       const data = await OrderPatternElementRef.find();
-      console.log('HERE', data)
       res.status(OK).json(data);
     } catch (error) {
       console.log(error);

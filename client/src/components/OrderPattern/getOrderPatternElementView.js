@@ -1,4 +1,4 @@
-import { Select, Input, DatePicker, TimePicker, Table } from 'antd';
+import { Select, Input, DatePicker, TimePicker, Table, Tooltip } from 'antd';
 import {
   OrderPatternElementType,
   DateFormat,
@@ -18,15 +18,41 @@ const getOrderPatternElementView = (element) => {
     case OrderPatternElementType.TEXT:
       return <span>{element[ORDER_PATTERN_ELEMENT_FIELDS.VALUE]}</span>;
     case OrderPatternElementType.INPUT:
-      return <Input style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }} size="small" />;
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <Input
+          style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
+          size="small"
+        />
+      </Tooltip>;
     case OrderPatternElementType.SELECT:
-      return <Select style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }} size="small" />;
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <Select
+          style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
+          size="small"
+        />
+      </Tooltip>;
     case OrderPatternElementType.DATE:
-      return <DatePicker format={DateFormat} size="small" placeholder="" />;
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <DatePicker format={DateFormat} size="small" placeholder="" />
+      </Tooltip>;
     case OrderPatternElementType.TIME:
-      return <TimePicker format={TimeFormat} size="small" placeholder="" />;
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <TimePicker format={TimeFormat} size="small" placeholder="" />
+      </Tooltip>;
     case OrderPatternElementType.DATETIME:
-      return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />
+      </Tooltip>;
     case OrderPatternElementType.DR_TRAIN_TABLE:
       return <Table
         bordered
