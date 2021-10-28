@@ -11,5 +11,7 @@
     "login": "sa",
     "password": "1",
     "timezoneFormat": "YYYY-MM-DD HH:mm:ss.SSS"
-  }
+  },
+  "delDBDataIntervalInMs": 60000,
+  "storeOrdersInDBInDays": 730
 }

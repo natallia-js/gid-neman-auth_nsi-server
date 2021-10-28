@@ -25,8 +25,7 @@ const { createDNCSectorWorkPoligonModel } = require('./models/TDNCSectorWorkPoli
 const { createECDSectorWorkPoligonModel } = require('./models/TECDSectorWorkPoligon');
 const { createBlockTrackModel } = require('./models/TBlockTrack');
 const { createStationTrackModel } = require('./models/TStationTrack');
-
-const OrderPatternElementRef = require('./models/OrderPatternElementRef');
+const processDelDBData = require('./serverSideProcessing/processDelDBData');
 
 // Создаем объект приложения express
 const app = express();
@@ -171,6 +170,16 @@ async function start() {
     console.log('Server Error', e.message);
     process.exit(1);
   }
+
+  // Запускаем таймер для периодического удаления ненужной информации о распоряжениях из БД
+  const delDataFrequency = config.get('delDBDataIntervalInMs');
+  let delDBDataTimerId = setTimeout(function delDBData() {
+    processDelDBData()
+      .then(() => {
+        delDBDataTimerId = setTimeout(delDBData, delDataFrequency);
+      })
+      .catch((err) => console.log(err));
+  }, delDataFrequency);
 }
 
 // Запускаем сервер

@@ -54,22 +54,13 @@ const {
             { recipientWorkPoligon: { $exists: true } },
             { "recipientWorkPoligon.id": workPoligonId },
             { "recipientWorkPoligon.type": workPoligonType },
-            { timeSpan: { $exists: true } },
+            { orderChain: { $exists: true } },
             {
               $or: [
-                {
-                  $or: [
-                    { deliverDateTime: null },
-                    { confirmDateTime: null },
-                  ],
-                },
-                {
-                  $or: [
-                    { "timeSpan.end": { $exists: false } },
-                    { "timeSpan.end": null },
-                    { "timeSpan.end": { $gte: new Date() } },
-                  ],
-                },
+                // The { item : null } query matches documents that either contain the item field
+                // whose value is null or that do not contain the item field
+                { "orderChain.chainEndDateTime": null },
+                { "orderChain.chainEndDateTime": { $gt: new Date() } },
               ],
             },
           ],
@@ -137,7 +128,7 @@ router.post(
       // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений, а также
       // в общей коллеции распоряжений
 
-      await WorkOrder.update({
+      await WorkOrder.updateMany({
         $and: [
           { orderId: orderIds },
           { recipientWorkPoligon: { $exists: true } },

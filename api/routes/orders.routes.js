@@ -145,19 +145,23 @@ const {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Новое распоряжение не сохранено в базе данных: не найдено распоряжение, предшествующее ему' });
         }
-        await WorkOrder.update(
+        const prevWorkOrder = await WorkOrder.updateMany(
           { orderId: prevOrderId },
           { nextRelatedOrderId: newOrderObjectId },
         ).session(session);
+        if (!prevWorkOrder) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Новое распоряжение не сохранено в базе данных: не найдено рабочее распоряжение, предшествующее ему' });
+        }
         // редактируем информацию о цепочке нового распоряжения
         orderChainInfo.chainId = prevOrder.orderChain.chainId;
         orderChainInfo.chainStartDateTime = prevOrder.orderChain.chainStartDateTime;
         // обновляем информацию о конечной дате у всех распоряжений цепочки
-        await Order.update(
+        await Order.updateMany(
           { "orderChain.chainId": orderChainInfo.chainId },
           { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
         ).session(session);
-        await WorkOrder.update(
+        await WorkOrder.updateMany(
           { "orderChain.chainId": orderChainInfo.chainId },
           { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
         ).session(session);
