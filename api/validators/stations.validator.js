@@ -1,5 +1,13 @@
 const { check, body } = require('express-validator');
 
+const getDefiniteStationValidationRules = () => {
+  return [
+    check('stationId')
+      .exists()
+      .withMessage('Не указан id станции'),
+  ];
+};
+
 const getDefiniteStationsValidationRules = () => {
   return [
     check('stationIds')
@@ -51,6 +59,7 @@ const modStationValidationRules = () => {
 };
 
 module.exports = {
+  getDefiniteStationValidationRules,
   getDefiniteStationsValidationRules,
   addStationValidationRules,
   delStationValidationRules,

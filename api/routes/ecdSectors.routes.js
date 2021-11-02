@@ -121,7 +121,78 @@ router.get(
 
 
 /**
- * Обрабатывает запрос на получение списка всех участков ЭЦД со вложенными списками поездных участков,
+ * Обрабатывает запрос на получение списка всех участков ЭЦД (со вложенными списками поездных участков)
+ * для заданной станции. Т.е. извлекаются только те участки ЭЦД, в составе поездных участков которых
+ * присутствует указанная станция.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * stationId - id станции (обязателен)
+ */
+ router.post(
+  '/shortStationData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_ECDSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { stationId } = req.body;
+
+      const ecdTrainSectorsConnections = await TECDTrainSectorStation.findAll({
+        raw: true,
+        attributes: ['ECDTSS_TrainSectorID', 'ECDTSS_StationID', 'ECDTSS_StationBelongsToECDSector'],
+        where: { ECDTSS_StationID: stationId },
+      }) || [];
+      const ecdTrainSectors = await TECDTrainSector.findAll({
+        raw: true,
+        attributes: ['ECDTS_ID', 'ECDTS_Title', 'ECDTS_ECDSectorID'],
+        where: { ECDTS_ID: ecdTrainSectorsConnections.map((item) => item.ECDTSS_TrainSectorID) },
+      }) || [];
+      const ecdSectors = await TECDSector.findAll({
+        raw: true,
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: ecdTrainSectors.map((item) => item.ECDTS_ECDSectorID) },
+      });
+
+      const data = ecdSectors.map((ecdSector) => {
+        return {
+          ...ecdSector,
+          TTrainSectors: ecdTrainSectors
+            .filter((item) => item.ECDTS_ECDSectorID === ecdSector.ECDS_ID)
+            .map((item) => {
+              return {
+                ECDTS_ID: item.ECDTS_ID,
+                ECDTS_Title: item.ECDTS_Title,
+                stationBelongsToECDSector: ecdTrainSectorsConnections.find(
+                  (el) => el.ECDTSS_TrainSectorID === item.ECDTS_ID).ECDTSS_StationBelongsToECDSector,
+              };
+            }),
+        };
+      });
+
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение конкретного участка ЭЦД со вложенными списками поездных участков,
  * которые, в свою очередь, содержат вложенные списки станций и перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.

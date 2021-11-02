@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const {
+  getDefiniteStationValidationRules,
   getDefiniteStationsValidationRules,
   addStationValidationRules,
   delStationValidationRules,
@@ -10,6 +11,7 @@ const {
 const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
+const { TBlockTrack } = require('../models/TBlockTrack');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
@@ -71,15 +73,12 @@ router.get(
 
 
 /**
- * Обрабатывает запрос на получение списка заданных станций (по заданным id этих станций)
- * со вложенным списком путей.
+ * Обрабатывает запрос на получение объекта конкретной станции со вложенным списком путей.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * stationIds - массив id станций (обязателен)
- * includeSectors - true (включать в выборку участки ДНЦ/ЭЦД, в составе которых фигурирует станция) либо
- *                  false (дополнительной информации в выборку не включать)
+ * stationId - id станции (обязателен)
  */
  router.post(
   '/definitData',
@@ -96,23 +95,24 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   // проверка параметров запроса
-  getDefiniteStationsValidationRules(),
+  getDefiniteStationValidationRules(),
   validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds, includeSectors } = req.body;
+      const { stationId } = req.body;
 
-      let data = [];
-      if (!includeSectors) {
-        data = await TStation.findAll({
-          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
-          where: { St_ID: stationIds },
-          include: [{
-            model: TStationTrack,
-            attributes: ['ST_ID', 'ST_Name'],
-          }],
-        });
+      const data = await TStation.findOne({
+        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        where: { St_ID: stationId },
+        include: [{
+          model: TStationTrack,
+          attributes: ['ST_ID', 'ST_Name'],
+        }],
+      });
+
+/*
+
       } else {
         // Получаем список станций
         data = await TStation.findAll({
@@ -123,6 +123,33 @@ router.get(
             attributes: ['ST_ID', 'ST_Name'],
           }],
         }) || [];
+        // Получаем информацию по перегонам, в которые входят станции
+        const blocks = await TBlock.findAll({
+          attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+          where: {
+            [Op.or]: [{ Bl_StationID1: stationIds }, { Bl_StationID2: stationIds }],
+          },
+          include: [{
+            model: TStation,
+            as: 'station1',
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            include: [{
+              model: TStationTrack,
+              attributes: ['ST_ID', 'ST_Name'],
+            }],
+          }, {
+            model: TStation,
+            as: 'station2',
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            include: [{
+              model: TStationTrack,
+              attributes: ['ST_ID', 'ST_Name'],
+            }],
+          }, {
+            model: TBlockTrack,
+            attributes: ['BT_ID', 'BT_Name'],
+          }],
+        });
         // Получаем информацию по поездным и диспетчерским участкам ДНЦ
         const dncTrainSectorsConnections = await TDNCTrainSectorStation.findAll({
           raw: true,
@@ -157,6 +184,8 @@ router.get(
         });
         // Формируем итоговые массивы данных
         data.forEach((station) => {
+          station.dataValues.blocks = blocks
+            .filter((item) => item.Bl_StationID1 === station.St_ID || item.Bl_StationID2 === station.St_ID);
           station.dataValues.dncTrainSectors = dncTrainSectorsConnections
             .filter((item) => item.DNCTSS_StationID === station.St_ID)
             .map((item) => {
@@ -184,7 +213,9 @@ router.get(
               };
             });
         });
-      }
+      }*/
+
+
       res.status(OK).json(data);
 
     } catch (error) {

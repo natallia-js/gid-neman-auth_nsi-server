@@ -121,7 +121,78 @@ router.get(
 
 
 /**
- * Обрабатывает запрос на получение списка всех участков ДНЦ со вложенными списками поездных участков,
+ * Обрабатывает запрос на получение списка всех участков ДНЦ (со вложенными списками поездных участков)
+ * для заданной станции. Т.е. извлекаются только те участки ДНЦ, в составе поездных участков которых
+ * присутствует указанная станция.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * stationId - id станции (обязателен)
+ */
+ router.post(
+  '/shortStationData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_DNCSECTORS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { stationId } = req.body;
+
+      const dncTrainSectorsConnections = await TDNCTrainSectorStation.findAll({
+        raw: true,
+        attributes: ['DNCTSS_TrainSectorID', 'DNCTSS_StationID', 'DNCTSS_StationBelongsToDNCSector'],
+        where: { DNCTSS_StationID: stationId },
+      }) || [];
+      const dncTrainSectors = await TDNCTrainSector.findAll({
+        raw: true,
+        attributes: ['DNCTS_ID', 'DNCTS_Title', 'DNCTS_DNCSectorID'],
+        where: { DNCTS_ID: dncTrainSectorsConnections.map((item) => item.DNCTSS_TrainSectorID) },
+      }) || [];
+      const dncSectors = await TDNCSector.findAll({
+        raw: true,
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+        where: { DNCS_ID: dncTrainSectors.map((item) => item.DNCTS_DNCSectorID) },
+      });
+
+      const data = dncSectors.map((dncSector) => {
+        return {
+          ...dncSector,
+          TTrainSectors: dncTrainSectors
+            .filter((item) => item.DNCTS_DNCSectorID === dncSector.DNCS_ID)
+            .map((item) => {
+              return {
+                DNCTS_ID: item.DNCTS_ID,
+                DNCTS_Title: item.DNCTS_Title,
+                stationBelongsToDNCSector: dncTrainSectorsConnections.find(
+                  (el) => el.DNCTSS_TrainSectorID === item.DNCTS_ID).DNCTSS_StationBelongsToDNCSector,
+              };
+            }),
+        };
+      });
+
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение конкретного участка ДНЦ со вложенными списками поездных участков,
  * которые, в свою очередь, содержат вложенные списки станций и перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.

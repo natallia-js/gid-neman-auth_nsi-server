@@ -10,6 +10,7 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TBlock } = require('../models/TBlock');
 const { TStation } = require('../models/TStation');
+const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 
 const router = Router();
@@ -66,7 +67,8 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех перегонов, включая вложенные объекты станций и путей.
+ * Обрабатывает запрос на получение списка всех перегонов, включая вложенные объекты станций
+ * (без путей) и путей перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -96,6 +98,70 @@ router.get(
           model: TStation,
           as: 'station2',
           attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TBlockTrack,
+          attributes: ['BT_ID', 'BT_Name'],
+        }],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех перегонов заданной станции.
+ * В выборку включаются объекты соседних станций с путями, а также пути перегонов.
+ *
+ * Параметры тела запроса:
+ * stationId - id станции (обязателен)
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.post(
+  '/stationData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_BLOCKS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { stationId } = req.body;
+
+      const data = await TBlock.findAll({
+        attributes: ['Bl_ID', 'Bl_Title'],
+        where: {
+          [Op.or]: [{ Bl_StationID1: stationId }, { Bl_StationID2: stationId }],
+        },
+        include: [{
+          model: TStation,
+          as: 'station1',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+          include: [{
+            model: TStationTrack,
+            attributes: ['ST_ID', 'ST_Name'],
+          }],
+        }, {
+          model: TStation,
+          as: 'station2',
+          attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+          include: [{
+            model: TStationTrack,
+            attributes: ['ST_ID', 'ST_Name'],
+          }],
         }, {
           model: TBlockTrack,
           attributes: ['BT_ID', 'BT_Name'],
