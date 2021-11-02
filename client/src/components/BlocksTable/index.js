@@ -86,7 +86,6 @@ const BlocksTable = () => {
 
       const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
       setTableData(tableData);
-      console.log(tableData)
 
       // -------------------------------
 

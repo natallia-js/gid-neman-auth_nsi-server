@@ -19,7 +19,6 @@ async function processDelDBData() {
   const storeOrdersInDBInMilliseconds = config.get('storeOrdersInDBInDays') * 24 * 60 * 60 * 1000;
   const delDataUpperDateBorder = new Date();
   delDataUpperDateBorder.setMilliseconds(delDataUpperDateBorder.getMilliseconds() - storeOrdersInDBInMilliseconds);
-  console.log(delDataUpperDateBorder)
   await Order.deleteMany({ createDateTime: { $lte: delDataUpperDateBorder } });
 }
 

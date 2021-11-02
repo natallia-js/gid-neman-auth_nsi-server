@@ -13,7 +13,7 @@ const getAppDNCTrainSectorFromDBDNCTrainSectorObj = (dbDNCTrainSectorObj) => {
       [TRAIN_SECTOR_FIELDS.NAME]: dbDNCTrainSectorObj.DNCTS_Title,
       [TRAIN_SECTOR_FIELDS.STATIONS]: !dbDNCTrainSectorObj.TStations ? [] :
         dbDNCTrainSectorObj.TStations.map((station) => getAppStationObjFromDBStationObj(station, true)),
-      [TRAIN_SECTOR_FIELDS.BLOCKS]: !getAppBlockObjFromDBBlockObj.TBlocks ? [] :
+      [TRAIN_SECTOR_FIELDS.BLOCKS]: !dbDNCTrainSectorObj.TBlocks ? [] :
         dbDNCTrainSectorObj.TBlocks.map((block) => getAppBlockObjFromDBBlockObj(block, true)),
     };
   }

@@ -436,6 +436,9 @@ router.post(
           model: TStation,
           as: 'station2',
           attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        }, {
+          model: TBlockTrack,
+          attributes: ['BT_ID', 'BT_Name'],
         }],
       });
 

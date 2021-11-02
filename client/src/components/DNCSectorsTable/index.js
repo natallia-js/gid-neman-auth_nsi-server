@@ -96,9 +96,9 @@ const DNCSectorsTable = () => {
       let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
+console.log(res)
       const tableData = res.map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector));
-
+console.log(tableData)
       // -------------------
 
       // Теперь получаем информацию о смежных участках ДНЦ
