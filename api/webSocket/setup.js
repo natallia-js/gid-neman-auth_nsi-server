@@ -77,7 +77,8 @@ function setupWebSocket(server) {
               onlineUsersIds.push(client.clientID);
             }
           }
-          ctx.send(ONLINE_USERS(onlineUsersIds));console.log('onlineUsersIds',onlineUsersIds)
+          ctx.send(ONLINE_USERS(onlineUsersIds));
+          console.log('onlineUsersIds',onlineUsersIds)
         }
         return;
       }

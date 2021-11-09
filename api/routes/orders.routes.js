@@ -16,6 +16,7 @@ const {
   OK,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  ERR,
 
   DSP_FULL,
   DNC_FULL,
@@ -35,7 +36,7 @@ const {
  * place - место действия распоряжения (не обязательно) - объект с полями:
  *   place - тип места действия (станция / перегон)
  *   value - идентификатор места действия
- * timeSpan - время действия распоряжения (не обязательно) - объект с полями:
+ * timeSpan - время действия распоряжения (обязательно) - объект с полями:
  *   start - время начала действия распоряжения
  *   end - время окончания действия распоряжения (если известно)
  *   tillCancellation - true / false (распоряжение действует / не действует до отмены)
@@ -79,6 +80,7 @@ const {
  *   fio - ФИО
  * createdOnBehalfOf - от чьего имени издано распоряжение (не обязательно)
  * prevOrderId - id ранее изданного распоряжения, с которым связано текущее распоряжение (не обязательно)
+ * showOnGID - true - отображать на ГИД, false - не отображать на ГИД (не обязательно)
  */
  router.post(
   '/add',
@@ -119,6 +121,7 @@ const {
         creator,
         createdOnBehalfOf,
         prevOrderId,
+        showOnGID,
       } = req.body;
 
       const newOrderObjectId = new mongoose.Types.ObjectId();
@@ -134,25 +137,42 @@ const {
       // ранее изданное распоряжение. У него нам необходимо взять информацию о цепочке
       // распоряжений, которой будет принадлежать новое распоряжение. А также связать
       // данное распоряжение с создаваемым.
+      // Нюанс здесь такой: ранее изданное распоряжение, с которым пользователь хочет связать
+      // новое распоряжение, может уже оказаться связанным с другим распоряжением (какой-то
+      // другой пользователь успел сделать это раньше). В этом случае издание нового распоряжения
+      // становится невозможным.
       if (prevOrderId) {
-        const prevOrder = await Order.findOneAndUpdate(
+
+        const prevOrder = await Order.findById(prevOrderId).session(session);
+        if (!prevOrder) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдено распоряжение, предшествующее ему' });
+        }
+        if (prevOrder.nextRelatedOrderId) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: распоряжение, предшествующее ему, уже связано с другим распоряжением' });
+        }
+
+        let updateRes = await Order.updateOne(
           // filter
           { _id: prevOrderId },
           // update
           { nextRelatedOrderId: newOrderObjectId },
         ).session(session);
-        if (!prevOrder) {
+        if (updateRes.nModified !== 1) {
           await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Новое распоряжение не сохранено в базе данных: не найдено распоряжение, предшествующее ему' });
+          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдено распоряжение, предшествующее ему' });
         }
-        const prevWorkOrder = await WorkOrder.updateMany(
+
+        updateRes = await WorkOrder.updateMany(
           { orderId: prevOrderId },
           { nextRelatedOrderId: newOrderObjectId },
         ).session(session);
-        if (!prevWorkOrder) {
+        if (updateRes.nModified < 1) {
           await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Новое распоряжение не сохранено в базе данных: не найдено рабочее распоряжение, предшествующее ему' });
+          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: проблема в установке связи с предшествующим ему распоряжением в оперативной коллекции' });
         }
+
         // редактируем информацию о цепочке нового распоряжения
         orderChainInfo.chainId = prevOrder.orderChain.chainId;
         orderChainInfo.chainStartDateTime = prevOrder.orderChain.chainStartDateTime;
@@ -184,6 +204,7 @@ const {
         creator,
         createdOnBehalfOf,
         orderChain: orderChainInfo,
+        showOnGID,
       });
       await order.save({ session });
 
@@ -198,11 +219,6 @@ const {
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений
       const workOrders = [];
-      const newOrderTimeSpan = {
-        start: timeSpan && timeSpan.start ? timeSpan.start : createDateTime,
-        end: timeSpan ? timeSpan.end : null,
-        tillCancellation: timeSpan && typeof timeSpan.tillCancellation === 'boolean' ? timeSpan.tillCancellation : true,
-      };
       const getToSendObject = (sectorInfo) => {
         return {
           senderWorkPoligon: { ...workPoligon },
@@ -212,7 +228,7 @@ const {
           },
           sendOriginal: sectorInfo.sendOriginal,
           orderId: order._id,
-          timeSpan: newOrderTimeSpan,
+          timeSpan: timeSpan,
           orderChain: orderChainInfo,
         };
       };
@@ -233,7 +249,7 @@ const {
         senderWorkPoligon: { ...workPoligon },
         recipientWorkPoligon: { ...workPoligon },
         orderId: order._id,
-        timeSpan: newOrderTimeSpan,
+        timeSpan: timeSpan,
         sendOriginal: true,
         deliverDateTime: new Date(),
         confirmDateTime: new Date(),

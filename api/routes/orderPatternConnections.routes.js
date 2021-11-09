@@ -155,7 +155,7 @@ const {
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { basePatternId, childPatternId, patternsParamsMatchingTable } = req.body;
+      const { basePatternId, childPatternId } = req.body;
 
       // Ищем в БД базовый шаблон распоряжения
       let baseCandidate = await OrderPattern.findById(basePatternId);

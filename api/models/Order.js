@@ -22,7 +22,7 @@ const schema = new Schema({
   // Тип и код места (участка) действия распоряжения
   place: { type: orderPlaceSchema, required: false },
   // Время (временной интервал) действия распоряжения
-  timeSpan: { type: timeSpanSchema, required: false },
+  timeSpan: { type: timeSpanSchema, required: true },
   // Наименование и текст распоряжения
   orderText: { type: fullOrderTextSchema, required: true },
   // Список участков ДНЦ, на которые необходимо передать распоряжение
@@ -45,6 +45,8 @@ const schema = new Schema({
   nextRelatedOrderId: { type: Types.ObjectId, required: false },
   // информация о цепочке распоряжений, которой принадлежит текущее распоряжение
   orderChain: { type: orderChainSchema, required: true },
+  // true - отображать на ГИД, false - не отображать на ГИД
+  showOnGID: { type: Boolean, required: false },
 });
 
 

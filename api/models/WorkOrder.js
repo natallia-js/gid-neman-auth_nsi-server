@@ -25,7 +25,7 @@ const schema = new Schema({
   // (заполняется, когда пользователь подтвердит получение распоряжения)
   confirmDateTime: { type: Date, required: false, default: null },
   // Время (временной интервал) действия распоряжения
-  timeSpan: { type: timeSpanSchema, required: false },
+  timeSpan: { type: timeSpanSchema, required: true },
   // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
   //  и логически связанного с ним)
   nextRelatedOrderId: { type: Types.ObjectId, required: false },

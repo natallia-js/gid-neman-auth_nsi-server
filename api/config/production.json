@@ -13,5 +13,7 @@
     "timezoneFormat": "YYYY-MM-DD HH:mm:ss.SSS"
   },
   "delDBDataIntervalInMs": 60000,
-  "storeOrdersInDBInDays": 730
+  "workPeriodInDays": 1,
+  "storeOrdersInDBInDays": 730,
+  "maxDaysToStoreUndeliveredAndUnconfirmedOrders": 365
 }

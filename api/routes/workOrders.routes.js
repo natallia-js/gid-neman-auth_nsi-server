@@ -21,12 +21,27 @@ const {
 
 /**
  * Обрабатывает запрос на получение списка распоряжений, которые являются входящими уведомлениями
- * для заданного полигона управления либо же распоряжениями в работе.
+ * для заданного полигона управления либо же распоряжениями в работе в указанный временной интервал.
+ *    Входящее уведомление - такое распоряжение, для которого не определено deliverDateTime (дата-время
+ * доставки распоряжения на рабочее место работника) либо confirmDateTime (дата-время подтверждения
+ * доставки распоряжения работником).
+ *    Распоряжение в работе - такое распоряжение, для которого последнее распоряжение в его цепочке
+ * распоряжений является действующим либо дата окончания его действия попадает во временной промежуток,
+ * в течение которого распоряжение считается находящимся в работе.
+ *    Действующее распоряжение - распоряжение, у которого не определена дата окончания действия либо
+ * определена и больше текущей даты.
+ *    Временной интервал, в течение которого распоряжения полагаются находящимися в работе, определяется
+ * настройками программы.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют рабочий полигон,
  * информацию по которому необходимо извлечь. В противном случае информация извлекаться не будет.
+ *
+ * Параметр startDate - дата-время начала временного интервала извлечения информации (временного интервала,
+ * в течение которого распоряжения считаются находящимися в работе).
+ * Данный временной интервал не ограничен справа. Если параметр startDate не указан, то извлекается
+ * вся имеющаяся информация в коллекции рабочих распоряжений, относящаяся к указанному рабочему полигону.
  */
  router.post(
   '/data',
@@ -45,11 +60,11 @@ const {
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId } = req.body;
+      const { workPoligonType, workPoligonId, startDate } = req.body;
 
       let data;
       if (workPoligonType && workPoligonId) {
-        const matchFilter = {
+        const matchFilter = !startDate ? {} : {
           $and: [
             { recipientWorkPoligon: { $exists: true } },
             { "recipientWorkPoligon.id": workPoligonId },
@@ -57,10 +72,16 @@ const {
             { orderChain: { $exists: true } },
             {
               $or: [
-                // The { item : null } query matches documents that either contain the item field
-                // whose value is null or that do not contain the item field
-                { "orderChain.chainEndDateTime": null },
-                { "orderChain.chainEndDateTime": { $gt: new Date() } },
+                { deliverDateTime: null },
+                { confirmDateTime: null },
+                {
+                  $or: [
+                    // The { item : null } query matches documents that either contain the item field
+                    // whose value is null or that do not contain the item field
+                    { "orderChain.chainEndDateTime": null },
+                    { "orderChain.chainEndDateTime": { $gt: new Date(startDate) } },
+                  ],
+                },
               ],
             },
           ],

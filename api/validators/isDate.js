@@ -1,6 +1,6 @@
 const moment = require('moment');
 
-const isDate = function (str) {console.log(str, moment(str).isValid())
+const isDate = function (str) {
   return moment(str).isValid();
 };
 
