@@ -7,8 +7,13 @@ const LastOrdersParam = require('../models/LastOrdersParam');
 const WorkOrder = require('../models/WorkOrder');
 const {
   addOrderValidationRules,
+  getDataForGIDValidationRules,
 } = require('../validators/orders.validator');
+const { TStation } = require('../models/TStation');
+const { TBlock } = require('../models/TBlock');
+const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
+const { Op } = require('sequelize');
 
 const router = Router();
 
@@ -23,6 +28,29 @@ const {
   ECD_FULL,
 } = require('../constants');
 
+// Максимальная длина наименования распоряжения для ГИД (если длина наименования больше, она урезается)
+const MAX_ORDER_TITLE_LENGTH = 240;
+
+// Максимальная длина строки с дополнительной информацией о месте действия распоряжения для ГИД
+// (если длина данной строки больше, она урезается)
+const MAX_ADDITIONAL_ORDER_PLACE_INFO_LENGTH = 120;
+
+// Типы и смысловые значения элементов текста шаблона распоряжения, значения которых передаются ГИД
+const ORDER_PARAMS_REFS_FOR_GID = {
+  input: [
+    'Пути перегона',
+    'Пути станции',
+    'Пути станции отправления',
+    'Пути станции прибытия',
+  ],
+  select: [
+    'Путь перегона',
+    'Путь перегона станции отправления',
+    'Путь станции',
+    'Путь станции отправления',
+    'Путь станции прибытия',
+  ],
+};
 
 /**
  * Обработка запроса на добавление нового распоряжения.
@@ -274,5 +302,141 @@ const {
   }
 );
 
+
+/**
+ * Обработка запроса на получение информации о распоряжениях, которые необходимо отобразить ни ГИД.
+ * Распоряжения извлекаются и сортируются в порядке увеличения времени их создания.
+ *
+ * Предполагается, что данный запрос будет выполняться службой (программой, установленной на рабочем месте ДНЦ).
+ * Полномочия службы на выполнение данного действия не проверяем.
+ *
+ * Параметры тела запроса:
+ * startDate - дата-время начала временного интервала выполнения запроса (не обязательно) - с этим параметром
+ *   сравниваются даты издания распоряжений, которые необходимо отобразить на ГИД: если дата издания распоряжения
+ *   больше startDate, то такое распоряжение включается в выборку; если startDate не указана, то
+ *   извлекаются все распоряжения, которые необходимо отобразить на ГИД
+ * stations - массив ЕСР-кодов станций, по которым необходимо осуществлять выборку распоряжений (обязателен) -
+ *   если данный массив не указан либо пуст, то поиск информации производиться не будет
+ */
+ router.post(
+  '/getDataForGID',
+  // проверка параметров запроса
+  getDataForGIDValidationRules(),
+  validate,
+  async (req, res) => {
+    // Извлекаем типы и смысловые значения элементов текста шаблона распоряжения, значения которых передаются ГИД
+    let orderParamsRefsForGID = [];
+    try {
+      orderParamsRefsForGID = await OrderPatternElementRef.find() || [];
+      orderParamsRefsForGID = orderParamsRefsForGID
+        .filter((item) => 0 <= item.possibleRefs.findIndex((el) => el.additionalOrderPlaceInfoForGID))
+        .map((item) => {
+          return {
+            elementType: item.elementType,
+            possibleRefs: item.possibleRefs
+              .filter((el) => el.additionalOrderPlaceInfoForGID)
+              .map((el) => el.refName),
+          };
+        });
+    } catch {
+      orderParamsRefsForGID = [];
+    }
+
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { startDate, stations } = req.body;
+
+      // Формируем список id станций по указанным кодам ЕСР
+      const stationsData = await TStation.findAll({
+        raw: true,
+        attributes: ['St_ID', 'St_UNMC'],
+        where: { St_UNMC: stations },
+      });
+      if (!stationsData || !stationsData.length) {
+        return res.status(OK).json([]);
+      }
+      const stationIds = stationsData.map((item) => item.St_ID);
+
+      const blocksData = await TBlock.findAll({
+        raw: true,
+        attributes: ['Bl_ID', 'Bl_StationID1', 'Bl_StationID2'],
+        where: {
+          [Op.and]: [{ Bl_StationID1: stationIds }, { Bl_StationID2: stationIds }],
+        },
+      }) || [];
+      const blockIds = blocksData.map((item) => item.Bl_ID);
+
+      const possibleOrdersPlaces = [
+        {
+          $and: [
+            { "place.place": "station" },
+            { "place.value": stationIds },
+          ],
+        },
+      ];
+      if (blockIds && blockIds.length) {
+        possibleOrdersPlaces.push(
+          {
+            $and: [
+              { "place.place": "span" },
+              { "place.value": blockIds },
+            ],
+          }
+        );
+      }
+
+      const ordersMatchFilter = {
+        $and: [
+          { showOnGID: true },
+          { place: { $exists: true } },
+          { $or: possibleOrdersPlaces },
+        ],
+      };
+      if (startDate) {
+        ordersMatchFilter.$and.push({ createDateTime: { $gt: new Date(startDate) } });
+      }
+
+      const data = await Order.find(ordersMatchFilter).sort([['createDateTime', 'ascending']]) || [];
+
+      res.status(OK).json(data.map((item) => {
+        let STATION1 = null;
+        let STATION2 = null;
+        if (item.place.place === 'station') {
+          STATION1 = stationsData.find((station) => String(station.St_ID) === String(item.place.value)).St_UNMC;
+        } else {
+          const block = blocksData.find((block) => String(block.Bl_ID) === String(item.place.value));
+          STATION1 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_UNMC;
+          STATION2 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_UNMC;
+        }
+        let ADDITIONALPLACEINFO = null;
+        const additionalOrderPlaceInfoElements = item.orderText.orderText.filter((el) =>
+          (el.value !== null) &&
+          orderParamsRefsForGID.find((r) => (r.elementType === el.type) && r.possibleRefs.includes(el.ref))
+        );
+        if (additionalOrderPlaceInfoElements && additionalOrderPlaceInfoElements.length) {
+          ADDITIONALPLACEINFO = additionalOrderPlaceInfoElements.reduce((accumulator, currentValue, index) =>
+            accumulator + `${currentValue.ref}: ${currentValue.value}${index === additionalOrderPlaceInfoElements.length - 1 ? '' : ', '}`, '');
+        }
+        return {
+          ORDERID: item._id,
+          ORDERGIVINGTIME: item.createDateTime,
+          STATION1,
+          STATION2,
+          ADDITIONALPLACEINFO,
+          ORDERSTARTTIME: item.timeSpan.start,
+          ORDERENDTIME: item.timeSpan.end,
+          ORDERTITLE: item.orderText.orderTitle.length <= MAX_ORDER_TITLE_LENGTH
+            ? item.orderText.orderTitle
+            : item.orderText.orderTitle.slice(0, MAX_ORDER_TITLE_LENGTH - 3) + '...',
+          ORDERCHAINID: item.orderChain.chainId,
+        };
+      }));
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
 
 module.exports = router;

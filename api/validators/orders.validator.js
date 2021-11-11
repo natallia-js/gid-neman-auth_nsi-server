@@ -137,6 +137,42 @@ const addOrderValidationRules = () => {
   ];
 };
 
+const checkStartDate = (val) => {
+  if (!isDate(val)) {
+    throw new Error('Неверно указано значение параметра начала временного интервала поиска информации');
+  }
+  return true;
+};
+
+/**
+ * Пользовательская функция проверки массива ЕСР-кодов станций.
+ *
+ * @param {array} val - массив ЕСР-кодов станций
+ */
+ const checkStationCodes = (val) => {
+  val.forEach((el) => {
+    if ((typeof el !== 'string') || !el.length) {
+      throw new Error(`Неверно указано значение кода станции: ${el}`);
+    }
+  });
+  return true;
+};
+
+const getDataForGIDValidationRules = () => {
+  return [
+    check('startDate')
+      .if(body('startDate').exists())
+      .trim()
+      .custom((val) => checkStartDate(val)),
+    check('stations')
+      .isArray()
+      .withMessage('Список кодов станций должен быть массивом')
+      .bail() // stops running validations if any of the previous ones have failed
+      .custom((val) => checkStationCodes(val)),
+  ];
+};
+
 module.exports = {
   addOrderValidationRules,
+  getDataForGIDValidationRules,
 };

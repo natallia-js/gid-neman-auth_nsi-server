@@ -21,7 +21,7 @@ const { check, body } = require('express-validator');
     }
   });
   return true;
-}
+};
 
 /**
  * Пользовательская функция проверки списка элементов соответствия параметров базового и дочернего
@@ -39,7 +39,7 @@ const { check, body } = require('express-validator');
     }
   });
   return true;
-}
+};
 
 const addOrderPatternValidationRules = () => {
   return [
