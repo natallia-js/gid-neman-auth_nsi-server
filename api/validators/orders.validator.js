@@ -138,7 +138,7 @@ const addOrderValidationRules = () => {
 };
 
 const checkStartDate = (val) => {
-  if (!isDate(val)) {
+  if (val && !isDate(val)) {
     throw new Error('Неверно указано значение параметра начала временного интервала поиска информации');
   }
   return true;

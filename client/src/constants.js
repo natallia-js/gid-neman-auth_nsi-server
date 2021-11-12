@@ -125,6 +125,10 @@ export const ServerAPI = Object.freeze({
   DEL_ECDTRAINSECTORBLOCK_DATA: ServerAddress + '/api/nsi/ecdTrainSectorBlocks/del',
   MOD_ECDTRAINSECTORBLOCK_DATA: ServerAddress + '/api/nsi/ecdTrainSectorBlocks/mod',
 
+  ADD_ECDSTRUCTURALDIVISIONS_DATA: ServerAddress + '/api/nsi/ecdStructuralDivisions/add',
+  MOD_ECDSTRUCTURALDIVISIONS_DATA: ServerAddress + '/api/nsi/ecdStructuralDivisions/mod',
+  DEL_ECDSTRUCTURALDIVISIONS_DATA: ServerAddress + '/api/nsi/ecdStructuralDivisions/del',
+
   MOD_STATIONS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/stations/change',
   MOD_DNC_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/dncSectors/change',
   MOD_ECD_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/ecdSectors/change',
@@ -253,6 +257,7 @@ export const ECDSECTOR_FIELDS = Object.freeze({
   ADJACENT_ECDSECTORS: 'adjacentSectors',
   NEAREST_DNCSECTORS: 'nearestDNCSectors',
   TRAIN_SECTORS: 'trainSectors',
+  STRUCTURAL_DIVISIONS: 'structuralDivisions',
 });
 
 export const ADJACENT_ECDSECTOR_FIELDS = Object.freeze({
@@ -272,6 +277,15 @@ export const TRAIN_SECTOR_FIELDS = Object.freeze({
   NAME: 'name',
   STATIONS: 'stations',
   BLOCKS: 'blocks',
+});
+
+// ----------------------------------------
+
+export const ECD_STRUCTURAL_DIVISION_FIELDS = Object.freeze({
+  KEY: 'key',
+  NAME: 'title',
+  POST: 'post',
+  FIO: 'fio',
 });
 
 // ----------------------------------------

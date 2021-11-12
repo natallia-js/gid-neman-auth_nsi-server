@@ -1,5 +1,6 @@
 import { ECDSECTOR_FIELDS } from '../constants';
 import getAppECDTrainSectorFromDBECDTrainSectorObj from './getAppECDTrainSectorFromDBECDTrainSectorObj';
+import getAppECDStructuralDivisionFromDBECDStructuralDivisionObj from './getAppECDStructuralDivisionFromDBECDStructuralDivisionObj';
 
 /**
  * Преобразует объект участка ЭЦД, полученный из БД, в объект участка ЭЦД, с которым
@@ -17,7 +18,10 @@ const getAppECDSectorObjFromDBECDSectorObj = (dbECDSectorObj) => {
       [ECDSECTOR_FIELDS.TRAIN_SECTORS]: !dbECDSectorObj.TECDTrainSectors ? [] :
         dbECDSectorObj.TECDTrainSectors.map((trainSect) =>
           getAppECDTrainSectorFromDBECDTrainSectorObj(trainSect)),
-    }
+      [ECDSECTOR_FIELDS.STRUCTURAL_DIVISIONS]: !dbECDSectorObj.TECDStructuralDivisions ? [] :
+        dbECDSectorObj.TECDStructuralDivisions.map((division) =>
+          getAppECDStructuralDivisionFromDBECDStructuralDivisionObj(division)),
+    };
   }
   return null;
 };

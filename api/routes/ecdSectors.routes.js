@@ -13,6 +13,7 @@ const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
 const { TECDSector } = require('../models/TECDSector');
 const { TECDTrainSector } = require('../models/TECDTrainSector');
+const { TECDStructuralDivision } = require('../models/TECDStructuralDivision');
 const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
@@ -34,8 +35,9 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех участков ЭЦД со вложенными списками поездных участков,
- * которые, в свою очередь, содержат вложенные списки станций и перегонов.
+ * Обрабатывает запрос на получение списка всех участков ЭЦД со вложенными списками:
+ * - поездных участков, которые, в свою очередь, содержат вложенные списки станций и перегонов;
+ * - структурных подразделений;
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -72,6 +74,11 @@ router.get(
                 as: 'TBlocks',
               },
             ],
+          },
+          {
+            model: TECDStructuralDivision,
+            as: 'TECDStructuralDivisions',
+            attributes: ['ECDSD_ID', 'ECDSD_Title', 'ECDSD_Post', 'ECDSD_FIO', 'ECDSD_ECDSectorID'],
           },
         ],
       });
@@ -192,8 +199,9 @@ router.get(
 
 
 /**
- * Обрабатывает запрос на получение конкретного участка ЭЦД со вложенными списками поездных участков,
- * которые, в свою очередь, содержат вложенные списки станций и перегонов.
+ * Обрабатывает запрос на получение конкретного участка ЭЦД со вложенными списками:
+ * - поездных участков, которые, в свою очередь, содержат вложенные списки станций и перегонов;
+ * - структурных подразделений;
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -260,6 +268,11 @@ router.get(
               },
             ],
           },
+          {
+            model: TECDStructuralDivision,
+            as: 'TECDStructuralDivisions',
+            attributes: ['ECDSD_ID', 'ECDSD_Title', 'ECDSD_Post', 'ECDSD_FIO'],
+          },
         ],
       });
       res.status(OK).json(data);
@@ -273,8 +286,8 @@ router.get(
 
 
 /**
- * Обрабатывает запрос на получение списка участков ЭЦД и только, без вложенных списков поездных участков,
- * по id этих участков ЭЦД.
+ * Обрабатывает запрос на получение списка участков ЭЦД (по id этих участков) и только,
+ * без вложенных списков поездных участков и структурных подразделений.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -450,6 +463,12 @@ router.post(
           transaction: t,
         });
       }
+      await TECDStructuralDivision.destroy({
+        where: { ECDSD_ECDSectorID: id },
+        transaction: t,
+      });
+
+      // Наконец, удаляем запись в самой таблице участков ЭЦД
       await TECDSector.destroy({ where: { ECDS_ID: id }, transaction: t });
 
       await t.commit();

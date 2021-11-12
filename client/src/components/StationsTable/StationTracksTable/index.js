@@ -52,7 +52,7 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
    */
   const clearAddStationTrackMessages = () => {
     setStationTrackFieldsErrs(null);
-  }
+  };
 
 
   /**

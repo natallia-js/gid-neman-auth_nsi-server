@@ -16,6 +16,7 @@ import AdjacentECDSectorsBlock from './AdjacentECDSectorsBlock';
 import NearestDNCSectorsBlock from './NearestDNCSectorsBlock';
 import ecdSectorsTableColumns from './ECDSectorsTableColumns';
 import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
+import ECDStructuralDivisionsTable from './ECDStructuralDivisionsTable';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
@@ -91,8 +92,9 @@ const ECDSectorsTable = () => {
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
       // (запрос возвратит информацию в виде массива объектов участков ЭЦД; для каждого
-      // объекта участка ЭЦД будет определен массив объектов поездных участков ЭЦД; для
-      // каждого поездного участка ЭЦД будет определен массив объектов соответствующих станций)
+      // объекта участка ЭЦД будет определен массив объектов поездных участков ЭЦД и массив
+      // структурных подразделений ЭЦД; для каждого поездного участка ЭЦД будет определен
+      // массив объектов соответствующих станций)
       let res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
@@ -500,6 +502,18 @@ const ECDSectorsTable = () => {
                   stations={stations}
                   blocks={blocks}
                 />
+                {/*
+                  В данном блоке у пользователя будет возможность формировать
+                  список структурных подразделений для текущего участка ЭЦД
+                */}
+                <div>
+                  <Title level={4}>Структурные подразделения</Title>
+                  <ECDStructuralDivisionsTable
+                    currECDSectorRecordId={record[ECDSECTOR_FIELDS.KEY]}
+                    ecdSectorStructuralDivisions={record[ECDSECTOR_FIELDS.STRUCTURAL_DIVISIONS]}
+                    setTableDataCallback={setTableData}
+                  />
+                </div>
               </div>
             ),
             rowExpandable: _record => true,

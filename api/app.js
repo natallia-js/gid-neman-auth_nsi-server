@@ -25,6 +25,7 @@ const { createDNCSectorWorkPoligonModel } = require('./models/TDNCSectorWorkPoli
 const { createECDSectorWorkPoligonModel } = require('./models/TECDSectorWorkPoligon');
 const { createBlockTrackModel } = require('./models/TBlockTrack');
 const { createStationTrackModel } = require('./models/TStationTrack');
+const { createECDStructuralDivisionModel } = require('./models/TECDStructuralDivision');
 const processDelDBData = require('./serverSideProcessing/processDelDBData');
 
 // Создаем объект приложения express
@@ -77,6 +78,7 @@ app.use('/api/lastOrdersParams', require('./routes/lastOrdersParams.routes'));
 app.use('/api/orders', require('./routes/orders.routes'));
 app.use('/api/workOrders', require('./routes/workOrders.routes'));
 app.use('/api/orderPatternElementRefs', require('./routes/orderPatternElementRefs.routes'));
+app.use('/api/nsi/ecdStructuralDivisions', require('./routes/ecdStructuralDivisions.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;
@@ -157,6 +159,7 @@ async function start() {
     createECDSectorWorkPoligonModel(sequelize);
     createBlockTrackModel(sequelize);
     createStationTrackModel(sequelize);
+    createECDStructuralDivisionModel(sequelize);
 
     // This creates the tables if they don't exist (and does nothing if they already exist)
     //await sequelize.sync({ alter: true });
