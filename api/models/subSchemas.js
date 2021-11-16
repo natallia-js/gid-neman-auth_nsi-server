@@ -68,7 +68,7 @@ const workPoligon = new Schema({
 
 const otherToSendSchema = new Schema({
   placeTitle: { type: String, required: true },
-  post: { type: String, required: true },
+  post: { type: String, required: false },
   fio: { type: String, required: false },
   sendOriginal: { type: Boolean, required: true },
 });
