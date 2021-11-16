@@ -2,6 +2,12 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const { TECDStructuralDivision } = require('../models/TECDStructuralDivision');
+const validate = require('../validators/validate');
+const {
+  addStructuralDivisionValidationRules,
+  delStructuralDivisionValidationRules,
+  modStructuralDivisionValidationRules,
+} = require('../validators/ecdStructuralDivisions.validator');
 
 const router = Router();
 
@@ -41,6 +47,9 @@ router.post(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка параметров запроса
+  addStructuralDivisionValidationRules(),
+  validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
@@ -86,6 +95,9 @@ router.post(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка параметров запроса
+  delStructuralDivisionValidationRules(),
+  validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
@@ -128,6 +140,9 @@ router.post(
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка параметров запроса
+  modStructuralDivisionValidationRules(),
+  validate,
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные

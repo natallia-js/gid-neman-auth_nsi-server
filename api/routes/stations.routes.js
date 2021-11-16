@@ -11,14 +11,9 @@ const {
 const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
-const { TBlockTrack } = require('../models/TBlockTrack');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
-const { TDNCTrainSector } = require('../models/TDNCTrainSector');
-const { TECDTrainSector } = require('../models/TECDTrainSector');
-const { TDNCSector } = require('../models/TDNCSector');
-const { TECDSector } = require('../models/TECDSector');
 const { Op } = require('sequelize');
 
 const router = Router();
