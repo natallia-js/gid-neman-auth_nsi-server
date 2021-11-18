@@ -533,6 +533,8 @@ router.post(
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
  * password - пароль пользователя (обязателен),
+ * takeDuty - true (пользователь принимает дежурство) / false (пользователь входит в систему
+ *   без принятия дежурства) - (необязательно, по умолчанию false)
  */
 router.post(
   '/login',
@@ -542,7 +544,7 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе login, password
-      const { login, password } = req.body;
+      const { login, password, takeDuty } = req.body;
 
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
       const user = await User.findOne({ login });
@@ -714,6 +716,12 @@ router.post(
         await user.save();
       }*/
 
+      // Отмечаем, при необходимости, принятие пользователем дежурства
+      if (takeDuty) {
+        user.lastTakeDutyTime = new Date();
+        await user.save();
+      }
+
       res.status(OK).json({
         token,
         userId: user._id,
@@ -724,6 +732,8 @@ router.post(
           service: user.service,
           post: user.post,
         },
+        lastTakeDutyTime: user.lastTakeDutyTime,
+        lastPassDutyTime: user.lastPassDutyTime,
         roles: rolesAbbreviations,
         credentials: appsCredentials,
         stationWorkPoligons: stations,
@@ -740,48 +750,44 @@ router.post(
 
 
 /**
- * Обработка запроса на выход из системы.
- *
- * Параметры тела запроса:
- * id - id пользователя (обязателен),
+ * Обработка запроса на выход из системы со сдачей дежурства.
  */
- /*router.post(
-  '/logout',
+ router.post(
+  '/logoutWithDutyPass',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем возможность выполнения запрашиваемого действия
   (req, res, next) => {
-    if (String(req.user.userId) !== String(req.body.id)) {
-      return res.status(ERR).json({ message: 'Выход из системы от имени другого лица недопустим' });
+    if (!req.user || !req.user.userId) {
+      return res.status(ERR).json({
+        message: 'Выход из системы невозможен: неизвестен id пользователя, выходящего из системы'
+      });
     }
     next();
   },
   async (req, res) => {
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+      // Из системы выходит пользователь с id = req.user.userId
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
-      const user = await User.findOne({ _id: id });
+      const user = await User.findOne({ _id: req.user.userId });
 
       // Если не находим, то процесс выхода из системы продолжать не можем
       if (!user) {
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
-      if (user.online) {
-        user.online = false;
-        await user.save();
-      }
+      user.lastPassDutyTime = new Date();
+      await user.save();
 
-      res.status(OK).json({ id });
+      res.status(OK).json({ id: req.user.userId });
 
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
-);*/
+);
 
 
 /**

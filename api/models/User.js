@@ -22,8 +22,11 @@ const schema = new Schema({
   service: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId],
-  // true - пользователь доступен (в системе), false - пользователь не доступен
-  // online: { type: Boolean, required: true, default: false },
+  // дата-время последнего принятия дежурства
+  lastTakeDutyTime: { type: Date, required: false },
+  // дата-время последней сдачи дежурства (если пользователь дежурство принял, но не сдал, то значение
+  // в данном поле либо отсутствует, либо не определено, либо меньше значения в lastTakeDutyTime)
+  lastPassDutyTime: { type: Date, required: false },
 });
 
 

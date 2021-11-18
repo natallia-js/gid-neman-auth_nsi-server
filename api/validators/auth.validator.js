@@ -66,6 +66,10 @@ const loginValidationRules = () => {
   return [
     check('login', 'Введите логин').exists(),
     check('password', 'Введите пароль').exists(),
+    check('takeDuty')
+      .if(body('takeDuty').exists())
+      .isBoolean()
+      .withMessage('Значение параметра запроса takeDuty должно принимать логическое значение'),
   ];
 };
 
