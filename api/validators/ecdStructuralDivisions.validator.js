@@ -7,13 +7,15 @@ const addStructuralDivisionValidationRules = () => {
       .isLength({ min: 1, max: 32 })
       .withMessage('Длина наименования структурного подразделения минимум 1 символ, максимум 32 символа'),
     check('post')
+      .if(body('post').exists())
       .trim()
-      .isLength({ min: 1, max: 32 })
-      .withMessage('Длина наименования должности минимум 1 символ, максимум 32 символа'),
+      .isLength({ max: 32 })
+      .withMessage('Длина наименования должности максимум 32 символа'),
     check('fio')
+      .if(body('fio').exists())
       .trim()
-      .isLength({ min: 1, max: 32 })
-      .withMessage('Длина ФИО минимум 1 символ, максимум 32 символа'),
+      .isLength({ max: 32 })
+      .withMessage('Длина ФИО максимум 32 символа'),
     check('ecdSectorId')
       .exists()
       .withMessage('Не указан id участка ЭЦД'),
@@ -41,13 +43,13 @@ const modStructuralDivisionValidationRules = () => {
     check('post')
       .if(body('post').exists())
       .trim()
-      .isLength({ min: 1, max: 32 })
-      .withMessage('Длина наименования должности минимум 1 символ, максимум 32 символа'),
+      .isLength({ max: 32 })
+      .withMessage('Длина наименования должности максимум 32 символа'),
     check('fio')
       .if(body('fio').exists())
       .trim()
-      .isLength({ min: 1, max: 32 })
-      .withMessage('Длина ФИО минимум 1 символ, максимум 32 символа'),
+      .isLength({ max: 32 })
+      .withMessage('Длина ФИО максимум 32 символа'),
   ];
 };
 
