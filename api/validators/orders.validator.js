@@ -8,6 +8,13 @@ const checkCreateOrderDateTime = (val) => {
   return true;
 }
 
+const checkOrdersFromGivenDateTime = (val) => {
+  if (!isDate(val)) {
+    throw new Error('Неверно указано значение параметра даты и времени начала поиска информации о распоряжениях');
+  }
+  return true;
+}
+
 /**
  * Пользовательская функция проверки места действия распоряжения.
  *
@@ -172,7 +179,24 @@ const getDataForGIDValidationRules = () => {
   ];
 };
 
+const getOrdersFromGivenDateRules = () => {
+  return [
+    check('datetime')
+      .exists()
+      .withMessage('Не указана дата начала поиска информации о количестве распоряжений, изданных начиная с этой даты')
+      .bail()
+      .custom((val) => checkOrdersFromGivenDateTime(val)),
+    check('workPoligonType')
+      .exists()
+      .withMessage('Не указан тип полигона управления для поиска информации о количестве распоряжений, изданных начиная с указанной даты'),
+    check('workPoligonId')
+      .exists()
+      .withMessage('Не указан id полигона управления дата поиска информации о количестве распоряжений, изданных начиная с этой даты'),
+  ];
+};
+
 module.exports = {
   addOrderValidationRules,
   getDataForGIDValidationRules,
+  getOrdersFromGivenDateRules,
 };

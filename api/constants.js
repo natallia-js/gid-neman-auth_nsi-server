@@ -90,6 +90,12 @@ const WEBSOCKET_CONSTANTS = Object.freeze({
   GET_ONLINE_USERS_MESSAGE_PATTERN: /^online /,
 });
 
+const WORK_POLIGON_TYPES = Object.freeze({
+  STATION: 'станция',
+  DNC_SECTOR: 'участок ДНЦ',
+  ECD_SECTOR: 'участок ЭЦД',
+});
+
 module.exports = {
   ...PROJECT_CONSTANTS,
 
@@ -98,6 +104,8 @@ module.exports = {
   ...DY58_SERVER_CREDENTIALS,
 
   ...WEBSOCKET_CONSTANTS,
+
+  WORK_POLIGON_TYPES,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

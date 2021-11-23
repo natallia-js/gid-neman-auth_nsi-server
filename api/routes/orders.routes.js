@@ -8,6 +8,7 @@ const WorkOrder = require('../models/WorkOrder');
 const {
   addOrderValidationRules,
   getDataForGIDValidationRules,
+  getOrdersFromGivenDateRules,
 } = require('../validators/orders.validator');
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
@@ -26,6 +27,8 @@ const {
   DSP_FULL,
   DNC_FULL,
   ECD_FULL,
+
+  WORK_POLIGON_TYPES,
 } = require('../constants');
 
 
@@ -52,7 +55,7 @@ const {
  *   orderText - массив объектов с параметрами:
  *     ref - строка, содержащая смысловое значение параметра в шаблоне
  *     type - тип параметра
- *     value - значение параметра
+ *     value - значение параметра (представленное в виде строки!)
  * dncToSend - массив участков ДНЦ, на которые необходимо отправить распоряжение (не обязательно; если не данных, то должен быть пустой массив);
  *   элемент массива - объект с параметрами:
  *     fio - ФИО ДНЦ
@@ -413,5 +416,63 @@ const {
     }
   }
 );
+
+
+/**
+ * Обрабатывает запрос на получение списка id распоряжений, изданных начиная с указанной даты
+ * на указанном полигоне управления.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * datetime - дата-время начала поиска информации (обязателен)
+ * workPoligonType - тип полигона управления, для которого необходимо осуществить поиск информации (обязателен)
+ * workPoligonId - id полигона управления (обязателен)
+ */
+ router.post(
+  '/ordersCreatedFromGivenDate',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка параметров запроса
+  getOrdersFromGivenDateRules(),
+  validate,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { datetime, workPoligonType, workPoligonId } = req.body;
+
+      const matchFilter = { createDateTime: { $gte: new Date(datetime) } };
+      const poligonSearchFilter = { $elemMatch: { id: workPoligonId, type: workPoligonType } };
+      switch (workPoligonType) {
+        case WORK_POLIGON_TYPES.STATION:
+          matchFilter.dspToSend = poligonSearchFilter;
+          break;
+        case WORK_POLIGON_TYPES.DNC_SECTOR:
+          matchFilter.dncToSend = poligonSearchFilter;
+          break;
+        case WORK_POLIGON_TYPES.ECD_SECTOR:
+          matchFilter.ecdToSend = poligonSearchFilter;
+          break;
+      }
+      const data = await Order.find(matchFilter);
+      res.status(OK).json(data.map((doc) => doc._id));
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
 
 module.exports = router;
