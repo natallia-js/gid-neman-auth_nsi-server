@@ -103,7 +103,8 @@ export const EditOrderPatternElement = (props) => {
       elementValue = null;
       changed = true;
     }
-    if ([OrderPatternElementType.DATE, OrderPatternElementType.TIME, OrderPatternElementType.DATETIME]
+    if ([OrderPatternElementType.DATE, OrderPatternElementType.TIME,
+      OrderPatternElementType.DATETIME, OrderPatternElementType.DR_TRAIN_TABLE]
       .includes(selectedPatternElement.type) && selectedPatternElement.size !== PossibleElementSizes.AUTO) {
       elementSize = PossibleElementSizes.AUTO;
       changed = true;
