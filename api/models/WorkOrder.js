@@ -28,7 +28,7 @@ const schema = new Schema({
   timeSpan: { type: timeSpanSchema, required: true },
   // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
   //  и логически связанного с ним)
-  nextRelatedOrderId: { type: Types.ObjectId, required: false },
+  // nextRelatedOrderId: { type: Types.ObjectId, required: false },
   // информация о цепочке распоряжений, которой принадлежит текущее распоряжение
   orderChain: { type: orderChainSchema, required: true },
 });

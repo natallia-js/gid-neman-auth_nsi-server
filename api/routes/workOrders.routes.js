@@ -311,4 +311,59 @@ router.post(
 );
 
 
+/**
+ * Обрабатывает запрос на удаление цепочки распоряжений из списка распоряжений, находящихся
+ * в работе на заданном полигоне управления. Удалению подлежат лишь те распоряжения цепочки,
+ * которые имеют статус "подтверждено".
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры запроса:
+ *   workPoligonType, workPoligonId - определяют рабочий полигон, на котором производится удаление цепочки
+ *   chainId - идентификатор цепочки распоряжений
+ */
+ router.post(
+  '/delConfirmedOrdersFromChain',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (req, res) => {
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { workPoligonType, workPoligonId, chainId } = req.body;
+
+      // Удаляем записи в таблице рабочих распоряжений
+      await WorkOrder.deleteMany({
+        $and: [
+          { recipientWorkPoligon: { $exists: true } },
+          { "recipientWorkPoligon.id": workPoligonId },
+          { "recipientWorkPoligon.type": workPoligonType },
+          { orderChain: { $exists: true } },
+          { "orderChain.chainId": chainId },
+          // $ne selects the documents where the value of the field is not equal to the specified value.
+          // This includes documents that do not contain the field.
+          { confirmDateTime: { $exists: true } },
+          { confirmDateTime: { $ne: null } },
+        ],
+      });
+
+      res.status(OK).json({ message: 'Информация успешно удалена' });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
 module.exports = router;

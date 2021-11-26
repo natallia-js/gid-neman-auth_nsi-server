@@ -1,4 +1,4 @@
-const { Schema, model, Types } = require('mongoose');
+const { Schema, model } = require('mongoose');
 
 const {
   orderPlaceSchema,
@@ -42,7 +42,7 @@ const schema = new Schema({
   createdOnBehalfOf: { type: String, required: false },
   // id "связанного" распоряжения (следующего за текущим в хронологическом порядке
   //  и логически связанного с ним)
-  nextRelatedOrderId: { type: Types.ObjectId, required: false },
+  // nextRelatedOrderId: { type: Types.ObjectId, required: false },
   // информация о цепочке распоряжений, которой принадлежит текущее распоряжение
   orderChain: { type: orderChainSchema, required: true },
   // true - отображать на ГИД, false - не отображать на ГИД

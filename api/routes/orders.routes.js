@@ -34,6 +34,13 @@ const {
 
 /**
  * Обработка запроса на добавление нового распоряжения.
+ * Создаваемое распоряжение либо само создает новую цепочку распоряжений, либо, если указан параметр
+ * orderChainId, является частью существующей цепочки.
+ *   ID цепочки распоряжений = id первого распоряжения, изданного в рамках данной цепочки.
+ *   Дата начала действия цепочки = дате начала действия первого распоряжения цепочки (если не указана, то
+ * берется дата создания распоряжения).
+ *   Дата окончания действия цепочки = дате окончания действия последнего распоряжения, изданного в рамках
+ * данной цепочки.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -87,7 +94,7 @@ const {
  *   post - должность
  *   fio - ФИО
  * createdOnBehalfOf - от чьего имени издано распоряжение (не обязательно)
- * prevOrderId - id ранее изданного распоряжения, с которым связано текущее распоряжение (не обязательно)
+ * orderChainId - id цепочки распоряжений, которой принадлежит издаваемое распоряжение
  * showOnGID - true - отображать на ГИД, false - не отображать на ГИД (не обязательно)
  */
  router.post(
@@ -128,7 +135,8 @@ const {
         workPoligon,
         creator,
         createdOnBehalfOf,
-        prevOrderId,
+        //prevOrderId,
+        orderChainId,
         showOnGID,
       } = req.body;
 
@@ -141,6 +149,33 @@ const {
         chainEndDateTime: timeSpan && timeSpan.end ? timeSpan.end : null,
       };
 
+      // Если необходимо включить создаваемое распоряжение в существующую цепочку распоряжений,
+      // то ищем сведения о существующей цепочке
+      if (orderChainId) {
+        // для этого берем первое распоряжение в указанной цепочке
+        const firstChainOrder = await Order.findById(orderChainId).session(session);
+        if (!firstChainOrder) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдена цепочка распоряжений, которой оно принадлежит' });
+        }
+        // редактируем информацию о цепочке создаваемого распоряжения
+        orderChainInfo.chainId = orderChainId;
+        orderChainInfo.chainStartDateTime = firstChainOrder.orderChain.chainStartDateTime;
+        // обновляем информацию о конечной дате у всех распоряжений цепочки
+        await Order.updateMany(
+          // filter
+          { "orderChain.chainId": orderChainInfo.chainId },
+          // update
+          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
+        ).session(session);
+        await WorkOrder.updateMany(
+          // filter
+          { "orderChain.chainId": orderChainInfo.chainId },
+          // update
+          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
+        ).session(session);
+      }
+
       // Если необходимо связать создаваемое распоряжение с ранее изданным, то ищем
       // ранее изданное распоряжение. У него нам необходимо взять информацию о цепочке
       // распоряжений, которой будет принадлежать новое распоряжение. А также связать
@@ -149,7 +184,7 @@ const {
       // новое распоряжение, может уже оказаться связанным с другим распоряжением (какой-то
       // другой пользователь успел сделать это раньше). В этом случае издание нового распоряжения
       // становится невозможным.
-      if (prevOrderId) {
+      /*if (prevOrderId) {
 
         const prevOrder = await Order.findById(prevOrderId).session(session);
         if (!prevOrder) {
@@ -193,7 +228,7 @@ const {
           { "orderChain.chainId": orderChainInfo.chainId },
           { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
         ).session(session);
-      }
+      }*/
 
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({

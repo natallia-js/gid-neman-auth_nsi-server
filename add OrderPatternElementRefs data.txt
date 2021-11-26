@@ -35,7 +35,8 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Номер действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующей заявки', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего уведомления', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Номер действующего распоряжения/запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Номер действующего приказа', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Номер действующего запрещения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон станции отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Путь перегона', additionalOrderPlaceInfoForGID: true },
@@ -54,7 +55,8 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Дата издания действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата издания действующей заявки', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата издания действующего уведомления', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Дата издания действующего распоряжения/запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата издания действующего приказа', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата издания действующего запрещения', additionalOrderPlaceInfoForGID: false },
   ],
 },
 {
@@ -64,11 +66,11 @@ db.orderpatternelementrefs.insertMany([
 {
   elementType: "datetime",
   possibleRefs: [
-    { refName: 'Дата-время начала действия распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время издания действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время издания действующей заявки', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время издания действующего уведомления', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Дата-время издания действующего распоряжения/запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующего приказа', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующего запрещения', additionalOrderPlaceInfoForGID: false },
   ],
 },
 ])
