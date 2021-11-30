@@ -2,6 +2,7 @@ const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const LastOrdersParam = require('../models/LastOrdersParam');
 const WorkOrder = require('../models/WorkOrder');
@@ -111,6 +112,8 @@ const {
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
+  // проверка факта нахождения пользователя на смене
+  isOnDuty,
   // проверка параметров запроса
   addOrderValidationRules(),
   validate,

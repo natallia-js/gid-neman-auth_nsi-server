@@ -129,7 +129,6 @@ const ECDStructuralDivisionsTable = (props) => {
           return ecdSector;
         })
       );
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }

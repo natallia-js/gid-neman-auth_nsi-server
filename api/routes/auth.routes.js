@@ -49,7 +49,6 @@ const {
   MAIN_ADMIN_POST,
 
   GET_ALL_USERS_ACTION,
-  GET_DEFINIT_USERS_ACTION,
   REGISTER_USER_ACTION,
   MOD_USER_ACTION,
 
@@ -558,10 +557,6 @@ router.post(
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
-        /*if (user.online) {
-          user.online = false;
-          await user.save();
-        }*/
         return res.status(ERR).json({ message: 'Неверный пароль, попробуйте снова' });
       }
 
@@ -710,11 +705,6 @@ router.post(
         jwtSecret,
         //{ expiresIn: '1h' }
       );
-
-      /*if (!user.online) {
-        user.online = true;
-        await user.save();
-      }*/
 
       // Отмечаем, при необходимости, принятие пользователем дежурства
       if (takeDuty) {
