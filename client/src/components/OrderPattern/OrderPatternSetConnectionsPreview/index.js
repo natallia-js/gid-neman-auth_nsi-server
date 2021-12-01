@@ -121,7 +121,7 @@ export const OrderPatternSetConnectionsPreview = (props) => {
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
                 style={{ marginRight: 5, marginBottom: 5 }}
               >
-                {getOrderPatternElementView(patternElement)}
+                {getOrderPatternElementView(patternElement, false)}
               </span>
               :
               <Popover
@@ -156,9 +156,10 @@ export const OrderPatternSetConnectionsPreview = (props) => {
                     'not-selected-order-pattern-element-block' :
                     'selected-order-pattern-element-block'}
                 >
-                  {getOrderPatternElementView(patternElement)}
+                  {getOrderPatternElementView(patternElement, false)}
                   <span style={{
                     position: 'absolute',
+                    color: 'blue',
                     left: 2,
                     top: 0,
                   }}>

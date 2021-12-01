@@ -13,7 +13,7 @@ import drTrainTableColumns from './drTrainTableColumns';
 /**
  * Возвращает внешний вид элемента шаблона распоряжения, опираясь на его тип.
  */
-const getOrderPatternElementView = (element) => {
+const getOrderPatternElementView = (element, showPlaceholder = true) => {
   switch (element[ORDER_PATTERN_ELEMENT_FIELDS.TYPE]) {
     case OrderPatternElementType.TEXT:
       return <span>{element[ORDER_PATTERN_ELEMENT_FIELDS.VALUE]}</span>;
@@ -24,7 +24,7 @@ const getOrderPatternElementView = (element) => {
         <Input
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
-          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.SELECT:
@@ -34,7 +34,7 @@ const getOrderPatternElementView = (element) => {
         <Select
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
-          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.DATE:
@@ -44,7 +44,7 @@ const getOrderPatternElementView = (element) => {
         <DatePicker
           format={DateFormat}
           size="small"
-          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.TIME:
@@ -54,7 +54,7 @@ const getOrderPatternElementView = (element) => {
         <TimePicker
           format={TimeFormat}
           size="small"
-          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.DATETIME:
@@ -65,7 +65,7 @@ const getOrderPatternElementView = (element) => {
           showTime
           format={DateTimeFormat}
           size="small"
-          placeholder={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.DR_TRAIN_TABLE:
