@@ -11,6 +11,8 @@ const schema = new Schema({
   category: { type: String, required: true },
   // Наименование распоряжения
   title: { type: String, required: true },
+  // Отметки об особых категориях поездов, к которым имеет отношение шаблон распоряжения
+  specialTrainCategories: [{ type: String }],
   // Список элементов шаблона
   elements: [
     {

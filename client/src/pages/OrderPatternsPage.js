@@ -141,6 +141,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
                 childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             }],
@@ -166,6 +167,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
                 childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             }],
@@ -186,6 +188,7 @@ export const OrderPatternsPage = () => {
                 key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
                 pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
                 type: OrderPatternsNodeType.ORDER_PATTERN,
+                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
                 childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
               }],
             });
@@ -195,6 +198,7 @@ export const OrderPatternsPage = () => {
               key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
               pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
               type: OrderPatternsNodeType.ORDER_PATTERN,
+              specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
               childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
             });
           }

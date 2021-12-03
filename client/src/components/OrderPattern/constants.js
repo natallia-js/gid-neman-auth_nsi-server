@@ -61,3 +61,7 @@ export const ElementSizesCorrespondence = Object.freeze({
   LARGE: '15rem',
   AUTO: 'auto',
 });
+
+export const SPECIAL_TRAIN_CATEGORIES = [
+  'ДР', 'Н', 'ПВ', 'ПД', 'ПВПД', 'Т', 'Д', 'ТД', 'ВМ',
+];

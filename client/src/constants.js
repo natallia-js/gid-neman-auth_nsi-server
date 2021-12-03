@@ -296,6 +296,7 @@ export const ORDER_PATTERN_FIELDS = Object.freeze({
   TYPE: 'type',
   CATEGORY: 'category',
   TITLE: 'title',
+  SPECIAL_TRAIN_CATEGORIES: 'specialTrainCategories',
   ELEMENTS: 'elements',
   CHILD_PATTERNS: 'childPatterns',
 });

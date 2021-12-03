@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { Tree, Row, Col, Popconfirm, Button, Space, Typography, Input } from 'antd';
+import { Tree, Row, Col, Popconfirm, Button, Space, Typography, Input, Select } from 'antd';
 import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS, InterfaceDesign, ServerAPI } from '../../../constants';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { OrderPatternPreview } from '../OrderPatternPreview';
@@ -9,12 +9,13 @@ import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import objectId from '../../../generators/objectId.generator';
-import { OrderPatternsNodeType } from '../constants';
+import { OrderPatternsNodeType, SPECIAL_TRAIN_CATEGORIES } from '../constants';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../../../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
 import { useSearchTree } from '../../../hooks/searchTree.hook';
 
 const { Text, Title } = Typography;
 const { Search } = Input;
+const { Option } = Select;
 
 
 /**
@@ -94,6 +95,7 @@ export const OrderPatternsTree = (props) => {
         setSelectedPattern({
           [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
           [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
+          [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: info.node.specialTrainCategories,
           [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
         });
         if (selectedOrderCategory) {
@@ -135,6 +137,7 @@ export const OrderPatternsTree = (props) => {
     }
     setEditedPattern({
       [ORDER_PATTERN_FIELDS.TITLE]: selectedPattern[ORDER_PATTERN_FIELDS.TITLE],
+      [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: selectedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
       [ORDER_PATTERN_FIELDS.ELEMENTS]: [...selectedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]],
     });
     if (patternEdited) {
@@ -284,6 +287,24 @@ export const OrderPatternsTree = (props) => {
     }
   };
 
+  /**
+   * Позволяет отредактировать список отметок об особых категориях поезда.
+   */
+  const handleEditSpecialTrainCategories = (specialCategoriesArray) => {
+    if (!editedPattern) {
+      return;
+    }
+    setEditedPattern((value) => {
+      return {
+        ...value,
+        [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: specialCategoriesArray,
+      };
+    });
+    if (!patternEdited) {
+      setPatternEdited(true);
+    }
+  };
+
 
   /**
    * Запоминает правки в текущем наименовании категории шаблонов распоряжений.
@@ -308,6 +329,7 @@ export const OrderPatternsTree = (props) => {
         {
           id: selectedPattern[ORDER_PATTERN_FIELDS.KEY],
           title: editedPattern[ORDER_PATTERN_FIELDS.TITLE],
+          specialTrainCategories: editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           elements: editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
         },
         { Authorization: `Bearer ${auth.token}` }
@@ -322,6 +344,7 @@ export const OrderPatternsTree = (props) => {
         return {
           ...value,
           [ORDER_PATTERN_FIELDS.TITLE]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.TITLE],
+          [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           [ORDER_PATTERN_FIELDS.ELEMENTS]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
         };
       })
@@ -529,6 +552,23 @@ export const OrderPatternsTree = (props) => {
                       value={editedPattern[ORDER_PATTERN_FIELDS.TITLE]}
                       onChange={handleEditOrderPatternTitle}
                     />
+                    <Text strong>Особая категория поезда</Text>
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      style={{ width: '100%' }}
+                      placeholder="Выберите особые категории поезда"
+                      defaultValue={editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]}
+                      onChange={handleEditSpecialTrainCategories}
+                    >
+                      {
+                        SPECIAL_TRAIN_CATEGORIES.map(category =>
+                          <Option key={category} value={category}>
+                            {category}
+                          </Option>
+                        )
+                      }
+                    </Select>
                     <EditOrderPattern
                       orderPattern={editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
                       insertOrderElementPos={insertOrderElementPos}

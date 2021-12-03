@@ -3,14 +3,18 @@ import { Typography, Row, Col, Button, Popconfirm, Form, Select, Input, Space } 
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
-import { ServerAPI, SERVICE_FIELDS } from '../../../constants';
-import { OrderTypes } from '../constants';
+import { OrderTypes, SPECIAL_TRAIN_CATEGORIES } from '../constants';
 import { useHttp } from '../../../hooks/http.hook';
 import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { OrderCategoryChooser } from '../OrderCategoryChooser';
 import objectId from '../../../generators/objectId.generator';
-import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS } from '../../../constants';
+import {
+  ORDER_PATTERN_FIELDS,
+  ORDER_PATTERN_ELEMENT_FIELDS,
+  ServerAPI,
+  SERVICE_FIELDS,
+} from '../../../constants';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -230,7 +234,7 @@ export const CreateOrderPattern = (props) => {
    *
    * @param {object} values
    */
-   const onFinish = async (values) => {
+  const onFinish = async (values) => {
     // Чистим все сообщения об ошибках
     setOrderPatternFieldsErrs(null);
 
@@ -397,6 +401,28 @@ export const CreateOrderPattern = (props) => {
               autoComplete="off"
               allowClear
             />
+          </Form.Item>
+
+          <Form.Item
+            label={<Text strong>Особая категория поезда</Text>}
+            name={ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]) ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES])}
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              style={{ width: '100%' }}
+              placeholder="Выберите особые категории поезда"
+            >
+              {
+                SPECIAL_TRAIN_CATEGORIES.map(category =>
+                  <Option key={category} value={category}>
+                    {category}
+                  </Option>
+                )
+              }
+            </Select>
           </Form.Item>
         </Form>
 

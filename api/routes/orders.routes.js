@@ -95,6 +95,7 @@ const {
  *   post - должность
  *   fio - ФИО
  * createdOnBehalfOf - от чьего имени издано распоряжение (не обязательно)
+ * specialTrainCategories - отметки об особых категориях поездов, к которым имеет отношение распоряжение
  * orderChainId - id цепочки распоряжений, которой принадлежит издаваемое распоряжение
  * showOnGID - true - отображать на ГИД, false - не отображать на ГИД (не обязательно)
  */
@@ -138,7 +139,7 @@ const {
         workPoligon,
         creator,
         createdOnBehalfOf,
-        //prevOrderId,
+        specialTrainCategories,
         orderChainId,
         showOnGID,
       } = req.body;
@@ -179,60 +180,6 @@ const {
         ).session(session);
       }
 
-      // Если необходимо связать создаваемое распоряжение с ранее изданным, то ищем
-      // ранее изданное распоряжение. У него нам необходимо взять информацию о цепочке
-      // распоряжений, которой будет принадлежать новое распоряжение. А также связать
-      // данное распоряжение с создаваемым.
-      // Нюанс здесь такой: ранее изданное распоряжение, с которым пользователь хочет связать
-      // новое распоряжение, может уже оказаться связанным с другим распоряжением (какой-то
-      // другой пользователь успел сделать это раньше). В этом случае издание нового распоряжения
-      // становится невозможным.
-      /*if (prevOrderId) {
-
-        const prevOrder = await Order.findById(prevOrderId).session(session);
-        if (!prevOrder) {
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдено распоряжение, предшествующее ему' });
-        }
-        if (prevOrder.nextRelatedOrderId) {
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: распоряжение, предшествующее ему, уже связано с другим распоряжением' });
-        }
-
-        let updateRes = await Order.updateOne(
-          // filter
-          { _id: prevOrderId },
-          // update
-          { nextRelatedOrderId: newOrderObjectId },
-        ).session(session);
-        if (updateRes.nModified !== 1) {
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдено распоряжение, предшествующее ему' });
-        }
-
-        updateRes = await WorkOrder.updateMany(
-          { orderId: prevOrderId },
-          { nextRelatedOrderId: newOrderObjectId },
-        ).session(session);
-        if (updateRes.nModified < 1) {
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Распоряжение не может быть издано: проблема в установке связи с предшествующим ему распоряжением в оперативной коллекции' });
-        }
-
-        // редактируем информацию о цепочке нового распоряжения
-        orderChainInfo.chainId = prevOrder.orderChain.chainId;
-        orderChainInfo.chainStartDateTime = prevOrder.orderChain.chainStartDateTime;
-        // обновляем информацию о конечной дате у всех распоряжений цепочки
-        await Order.updateMany(
-          { "orderChain.chainId": orderChainInfo.chainId },
-          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
-        ).session(session);
-        await WorkOrder.updateMany(
-          { "orderChain.chainId": orderChainInfo.chainId },
-          { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
-        ).session(session);
-      }*/
-
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({
         _id: newOrderObjectId,
@@ -249,6 +196,7 @@ const {
         workPoligon,
         creator,
         createdOnBehalfOf,
+        specialTrainCategories,
         orderChain: orderChainInfo,
         showOnGID,
       });

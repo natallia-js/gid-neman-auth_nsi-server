@@ -16,6 +16,7 @@ const getAppOrderPatternObjFromDBOrderPatternObj = (dbOrderPatternObj) => {
       [ORDER_PATTERN_FIELDS.TYPE]: dbOrderPatternObj.type,
       [ORDER_PATTERN_FIELDS.CATEGORY]: dbOrderPatternObj.category,
       [ORDER_PATTERN_FIELDS.TITLE]: dbOrderPatternObj.title,
+      [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: dbOrderPatternObj.specialTrainCategories,
       [ORDER_PATTERN_FIELDS.ELEMENTS]: !dbOrderPatternObj.elements ? [] :
         dbOrderPatternObj.elements.map((element) => getAppOrderPatternElementObjFromDBOrderPatternElementObj(element)),
       [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: !dbOrderPatternObj.childPatterns ? [] :
