@@ -6,7 +6,6 @@ const {
   changeStationWorkPoligonsValidationRules,
 } = require('../validators/stationWorkPoligons.validator');
 const validate = require('../validators/validate');
-const { TStation } = require('../models/TStation');
 const User = require('../models/User');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 
@@ -46,7 +45,7 @@ router.get(
     try {
       const data = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_UserID', 'SWP_StID'],
+        attributes: ['SWP_UserID', 'SWP_StID', 'SWP_StWP_ID'],
       });
       res.status(OK).json(data);
 
@@ -60,7 +59,8 @@ router.get(
 
 /**
  * Обрабатывает запрос на получение id всех пользователей, у которых рабочий полигон -
- * станция с одним из заданных id.
+ * станция с одним из заданных id. В выборку включаются также пользователи, у которых
+ * рабочий полигон - рабочее место на указанных станциях.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -91,12 +91,14 @@ router.get(
       // Считываем находящиеся в пользовательском запросе данные
       const { stationIds, onlyOnline } = req.body;
 
+      // Ищем id пользователей и id соответствующих им рабочих полигонов (станций и рабочих мест на станциях)
       const users = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_UserID', 'SWP_StID'],
+        attributes: ['SWP_UserID', 'SWP_StID', 'SWP_StWP_ID'],
         where: { SWP_StID: stationIds },
       });
 
+      // По найденным id пользователей ищем полную информацию по данным лицам
       let data;
       if (users) {
         const searchCondition = { _id: users.map((item) => item.SWP_UserID) };
@@ -108,6 +110,7 @@ router.get(
 
       if (data) {
         data = data.map((user) => {
+          const workPoligon = users.find((item) => String(item.SWP_UserID) === String(user._id));
           return {
             _id: user._id,
             name: user.name,
@@ -116,7 +119,8 @@ router.get(
             online: user.online,
             post: user.post,
             service: user.service,
-            stationId: users.find((item) => String(item.SWP_UserID) === String(user._id)).SWP_StID,
+            stationId: workPoligon.SWP_StID,
+            stationWorkPlaceId: workPoligon.SWP_StWP_ID,
           };
         });
       }
@@ -138,8 +142,10 @@ router.get(
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
- * stationIds - массив идентификаторов станций, которые необходимо определить как рабочие
- *              полигоны для данного пользователя (обязателен)
+ * poligons - массив объектов, содержащих информацию о том, какие станции и рабочие места в рамках
+ *            данных станций необходимо определить как рабочие полигоны для данного
+ *            пользователя (обязателен); каждый объект массива содержит (обязательно) идентификатор
+ *            станции (id) и рабочего места в рамках данной станции (workPlaceId, необязательно)
  */
  router.post(
   '/change',
@@ -165,12 +171,12 @@ router.get(
       return res.status(ERR).json({ message: 'Для выполнения операции изменения списка рабочих полигонов-станций не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, poligons } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, stationIds } = req.body;
-
       // Ищем в БД пользователя с заданным id
       const candidate = await User.findOne({ _id: userId });
 
@@ -188,25 +194,33 @@ router.get(
         transaction: t,
       });
 
-      if (stationIds && stationIds.length) {
+      if (poligons && poligons.length) {
+        // Массив уникальных id станций
+        /*const stationsIds = poligons
+          .map((poligon) => poligon.id)
+          .filter((value, index, self) => self.indexOf(value) === index);
+
         // Проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем
-        const stations = await TStation.findAll({
-          where: { St_ID: stationIds },
+        const stationObjects = await TStation.findAll({
+          where: { St_ID: stationsIds },
           transaction: t,
         });
 
-        if (!stations || stations.length !== stationIds.length) {
+        if (!stationObjects || stationObjects.length !== stationsIds.length) {
           await t.rollback();
           return res.status(ERR).json({ message: 'Не все станции найдены в базе' });
-        }
+        }*/
 
         // Создаем в БД рабочие полигоны-станции для заданного пользователя
-        for (let id of stationIds) {
-          await TStationWorkPoligon.create({
+        const objectsToCreateInDatabase = [];
+        for (let stationObj of poligons) {
+          objectsToCreateInDatabase.push({
             SWP_UserID: userId,
-            SWP_StID: id,
-          }, { transaction: t });
+            SWP_StID: stationObj.id,
+            SWP_StWP_ID: stationObj.workPlaceId,
+          });
         }
+        await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction: t });
       }
 
       await t.commit();

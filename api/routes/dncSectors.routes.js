@@ -13,12 +13,10 @@ const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
 const { TDNCSector } = require('../models/TDNCSector');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
-const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
-const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
-const { Op } = require('sequelize');
+const deleteDNCSector = require('../routes/deleteComplexDependencies/deleteDNCSector');
 
 const router = Router();
 
@@ -27,6 +25,7 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  DATA_TO_DEL_NOT_FOUND,
 
   GET_ALL_DNCSECTORS_ACTION,
   MOD_DNCSECTOR_ACTION,
@@ -401,56 +400,18 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+      const deletedCount = await deleteDNCSector(id, t);
 
-      // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
-      const candidate = await TDNCSector.findOne({
-        where: { DNCS_ID: id },
-        transaction: t,
-      });
-
-      // Если не находим, то процесс удаления продолжать не можем
-      if (!candidate) {
+      if (!deletedCount) {
         await t.rollback();
-        return res.status(ERR).json({ message: 'Указанный участок ДНЦ не существует в базе данных' });
+        return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
       }
-
-      // Перед удалением участка ДНЦ ищем все его поездные участки ДНЦ: для соответствующих записей
-      // необходимо удалить информацию из таблицы станций поездных участков ДНЦ
-      const dncTrainSectors = await TDNCTrainSector.findAll({
-        where: { DNCTS_DNCSectorID: id },
-        transaction: t,
-      });
-
-      // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
-      await TAdjacentDNCSector.destroy({
-        where: {
-          [Op.or]: [
-            { ADNCS_DNCSectorID1: id },
-            { ADNCS_DNCSectorID2: id },
-          ],
-        },
-        transaction: t,
-      });
-      await TNearestDNCandECDSector.destroy({
-        where: { NDE_DNCSectorID: id },
-        transaction: t,
-      });
-      if (dncTrainSectors && dncTrainSectors.length) {
-        await TDNCTrainSectorStation.destroy({
-          where: { DNCTSS_TrainSectorID: dncTrainSectors.map(el => el.DNCTS_ID) },
-          transaction: t,
-        });
-        await TDNCTrainSector.destroy({
-          where: { DNCTS_DNCSectorID: id },
-          transaction: t,
-        });
-      }
-      await TDNCSector.destroy({ where: { DNCS_ID: id }, transaction: t });
 
       await t.commit();
 

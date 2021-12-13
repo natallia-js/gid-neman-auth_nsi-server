@@ -14,6 +14,7 @@ import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFrom
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import expandIcon from '../ExpandIcon';
 import StationTracksTable from './StationTracksTable';
+import StationWorkPlacesTable from './StationWorkPlacesTable';
 
 const { Text, Title } = Typography;
 
@@ -76,7 +77,7 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по станциям
-      let res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
+      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -368,6 +369,12 @@ const StationsTable = () => {
                 <StationTracksTable
                   stationId={record[STATION_FIELDS.KEY]}
                   stationTracks={record[STATION_FIELDS.TRACKS]}
+                  setTableDataCallback={setTableData}
+                />
+                <Title level={4}>Рабочие места на станции</Title>
+                <StationWorkPlacesTable
+                  stationId={record[STATION_FIELDS.KEY]}
+                  stationWorkPlaces={record[STATION_FIELDS.WORK_PLACES]}
                   setTableDataCallback={setTableData}
                 />
               </div>

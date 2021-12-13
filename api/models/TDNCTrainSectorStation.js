@@ -41,6 +41,8 @@ function createDNCTrainSectorStationModel(sequelize) {
     modelName: MODEL_NAME, // We need to choose the model name
   });
 
+  /* Данные строки с belongsToMany определяют связь между таблицами TStations и TDNCTrainSectors
+  через таблицу (промежуточная таблица) TDNCTrainSectorStations */
   TDNCTrainSector.belongsToMany(TStation, {
     through: TDNCTrainSectorStation,
     unique: false,

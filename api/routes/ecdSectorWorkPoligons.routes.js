@@ -6,7 +6,6 @@ const {
   changeECDSectorWorkPoligonsValidationRules,
 } = require('../validators/ecdSectorWorkPoligons.validator');
 const validate = require('../validators/validate');
-const { TECDSector } = require('../models/TECDSector');
 const User = require('../models/User');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 
@@ -190,7 +189,7 @@ router.get(
 
       if (ecdSectorIds && ecdSectorIds.length) {
         // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем
-        const ecdSectors = await TECDSector.findAll({
+        /*const ecdSectors = await TECDSector.findAll({
           where: { ECDS_ID: ecdSectorIds },
           transaction: t,
         });
@@ -198,7 +197,7 @@ router.get(
         if (!ecdSectors || ecdSectors.length !== ecdSectorIds.length) {
           await t.rollback();
           return res.status(ERR).json({ message: 'Не все участки ЭЦД найдены в базе' });
-        }
+        }*/
 
         // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
         for (let id of ecdSectorIds) {

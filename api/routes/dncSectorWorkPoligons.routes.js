@@ -6,7 +6,6 @@ const {
   changeDNCSectorWorkPoligonsValidationRules,
 } = require('../validators/dncSectorWorkPoligons.validator');
 const validate = require('../validators/validate');
-const { TDNCSector } = require('../models/TDNCSector');
 const User = require('../models/User');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 
@@ -190,7 +189,7 @@ router.get(
 
       if (dncSectorIds && dncSectorIds.length) {
         // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем
-        const dncSectors = await TDNCSector.findAll({
+        /*const dncSectors = await TDNCSector.findAll({
           where: { DNCS_ID: dncSectorIds },
           transaction: t,
         });
@@ -198,7 +197,7 @@ router.get(
         if (!dncSectors || dncSectors.length !== dncSectorIds.length) {
           await t.rollback();
           return res.status(ERR).json({ message: 'Не все участки ДНЦ найдены в базе' });
-        }
+        }*/
 
         // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
         for (let id of dncSectorIds) {

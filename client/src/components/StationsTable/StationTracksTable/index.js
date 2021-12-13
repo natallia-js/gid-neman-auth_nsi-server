@@ -74,7 +74,7 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
-            const newStationTracks = station[STATION_FIELDS.TRACKS].slice();
+            const newStationTracks = station[STATION_FIELDS.TRACKS] ? station[STATION_FIELDS.TRACKS].slice() : [];
             newStationTracks.push(getAppStationTrackObjFromDBStationTrackObj(res.stationTrack));
             station[STATION_FIELDS.TRACKS] = newStationTracks;
           }

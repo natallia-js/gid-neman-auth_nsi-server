@@ -8,7 +8,7 @@ const {
 } = require('../validators/dncTrainSectors.validator');
 const validate = require('../validators/validate');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
-const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
+const deleteDNCTrainSector = require('../routes/deleteComplexDependencies/deleteDNCTrainSector');
 
 const router = Router();
 
@@ -17,6 +17,7 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  DATA_TO_DEL_NOT_FOUND,
 
   MOD_DNCSECTOR_ACTION,
 } = require('../constants');
@@ -106,16 +107,18 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+      const deletedCount = await deleteDNCTrainSector(id, t);
 
-      // Перед удалением поездного участка ДНЦ необходимо удалить все соответствующие записи
-      // в таблице станций поездных участков
-      await TDNCTrainSectorStation.destroy({ where: { DNCTSS_TrainSectorID: id }, transaction: t });
-      await TDNCTrainSector.destroy({ where: { DNCTS_ID: id }, transaction: t });
+      if (!deletedCount) {
+        await t.rollback();
+        return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
+      }
 
       await t.commit();
 

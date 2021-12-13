@@ -1,6 +1,9 @@
 use CentralConfigDB;
 GO
 
+/* Во всех таблицах должны быть поля createdAt, updatedAt !!! Типа 'DATETIMEOFFSET NOT NULL' */
+
+
 /* Службы */
 CREATE TABLE TServices
 (
@@ -8,7 +11,7 @@ CREATE TABLE TServices
   S_Abbrev nvarchar(8) NOT NULL,
   S_Title nvarchar(32) NOT NULL,
   CONSTRAINT XPK_TServices PRIMARY KEY CLUSTERED (S_ID ASC),
-  CONSTRAINT XUniqueServiceAbbrev UNIQUE(S_Abbrev)
+  CONSTRAINT XUniqueServiceAbbrev UNIQUE (S_Abbrev)
 )
 go
 
@@ -19,7 +22,7 @@ CREATE TABLE TPosts
   P_Abbrev nvarchar(8) NOT NULL,
   P_Title nvarchar(32) NOT NULL,
   CONSTRAINT XPK_TPosts PRIMARY KEY CLUSTERED (P_ID ASC),
-  CONSTRAINT XUniquePostAbbrev UNIQUE(P_Abbrev)
+  CONSTRAINT XUniquePostAbbrev UNIQUE (P_Abbrev)
 )
 go
 
@@ -29,7 +32,7 @@ CREATE TABLE TECDSectors
   ECDS_ID int IDENTITY (1,1),
   ECDS_Title nvarchar(32) NOT NULL,
   CONSTRAINT XPK_TECDSectors PRIMARY KEY CLUSTERED (ECDS_ID ASC),
-  CONSTRAINT XUniqueECDSectorTitle UNIQUE(ECDS_Title)
+  CONSTRAINT XUniqueECDSectorTitle UNIQUE (ECDS_Title)
 )
 go
 
@@ -39,7 +42,7 @@ CREATE TABLE TDNCSectors
   DNCS_ID int IDENTITY (1,1),
   DNCS_Title nvarchar(32) NOT NULL,
   CONSTRAINT XPK_TDNCSectors PRIMARY KEY CLUSTERED (DNCS_ID ASC),
-  CONSTRAINT XUniqueDNCSectorTitle UNIQUE(DNCS_Title)
+  CONSTRAINT XUniqueDNCSectorTitle UNIQUE (DNCS_Title)
 )
 go
 
@@ -309,3 +312,35 @@ CREATE TABLE TBlockTracks
     ON UPDATE NO ACTION
 )
 go
+
+/* Рабочие места на станциях */
+CREATE TABLE TStationWorkPlaces
+(
+  SWP_ID int IDENTITY (1,1),
+  SWP_StationId int NOT NULL,
+  SWP_Name varchar(64) NOT NULL,
+  CONSTRAINT XPK_TStationWorkPlaces PRIMARY KEY CLUSTERED (SWP_ID ASC),
+  CONSTRAINT XRef_TStationFromStationWorkPlace FOREIGN KEY (SWP_StationId) REFERENCES TStations (St_ID)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+go
+
+
+/* Расширяю понятие рабочего полигона-станции. Теперь это может быть не только сама
+   станция, но и рабочее место, определенное в рамках данной станции */
+
+/* После добавления данного поля автоматически меняется CONSTRAINT XPK_TStationWorkPoligons, менять его не нужно */
+ALTER TABLE TStationWorkPoligons
+ADD SWP_ID int IDENTITY (1,1);
+go
+ALTER TABLE TStationWorkPoligons
+ADD SWP_StWP_ID int NULL;
+go
+ALTER TABLE TStationWorkPoligons
+ADD CONSTRAINT XRef_TStationWorkPlaceFromWorkPoligon FOREIGN KEY (SWP_StWP_ID) REFERENCES TStationWorkPlaces (SWP_ID)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION;
+go
+ALTER TABLE TStationWorkPoligons
+ADD CONSTRAINT XUniqueStationWorkPoligon UNIQUE (SWP_UserID, SWP_StID, SWP_StWP_ID);

@@ -25,6 +25,7 @@ const { createDNCSectorWorkPoligonModel } = require('./models/TDNCSectorWorkPoli
 const { createECDSectorWorkPoligonModel } = require('./models/TECDSectorWorkPoligon');
 const { createBlockTrackModel } = require('./models/TBlockTrack');
 const { createStationTrackModel } = require('./models/TStationTrack');
+const { createStationWorkPlaceModel } = require('./models/TStationWorkPlace');
 const { createECDStructuralDivisionModel } = require('./models/TECDStructuralDivision');
 const processDelDBData = require('./serverSideProcessing/processDelDBData');
 
@@ -57,6 +58,7 @@ app.use('/api/workPoligons/dncSectors', (req, _res, next) => { req.sequelize = s
 app.use('/api/workPoligons/ecdSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/ecdSectorWorkPoligons.routes'));
 app.use('/api/nsi/stations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/stations.routes'));
 app.use('/api/nsi/stationTracks', require('./routes/stationTracks.routes'));
+app.use('/api/nsi/stationWorkPlaces', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/stationWorkPlaces.routes'));
 app.use('/api/nsi/blocks', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/blocks.routes'));
 app.use('/api/nsi/blockTracks', require('./routes/blockTracks.routes'));
 app.use('/api/nsi/dncSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncSectors.routes'));
@@ -159,6 +161,7 @@ async function start() {
     createECDSectorWorkPoligonModel(sequelize);
     createBlockTrackModel(sequelize);
     createStationTrackModel(sequelize);
+    createStationWorkPlaceModel(sequelize);
     createECDStructuralDivisionModel(sequelize);
 
     // This creates the tables if they don't exist (and does nothing if they already exist)

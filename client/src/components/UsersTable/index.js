@@ -11,6 +11,7 @@ import {
   SERVICE_FIELDS,
   POST_FIELDS,
   STATION_FIELDS,
+  STATION_WORK_PLACE_FIELDS,
   DNCSECTOR_FIELDS,
   ECDSECTOR_FIELDS,
 } from '../../constants';
@@ -24,6 +25,7 @@ import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorO
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
+import SavableSelectTwoMultiples from '../SavableSelectTwoMultiples';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
@@ -138,7 +140,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
+      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
 
@@ -395,15 +397,16 @@ const UsersTable = () => {
 
 
   /**
-   * Редактирует информацию о рабочих полигонах-станциях пользователя в БД.
+   * Редактирует информацию о рабочих полигонах-станциях (и рабочих местах на станциях) пользователя в БД.
    *
    * @param {number} userId
-   * @param {array} stationIds
+   * @param {array} poligons - массив объектов с полями id (id станции) и (необязательно)
+   *                           workPlaceId (id рабочего места на станции)
    */
-   const handleEditUserStationWorkPoligons = async ({ userId, stationIds }) => {
+   const handleEditUserStationWorkPoligons = async ({ userId, poligons }) => {
     try {
       const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST',
-        { userId, stationIds },
+        { userId, poligons },
         { Authorization: `Bearer ${auth.token}` }
       );
 
@@ -411,7 +414,7 @@ const UsersTable = () => {
 
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
-          return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: stationIds };
+          return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: poligons };
         }
         return user;
       });
@@ -539,6 +542,66 @@ const UsersTable = () => {
     };
   });
 
+  // Формирует наименование рабочего полигона на станции, отображаемого в списке выбора
+  const getDisplayedStationWorkPlaceName = (stationNameCode, stationWorkPlaceName) => {
+    return `${stationNameCode} - ${stationWorkPlaceName}`;
+  };
+
+  const userGroupedPoligonsArray = (record) => {
+    if (!record[USER_FIELDS.STATION_WORK_POLIGONS] || !record[USER_FIELDS.STATION_WORK_POLIGONS].length) {
+      return {};
+    }
+    return record[USER_FIELDS.STATION_WORK_POLIGONS].reduce((prevVal, currVal) => {
+      prevVal[currVal.id] = prevVal[currVal.id] || [];
+      if (currVal.workPlaceId) {
+        prevVal[currVal.id].push(currVal.workPlaceId);
+      }
+      return prevVal;
+    }, {});
+  };
+
+  const getStationById = (id) => {
+    return stations.find((station) => station[STATION_FIELDS.KEY] == id);
+  };
+
+  const getStationWorkPlaceName = (stationId, workPlaceId) => {
+    if (!stationId || !workPlaceId) {
+      return null;
+    }
+    const station = getStationById(stationId);
+    if (!station || !station[STATION_FIELDS.WORK_PLACES] || !station[STATION_FIELDS.WORK_PLACES].length) {
+      return null;
+    }
+    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => wp[STATION_WORK_PLACE_FIELDS.KEY] == workPlaceId);
+    if (!workPlace) {
+      return null;
+    }
+    return workPlace[STATION_WORK_PLACE_FIELDS.NAME];
+  };
+
+  const getStationIdByNameCodeString = (nameCodeString) => {
+    if (!nameCodeString || !stations || !stations.length) {
+      return null;
+    }
+    const station = stations.find((station) => station[STATION_FIELDS.NAME_AND_CODE] === nameCodeString);
+    return station ? station[STATION_FIELDS.KEY] : null;
+  };
+
+  const getStationWorkPlaceIdByDisplayedName = (displayedWorkPlaceName, stationId) => {
+    if (!displayedWorkPlaceName || !stationId || !stations || !stations.length) {
+      return null;
+    }
+    const station = stations.find((station) => station[STATION_FIELDS.KEY] === stationId);
+    if (!station) {
+      return null;
+    }
+    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => {
+      const workPlaceNameToDisplay = getDisplayedStationWorkPlaceName(station[STATION_FIELDS.NAME_AND_CODE], wp[STATION_WORK_PLACE_FIELDS.NAME]);
+      return workPlaceNameToDisplay === displayedWorkPlaceName;
+    });
+    return workPlace ? workPlace[STATION_WORK_PLACE_FIELDS.KEY] : null;
+  };
+
 
   return (
     <>
@@ -653,35 +716,59 @@ const UsersTable = () => {
                   Рабочие полигоны-станции данного пользователя
                 */}
                 <Title level={4}>Рабочие полигоны (станции)</Title>
-                <SavableSelectMultiple
-                  placeholder="Выберите станции"
+                <SavableSelectTwoMultiples
+                  placeholder1="Выберите станции"
+                  placeholder2="Рабочие места на выбранных станциях"
                   options={
-                    (!stations || !stations.length) ?
-                    [] :
-                    stations.map((station) => {
-                      return {
-                        value: station[STATION_FIELDS.NAME_AND_CODE],
-                      };
-                    })
+                    (!stations || !stations.length) ? [] :
+                    stations.map((station) => ({
+                      value: station[STATION_FIELDS.NAME_AND_CODE],
+                      subOptions: !station[STATION_FIELDS.WORK_PLACES] ? [] :
+                        station[STATION_FIELDS.WORK_PLACES].map((place) => ({
+                          value: getDisplayedStationWorkPlaceName(station[STATION_FIELDS.NAME_AND_CODE], place[STATION_WORK_PLACE_FIELDS.NAME])
+                        }))
+                    }) )
                   }
                   selectedItems={
-                    (!record[USER_FIELDS.STATION_WORK_POLIGONS] || !record[USER_FIELDS.STATION_WORK_POLIGONS].length ||
-                      !stations || !stations.length) ?
-                    [] :
-                    stations
-                      .filter((station) => record[USER_FIELDS.STATION_WORK_POLIGONS].includes(station[STATION_FIELDS.KEY]))
-                      .map(station => station[STATION_FIELDS.NAME_AND_CODE])
+                    (!stations || !stations.length)
+                      ? []
+                      :
+                      Object.keys(userGroupedPoligonsArray(record))
+                        .map(function(stationId) {
+                          const stationObject = getStationById(stationId);
+                          const stationWorkPlacesIds = userGroupedPoligonsArray(record)[stationId];
+                          return {
+                            value: stationObject ? stationObject[STATION_FIELDS.NAME_AND_CODE] : stationId,
+                            subOptions: (!stationWorkPlacesIds || !stationWorkPlacesIds.length) ? null :
+                              stationWorkPlacesIds.map((workPlaceId) => {
+                              return {
+                                value: getDisplayedStationWorkPlaceName(stationObject[STATION_FIELDS.NAME_AND_CODE], getStationWorkPlaceName(stationId, workPlaceId)),
+                              };
+                            }),
+                          };
+                        })
                   }
                   saveChangesCallback={(selectedVals) => {
-                    const stationIds = stations
-                      .filter(station => selectedVals.includes(station[STATION_FIELDS.NAME_AND_CODE]))
-                      .map(station => station[STATION_FIELDS.KEY]);
+                    // Заменяем строковые значения из selectedVals на соответствующие идентификаторы
+                    const poligons = [];
+                    selectedVals.forEach((item) => {
+                      const stationId = getStationIdByNameCodeString(item.value);
+                      if (!item.subOptions || !item.subOptions.length) {
+                        poligons.push({ id: stationId, workPlaceId: null });
+                        return;
+                      }
+                      item.subOptions.forEach((option) => {
+                        poligons.push({ id: stationId, workPlaceId: getStationWorkPlaceIdByDisplayedName(option.value, stationId) });
+                      });
+                    });
                     handleEditUserStationWorkPoligons({
                       userId: record[USER_FIELDS.KEY],
-                      stationIds,
+                      poligons,
                     });
                   }}
                 />
+
+                <br />
 
                 {/*
                   Рабочие полигоны-участки ДНЦ данного пользователя

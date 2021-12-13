@@ -19,12 +19,12 @@ const changeStationWorkPoligonsValidationRules = () => {
     check('userId')
       .exists()
       .withMessage('Не определен id пользователя'),
-    check('stationIds')
+    check('poligons')
       .exists()
-      .withMessage('Не указан массив id станций')
+      .withMessage('Не указан массив рабочих полигонов на станции')
       .bail()
       .isArray()
-      .withMessage('Список id станций должен быть массивом'),
+      .withMessage('Список рабочих полигонов на станции должен быть массивом'),
   ];
 };
 

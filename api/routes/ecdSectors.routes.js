@@ -14,12 +14,10 @@ const { TBlock } = require('../models/TBlock');
 const { TECDSector } = require('../models/TECDSector');
 const { TECDTrainSector } = require('../models/TECDTrainSector');
 const { TECDStructuralDivision } = require('../models/TECDStructuralDivision');
-const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
-const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
-const { Op } = require('sequelize');
+const deleteECDSector = require('../routes/deleteComplexDependencies/deleteECDSector');
 
 const router = Router();
 
@@ -28,6 +26,7 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  DATA_TO_DEL_NOT_FOUND,
 
   GET_ALL_ECDSECTORS_ACTION,
   MOD_ECDSECTOR_ACTION,
@@ -414,62 +413,18 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+      const deletedCount = await deleteECDSector(id, t);
 
-      // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
-      const candidate = await TECDSector.findOne({
-        where: { ECDS_ID: id },
-        transaction: t,
-      });
-
-      // Если не находим, то процесс удаления продолжать не можем
-      if (!candidate) {
+      if (!deletedCount) {
         await t.rollback();
-        return res.status(ERR).json({ message: 'Указанный участок ЭЦД не существует в базе данных' });
+        return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
       }
-
-      // Перед удалением участка ЭЦД ищем все его поездные участки ЭЦД: для соответствующих записей
-      // необходимо удалить информацию из таблицы станций поездных участков ЭЦД
-      const ecdTrainSectors = await TECDTrainSector.findAll({
-        where: { ECDTS_ECDSectorID: id },
-        transaction: t,
-      });
-
-      // Удаляем в БД запись и все связанные с нею записи в других таблицах (порядок имеет значение!)
-      await TAdjacentECDSector.destroy({
-        where: {
-          [Op.or]: [
-            { AECDS_ECDSectorID1: id },
-            { AECDS_ECDSectorID2: id },
-          ],
-        },
-        transaction: t,
-      });
-      await TNearestDNCandECDSector.destroy({
-        where: { NDE_ECDSectorID: id },
-        transaction: t,
-      });
-      if (ecdTrainSectors && ecdTrainSectors.length) {
-        await TECDTrainSectorStation.destroy({
-          where: { ECDTSS_TrainSectorID: ecdTrainSectors.map(el => el.ECDTS_ID) },
-          transaction: t,
-        });
-        await TECDTrainSector.destroy({
-          where: { ECDTS_ECDSectorID: id },
-          transaction: t,
-        });
-      }
-      await TECDStructuralDivision.destroy({
-        where: { ECDSD_ECDSectorID: id },
-        transaction: t,
-      });
-
-      // Наконец, удаляем запись в самой таблице участков ЭЦД
-      await TECDSector.destroy({ where: { ECDS_ID: id }, transaction: t });
 
       await t.commit();
 

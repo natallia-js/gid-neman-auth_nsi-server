@@ -1,5 +1,6 @@
 import { STATION_FIELDS } from '../constants';
 import getAppStationTrackObjFromDBStationTrackObj from './getAppStationTrackObjFromDBStationTrackObj';
+import getAppStationWorkPlaceObjFromDBStationWorkPlaceObj from './getAppStationWorkPlaceObjFromDBStationWorkPlaceObj';
 
 /**
  * Преобразует объект станции, полученный из БД, в объект станции приложения.
@@ -17,6 +18,7 @@ const getAppStationObjFromDBStationObj = (dbStationObj, getTrainSectorInfo = fal
     [STATION_FIELDS.NAME]: dbStationObj.St_Title,
     [STATION_FIELDS.NAME_AND_CODE]: `${dbStationObj.St_Title} (${dbStationObj.St_UNMC})`,
     [STATION_FIELDS.TRACKS]: !dbStationObj.TStationTracks ? [] : dbStationObj.TStationTracks.map((track) => getAppStationTrackObjFromDBStationTrackObj(track)),
+    [STATION_FIELDS.WORK_PLACES]: !dbStationObj.TStationWorkPlaces ? [] : dbStationObj.TStationWorkPlaces.map((place) => getAppStationWorkPlaceObjFromDBStationWorkPlaceObj(place)),
   }
   if (getTrainSectorInfo) {
     if (dbStationObj.TDNCTrainSectorStation) {

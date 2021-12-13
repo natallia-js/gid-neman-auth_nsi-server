@@ -52,13 +52,17 @@ export const ServerAPI = Object.freeze({
   ADD_USER_ROLE: ServerAddress + '/api/auth/addRole',
   DEL_USER_ROLE: ServerAddress + '/api/auth/delRole',
 
+  GET_FULL_STATIONS_DATA: ServerAddress + '/api/nsi/stations/fullData',
   GET_STATIONS_DATA: ServerAddress + '/api/nsi/stations/data',
   ADD_STATION_DATA: ServerAddress + '/api/nsi/stations/add',
   ADD_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/add',
+  ADD_STATION_WORK_PLACE_DATA: ServerAddress + '/api/nsi/stationWorkPlaces/add',
   DEL_STATION_DATA: ServerAddress + '/api/nsi/stations/del',
   DEL_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/del',
+  DEL_STATION_WORK_PLACE_DATA: ServerAddress + '/api/nsi/stationWorkPlaces/del',
   MOD_STATION_DATA: ServerAddress + '/api/nsi/stations/mod',
   MOD_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/mod',
+  MOD_STATION_WORK_PLACE_DATA: ServerAddress + '/api/nsi/stationWorkPlaces/mod',
 
   GET_SERVICES_DATA: ServerAddress + '/api/nsi/services/data',
   ADD_SERVICE_DATA: ServerAddress + '/api/nsi/services/add',
@@ -183,6 +187,9 @@ export const USER_FIELDS = Object.freeze({
   STATION_WORK_POLIGONS: 'stations',
   DNC_SECTOR_WORK_POLIGONS: 'dncSectors',
   ECD_SECTOR_WORK_POLIGONS: 'ecdSectors',
+  // Данное поле нужно только программе для формы ввода информации о рабочем месте на станции
+  // регистрируемого пользователя
+  STATION_WORK_PLACES_WORK_POLIGONS: 'stationWorkPlacesWorkPoligons',
 });
 
 // ----------------------------------------
@@ -195,9 +202,15 @@ export const STATION_FIELDS = Object.freeze({
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
   TRACKS: 'TStationTracks',
+  WORK_PLACES: 'TStationWorkPlaces',
 });
 
 export const STATION_TRACK_FIELDS = Object.freeze({
+  KEY: 'key',
+  NAME: 'name',
+});
+
+export const STATION_WORK_PLACE_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'name',
 });

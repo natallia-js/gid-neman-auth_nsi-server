@@ -178,7 +178,7 @@ router.get(
 
       const stationWorkPoligons = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_UserID', 'SWP_StID'],
+        attributes: ['SWP_UserID', 'SWP_StID', 'SWP_StWP_ID'],
         where: { SWP_UserID: userIds },
       });
 
@@ -199,7 +199,7 @@ router.get(
           ...user._doc,
           stationWorkPoligons: stationWorkPoligons
             .filter((poligon) => poligon.SWP_UserID === String(user._id))
-            .map((poligon) => poligon.SWP_StID),
+            .map((poligon) => ({ id: poligon.SWP_StID, workPlaceId: poligon.SWP_StWP_ID })),
           dncSectorsWorkPoligons: dncSectorsWorkPoligons
             .filter((poligon) => poligon.DNCSWP_UserID === String(user._id))
             .map((poligon) => poligon.DNCSWP_DNCSID),
@@ -250,8 +250,8 @@ const checkRoleExists = async (roleId) => {
  * post - должность (обязательна),
  * roles - массив ролей (не обязателен),
  *         каждый элемент массива - строка с id роли,
- * stations - массив рабочих полигонов-станций (не обязателен),
- *            каждый элемент массива - строка с id станции,
+ * stations - массив рабочих полигонов-станций с (не обязательно) рабочими местами в рамках данных станций (не обязателен),
+ *            каждый элемент массива - объект, включающий поле с id станции и (необязательно) поле с id рабочего места в рамках данной станции (workPlaceId),
  * dncSectors - массив рабочих полигонов-участков ДНЦ (не обязателен),
  *              каждый элемент массива - строка с id участка ДНЦ,
  * ecdSectors - массив рабочих полигонов-участков ЭЦД (не обязателен),
@@ -355,30 +355,38 @@ router.post(
       // Определяем, при необходимости, для созданного пользователя рабочие полигоны
 
       if (stations && stations.length) {
+        // Массив уникальных id станций
+        /*const stationsIds = stations
+          .map((station) => station.id)
+          .filter((value, index, self) => self.indexOf(value) === index);
+
         // Проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем
         const stationObjects = await TStation.findAll({
-          where: { St_ID: stations },
+          where: { St_ID: stationsIds },
           transaction: t,
         });
 
-        if (!stationObjects || stationObjects.length !== stations.length) {
+        if (!stationObjects || stationObjects.length !== stationsIds.length) {
           await t.rollback();
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не все станции найдены в базе' });
-        }
+        }*/
 
-        // Создаем в БД рабочие полигоны-станции для заданного пользователя
-        for (let id of stations) {
-          await TStationWorkPoligon.create({
+        // Создаем в БД рабочие полигоны-станции либо рабочие места в рамках станций для заданного пользователя
+        const objectsToCreateInDatabase = [];
+        for (let stationObj of stations) {
+          objectsToCreateInDatabase.push({
             SWP_UserID: String(user._id),
-            SWP_StID: id,
-          }, { transaction: t });
+            SWP_StID: stationObj.id,
+            SWP_StWP_ID: stationObj.workPlaceId,
+          });
         }
+        await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction: t });
       }
 
       if (dncSectors && dncSectors.length) {
         // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем
-        const dncSectorObjects = await TDNCSector.findAll({
+        /*const dncSectorObjects = await TDNCSector.findAll({
           where: { DNCS_ID: dncSectors },
           transaction: t,
         });
@@ -387,7 +395,7 @@ router.post(
           await t.rollback();
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не все участки ДНЦ найдены в базе' });
-        }
+        }*/
 
         // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
         for (let id of dncSectors) {
@@ -400,7 +408,7 @@ router.post(
 
       if (ecdSectors && ecdSectors.length) {
         // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем
-        const ecdSectorObjects = await TECDSector.findAll({
+        /*const ecdSectorObjects = await TECDSector.findAll({
           where: { ECDS_ID: ecdSectors },
           transaction: t,
         });
@@ -409,7 +417,7 @@ router.post(
           await t.rollback();
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не все участки ЭЦД найдены в базе' });
-        }
+        }*/
 
         // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
         for (let id of ecdSectors) {
@@ -668,7 +676,7 @@ router.post(
 
       const stations = await TStationWorkPoligon.findAll({
         raw: true,
-        attributes: ['SWP_StID'],
+        attributes: ['SWP_StID', 'SWP_StWP_ID'],
         where: { SWP_UserID: String(user._id) },
       });
 
@@ -844,24 +852,9 @@ router.post(
       await User.deleteOne({ _id: userId });
 
       // Удаляем также информацию о его рабочих полигонах
-      await TStationWorkPoligon.destroy({
-        where: {
-          SWP_UserID: userId,
-        },
-        transaction: t,
-      });
-      await TDNCSectorWorkPoligon.destroy({
-        where: {
-          DNCSWP_UserID: userId,
-        },
-        transaction: t,
-      });
-      await TECDSectorWorkPoligon.destroy({
-        where: {
-          ECDSWP_UserID: userId,
-        },
-        transaction: t,
-      });
+      await TStationWorkPoligon.destroy({ where: { SWP_UserID: userId }, transaction: t });
+      await TDNCSectorWorkPoligon.destroy({ where: { DNCSWP_UserID: userId }, transaction: t });
+      await TECDSectorWorkPoligon.destroy({ where: { ECDSWP_UserID: userId }, transaction: t });
 
       await t.commit();
       await session.commitTransaction();

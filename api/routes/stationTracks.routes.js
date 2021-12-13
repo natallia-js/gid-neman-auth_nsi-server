@@ -191,7 +191,7 @@ router.post(
 
       await candidate.save();
 
-      // Возвращаю полную информацию о созданном пути станции
+      // Возвращаю полную информацию об отредактированном пути станции
       res.status(OK).json({ message: SUCCESS_MOD_RES, stationTrack: candidate });
 
     } catch (error) {

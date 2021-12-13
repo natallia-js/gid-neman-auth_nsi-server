@@ -10,11 +10,9 @@ const {
 } = require('../validators/stations.validator');
 const validate = require('../validators/validate');
 const { TStation } = require('../models/TStation');
-const { TBlock } = require('../models/TBlock');
 const { TStationTrack } = require('../models/TStationTrack');
-const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
-const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
-const { Op } = require('sequelize');
+const { TStationWorkPlace } = require('../models/TStationWorkPlace');
+const deleteStation = require('../routes/deleteComplexDependencies/deleteStation');
 
 const router = Router();
 
@@ -23,6 +21,7 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  DATA_TO_DEL_NOT_FOUND,
 
   GET_ALL_STATIONS_ACTION,
   MOD_STATION_ACTION,
@@ -30,7 +29,50 @@ const {
 
 
 /**
- * Обрабатывает запрос на получение списка всех станций со вложенным списком путей.
+ * Обрабатывает запрос на получение списка всех станций со вложенными списками путей
+ * и рабочих мест.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/fullData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [GET_ALL_STATIONS_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  async (_req, res) => {
+    try {
+      const data = await TStation.findAll({
+        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        include: [{
+          model: TStationTrack,
+          attributes: ['ST_ID', 'ST_Name'],
+        },
+        {
+          model: TStationWorkPlace,
+          attributes: ['SWP_ID', 'SWP_Name'],
+        }],
+      });
+      res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех станций со вложенными списками путей.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  */
@@ -245,26 +287,18 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+      const deletedCount = await deleteStation(id, t);
 
-      // Перед удалением самой станции необходимо удалить связанные с нею записи в других таблицах
-      await TBlock.destroy({
-        where: {
-          [Op.or]: [
-            { Bl_StationID1: id },
-            { Bl_StationID2: id },
-          ],
-        },
-        transaction: t,
-      });
-      await TDNCTrainSectorStation.destroy({ where: { DNCTSS_StationID: id }, transaction: t });
-      await TECDTrainSectorStation.destroy({ where: { ECDTSS_StationID: id }, transaction: t });
-      await TStationTrack.destroy({ where: { ST_StationId: id, }, transaction: t });
-      await TStation.destroy({ where: { St_ID: id }, transaction: t });
+      if (!deletedCount) {
+        await t.rollback();
+        return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
+      }
 
       await t.commit();
 

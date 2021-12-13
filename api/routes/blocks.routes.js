@@ -12,6 +12,7 @@ const { TBlock } = require('../models/TBlock');
 const { TStation } = require('../models/TStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
+const deleteBlock = require('../routes/deleteComplexDependencies/deleteBlock');
 
 const router = Router();
 
@@ -320,31 +321,16 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции удаления не определен объект транзакции' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     const t = await sequelize.transaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
-
-      // Перед удалением самого перегона необходимо удалить связанные с ним записи в других таблицах
-
-      // Удаляем информацию о путях перегона
-      await TBlockTrack.destroy({
-        where: {
-          BT_BlockId: id,
-        },
-        transaction: t,
-      });
-
-      // Удаляем в БД запись о перегоне
-      const deletedCount = await TBlock.destroy({
-        where: {
-          Bl_ID: id
-        },
-        transaction: t,
-      });
+      const deletedCount = await deleteBlock(id, t);
 
       if (!deletedCount) {
+        await t.rollback();
         return res.status(ERR).json({ message: DATA_TO_DEL_NOT_FOUND });
       }
 

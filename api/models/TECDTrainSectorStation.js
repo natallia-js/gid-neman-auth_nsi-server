@@ -41,6 +41,8 @@ function createECDTrainSectorStationModel(sequelize) {
     modelName: MODEL_NAME, // We need to choose the model name
   });
 
+  /* Данные строки с belongsToMany определяют связь между таблицами TStations и TECDTrainSectors
+  через таблицу (промежуточная таблица) TECDTrainSectorStations */
   TECDTrainSector.belongsToMany(TStation, {
     through: TECDTrainSectorStation,
     unique: false,
