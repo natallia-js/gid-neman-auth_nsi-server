@@ -31,7 +31,11 @@ const senderWorkPoligonSchema = new Schema({
 });
 
 const recipientWorkPoligonSchema = new Schema({
+  // id рабочего полигона
   id: { type: Number, required: true },
+  // id рабочего места полигона
+  workPlaceId: { type: Number, required: false },
+  // тип рабочего полигона
   type: { type: String, required: true },
 });
 

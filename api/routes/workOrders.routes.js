@@ -16,6 +16,7 @@ const {
   ERR,
 
   DSP_FULL,
+  DSP_Operator,
   DNC_FULL,
   ECD_FULL,
 } = require('../constants');
@@ -23,7 +24,8 @@ const {
 
 /**
  * Обрабатывает запрос на получение списка распоряжений, которые являются входящими уведомлениями
- * для заданного полигона управления либо же распоряжениями в работе в указанный временной интервал.
+ * для заданного полигона управления (или рабочего места заданного полигона управления) либо же
+ * распоряжениями в работе в указанный временной интервал.
  *    Входящее уведомление - такое распоряжение, для которого не определено deliverDateTime (дата-время
  * доставки распоряжения на рабочее место работника) либо confirmDateTime (дата-время подтверждения
  * доставки распоряжения работником).
@@ -37,8 +39,9 @@ const {
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
- * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют рабочий полигон,
- * информацию по которому необходимо извлечь. В противном случае информация извлекаться не будет.
+ * Параметры запроса (workPoligonType, workPoligonId, workSubPoligonId), если указаны, то определяют рабочий полигон
+ * (либо рабочее место в рамках рабочего полигона, если указан параметр workSubPoligonId), информацию по которому
+ * необходимо извлечь. В противном случае информация извлекаться не будет.
  *
  * Параметр startDate - дата-время начала временного интервала извлечения информации (временного интервала,
  * в течение которого распоряжения считаются находящимися в работе).
@@ -53,7 +56,7 @@ const {
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
@@ -62,51 +65,68 @@ const {
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId, startDate } = req.body;
+      const { workPoligonType, workPoligonId, workSubPoligonId, startDate } = req.body;
 
       let data;
-      if (workPoligonType && workPoligonId) {
-        const matchFilter = !startDate ? {} : {
-          $and: [
-            { recipientWorkPoligon: { $exists: true } },
-            { "recipientWorkPoligon.id": workPoligonId },
-            { "recipientWorkPoligon.type": workPoligonType },
-            { orderChain: { $exists: true } },
+
+      if (!workPoligonType || !workPoligonId) {
+        return res.status(OK).json([]);
+      }
+
+      const findRecordConditions = [
+        { recipientWorkPoligon: { $exists: true } },
+        { "recipientWorkPoligon.id": workPoligonId },
+        { "recipientWorkPoligon.type": workPoligonType },
+        { orderChain: { $exists: true } },
+        {
+          $or: [
+            { deliverDateTime: null },
+            { confirmDateTime: null },
             {
               $or: [
-                { deliverDateTime: null },
-                { confirmDateTime: null },
-                {
-                  $or: [
-                    // The { item : null } query matches documents that either contain the item field
-                    // whose value is null or that do not contain the item field
-                    { "orderChain.chainEndDateTime": null },
-                    { "orderChain.chainEndDateTime": { $gt: new Date(startDate) } },
-                  ],
-                },
+                // The { item : null } query matches documents that either contain the item field
+                // whose value is null or that do not contain the item field
+                { "orderChain.chainEndDateTime": null },
+                { "orderChain.chainEndDateTime": { $gt: new Date(startDate) } },
               ],
             },
           ],
-        };
-        const workData = await WorkOrder.find(matchFilter);
-        if (workData && workData.length) {
-          data = await Order.find({ _id: workData.map((item) => item.orderId) });
-          data = data.map((item) => {
-            const correspWorkDataObject = workData.find((wd) => String(wd.orderId) === String(item._id));
-            if (correspWorkDataObject) {
-              return {
-                ...item._doc,
-                senderWorkPoligon: correspWorkDataObject.senderWorkPoligon,
-                deliverDateTime: correspWorkDataObject.deliverDateTime,
-                confirmDateTime: correspWorkDataObject.confirmDateTime,
-                sendOriginal: correspWorkDataObject.sendOriginal,
-              };
-            }
-            return { ...item._doc };
-          });
-        }
+        },
+      ];
+      if (workSubPoligonId) {
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workSubPoligonId });
+      } else {
+        findRecordConditions.push({
+          $or: [
+            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
+            { "recipientWorkPoligon.workPlaceId": null },
+          ]
+        });
+      }
+
+      console.log(workSubPoligonId, JSON.stringify(findRecordConditions))
+
+      const matchFilter = !startDate ? {} : { $and: findRecordConditions };
+      const workData = await WorkOrder.find(matchFilter);
+
+      if (workData && workData.length) {
+        data = await Order.find({ _id: workData.map((item) => item.orderId) });
+        data = data.map((item) => {
+          const correspWorkDataObject = workData.find((wd) => String(wd.orderId) === String(item._id));
+          if (correspWorkDataObject) {
+            return {
+              ...item._doc,
+              senderWorkPoligon: correspWorkDataObject.senderWorkPoligon,
+              deliverDateTime: correspWorkDataObject.deliverDateTime,
+              confirmDateTime: correspWorkDataObject.confirmDateTime,
+              sendOriginal: correspWorkDataObject.sendOriginal,
+            };
+          }
+          return { ...item._doc };
+        });
       }
       res.status(OK).json(data || []);
+
     } catch (error) {
       console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -121,7 +141,8 @@ const {
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры запроса:
- *   workPoligonType, workPoligonId - определяют рабочий полигон, с которого приходит подтверждение
+ *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
+ *     в рамках рабочего полигона, если указан параметр workSubPoligonId), с которого приходит подтверждение
  *   orderIds - идентификаторы подтверждаемых распоряжений
  *   deliverDateTime - дата и время, когда клиентское место получило распоряжения
  */
@@ -133,7 +154,7 @@ router.post(
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
@@ -146,48 +167,62 @@ router.post(
 
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId, orderIds, deliverDateTime } = req.body;
+      const { workPoligonType, workPoligonId, workSubPoligonId, orderIds, deliverDateTime } = req.body;
 
       // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений, а также
-      // в общей коллеции распоряжений
+      // в общей коллеции распоряжений (при необходимости - см. ниже)
 
-      await WorkOrder.updateMany({
-        $and: [
-          { orderId: orderIds },
-          { recipientWorkPoligon: { $exists: true } },
-          { "recipientWorkPoligon.id": workPoligonId },
-          { "recipientWorkPoligon.type": workPoligonType },
-        ]},
-        { $set: { deliverDateTime } }
-      ).session(session);
+      const findRecordConditions = [
+        { orderId: orderIds },
+        { recipientWorkPoligon: { $exists: true } },
+        { "recipientWorkPoligon.id": workPoligonId },
+        { "recipientWorkPoligon.type": workPoligonType },
+      ];
+      if (workSubPoligonId) {
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workSubPoligonId });
+      } else {
+        findRecordConditions.push({
+          $or: [
+            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
+            { "recipientWorkPoligon.workPlaceId": null },
+          ]
+        });
+      }
 
-      const orders = await Order.find({ _id: orderIds }).session(session);
+      await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }).session(session);
 
-      if (orders && orders.length) {
-        const findSector = (sectors) => {
-          if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
-            return sectors.find((el) => el.id === workPoligonId);
-          }
-          return null;
-        };
-        for (let order of orders) {
-          let sector = findSector(order.dspToSend);
-          if (sector) {
-            sector.deliverDateTime = deliverDateTime;
-          } else {
-            sector = findSector(order.dncToSend);
+      // Если подтверждение доставки распоряжений производится не на рабочем месте, а глобально на полигоне
+      // управления, то подтверждение доставки таких распоряжений необходимо отметить в основной коллекции
+      // распоряжений
+      if (!workSubPoligonId) {
+        const orders = await Order.find({ _id: orderIds }).session(session);
+
+        if (orders && orders.length) {
+          const findSector = (sectors) => {
+            if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
+              return sectors.find((el) => el.id === workPoligonId);
+            }
+            return null;
+          };
+          for (let order of orders) {
+            let sector = findSector(order.dspToSend);
             if (sector) {
               sector.deliverDateTime = deliverDateTime;
             } else {
-              sector = findSector(order.ecdToSend);
+              sector = findSector(order.dncToSend);
               if (sector) {
                 sector.deliverDateTime = deliverDateTime;
+              } else {
+                sector = findSector(order.ecdToSend);
+                if (sector) {
+                  sector.deliverDateTime = deliverDateTime;
+                }
               }
             }
-          }
-          if (sector) {
-            // By default, `save()` uses the associated session
-            await order.save();
+            if (sector) {
+              // By default, `save()` uses the associated session
+              await order.save();
+            }
           }
         }
       }
@@ -215,7 +250,8 @@ router.post(
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры запроса:
- *   workPoligonType, workPoligonId - определяют рабочий полигон, на котором производится подтверждение распоряжения
+ *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон / рабочее место полигона (если
+ *     указан параметр workSubPoligonId), на котором производится подтверждение распоряжения
  *   id - идентификатор подтверждаемого распоряжения
  *   confirmDateTime - дата и время, когда пользователь подтвердил распоряжение
  */
@@ -227,7 +263,7 @@ router.post(
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
@@ -242,57 +278,72 @@ router.post(
 
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId, id, confirmDateTime } = req.body;
+      const { workPoligonType, workPoligonId, workSubPoligonId, id, confirmDateTime } = req.body;
 
       // Отмечаем подтверждение распоряжения в коллекции рабочих распоряжений, а также
       // в общей коллеции распоряжений
 
-      const result = await WorkOrder.updateOne({
-        $and: [
-          { orderId: id },
-          { recipientWorkPoligon: { $exists: true } },
-          { "recipientWorkPoligon.id": workPoligonId },
-          { "recipientWorkPoligon.type": workPoligonType },
-        ]},
-        { $set: { confirmDateTime } }
+      const findRecordConditions = [
+        { orderId: id },
+        { recipientWorkPoligon: { $exists: true } },
+        { "recipientWorkPoligon.id": workPoligonId },
+        { "recipientWorkPoligon.type": workPoligonType },
+      ];
+      if (workSubPoligonId) {
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workSubPoligonId });
+      } else {
+        findRecordConditions.push({
+          $or: [
+            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
+            { "recipientWorkPoligon.workPlaceId": null },
+          ]
+        });
+      }
+
+      const result = await WorkOrder.updateOne(
+        { $and: findRecordConditions }, { $set: { confirmDateTime } }
       ).session(session);
 
       if (result.nModified !== 1) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено среди распоряжений, находящихся в работе' });
+        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено среди распоряжений, находящихся в работе на указанном полигоне' });
       }
 
-      const order = await Order.findOne({ _id: id }).session(session);
-      if (!order) {
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
-      }
-
-      const findSector = (sectors) => {
-        if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
-          return sectors.find((el) => el.id === workPoligonId);
+      // Если подтверждение распоряжения производится не на рабочем месте, а глобально на полигоне управления,
+      // то подтверждение такого распоряжения необходимо отметить в основной коллекции распоряжений
+      if (!workSubPoligonId) {
+        const order = await Order.findOne({ _id: id }).session(session);
+        if (!order) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
         }
-        return null;
-      };
 
-      let sector = findSector(order.dspToSend);
-      if (sector) {
-        sector.confirmDateTime = confirmDateTime;
-      } else {
-        sector = findSector(order.dncToSend);
+        const findSector = (sectors) => {
+          if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
+            return sectors.find((el) => el.id === workPoligonId);
+          }
+          return null;
+        };
+
+        let sector = findSector(order.dspToSend);
         if (sector) {
           sector.confirmDateTime = confirmDateTime;
         } else {
-          sector = findSector(order.ecdToSend);
+          sector = findSector(order.dncToSend);
           if (sector) {
             sector.confirmDateTime = confirmDateTime;
+          } else {
+            sector = findSector(order.ecdToSend);
+            if (sector) {
+              sector.confirmDateTime = confirmDateTime;
+            }
           }
         }
-      }
 
-      if (!sector) {
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Для указанного распоряжения не найден участок, осуществляющий подтверждение' });
+        if (!sector) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Для указанного распоряжения не найден участок, осуществляющий подтверждение' });
+        }
       }
 
       // By default, `save()` uses the associated session
@@ -317,6 +368,7 @@ router.post(
 
 /**
  * Обрабатывает запрос на подтверждение распоряжения за других лиц (с других рабочих полигонов).
+ * !!!Подтверждение распоряжения производится лишь в рамках глобальных полигонов, а не рабочих мест!!!
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Подтвердить распоряжение за других может лишь лицо-работник рабочего полигона, на котором
@@ -427,15 +479,23 @@ router.post(
             message: `Для указанного распоряжения не найден полигон управления ${workPoligon.workPoligonType} с id=${workPoligon.workPoligonId}, на котором необходимо осуществить подтверждение`,
           });
         }
+
+        const findRecordConditions = [
+          { orderId },
+          { recipientWorkPoligon: { $exists: true } },
+          { "recipientWorkPoligon.id": workPoligon.workPoligonId },
+          { "recipientWorkPoligon.type": workPoligon.workPoligonType },
+          {
+            $or: [
+              { "recipientWorkPoligon.workPlaceId": { $exists: false } },
+              { "recipientWorkPoligon.workPlaceId": null },
+            ]
+          }
+        ];
+
         // Подтвержаем распоряжение в коллекции рабочих распоряжений
-        const result = await WorkOrder.updateOne({
-          $and: [
-            { orderId },
-            { recipientWorkPoligon: { $exists: true } },
-            { "recipientWorkPoligon.id": workPoligon.workPoligonId },
-            { "recipientWorkPoligon.type": workPoligon.workPoligonType },
-          ]},
-          { $set: { confirmDateTime } }
+        const result = await WorkOrder.updateOne(
+          { $and: findRecordConditions}, { $set: { confirmDateTime } }
         ).session(session);
 
         if (result.nModified !== 1) {
@@ -474,7 +534,8 @@ router.post(
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры запроса:
- *   workPoligonType, workPoligonId - определяют рабочий полигон, на котором производится удаление цепочки
+ *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место в рамках
+ *     рабочего полигона, если указан параметр workSubPoligonId), на котором производится удаление цепочки
  *   chainId - идентификатор цепочки распоряжений
  */
  router.post(
@@ -485,7 +546,7 @@ router.post(
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
@@ -496,22 +557,32 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId, chainId } = req.body;
+      const { workPoligonType, workPoligonId, workSubPoligonId, chainId } = req.body;
+
+      const findRecordsConditions = [
+        { recipientWorkPoligon: { $exists: true } },
+        { "recipientWorkPoligon.id": workPoligonId },
+        { "recipientWorkPoligon.type": workPoligonType },
+        { orderChain: { $exists: true } },
+        { "orderChain.chainId": chainId },
+        // $ne selects the documents where the value of the field is not equal to the specified value.
+        // This includes documents that do not contain the field.
+        { confirmDateTime: { $exists: true } },
+        { confirmDateTime: { $ne: null } },
+      ];
+      if (workSubPoligonId) {
+        findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": workSubPoligonId });
+      } else {
+        findRecordsConditions.push({
+          $or: [
+            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
+            { "recipientWorkPoligon.workPlaceId": null },
+          ]
+        });
+      }
 
       // Удаляем записи в таблице рабочих распоряжений
-      await WorkOrder.deleteMany({
-        $and: [
-          { recipientWorkPoligon: { $exists: true } },
-          { "recipientWorkPoligon.id": workPoligonId },
-          { "recipientWorkPoligon.type": workPoligonType },
-          { orderChain: { $exists: true } },
-          { "orderChain.chainId": chainId },
-          // $ne selects the documents where the value of the field is not equal to the specified value.
-          // This includes documents that do not contain the field.
-          { confirmDateTime: { $exists: true } },
-          { confirmDateTime: { $ne: null } },
-        ],
-      });
+      await WorkOrder.deleteMany({ $and: findRecordsConditions });
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 

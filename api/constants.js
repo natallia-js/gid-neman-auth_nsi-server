@@ -73,6 +73,7 @@ const AUTH_NSI_UTIL_CREDENTIALS = Object.freeze({
 const DY58_SERVER_CREDENTIALS = Object.freeze({
   DNC_FULL: 'DNC_FULL',
   DSP_FULL: 'DSP_FULL',
+  DSP_Operator: 'DSP_Operator',
   ECD_FULL: 'ECD_FULL',
 });
 

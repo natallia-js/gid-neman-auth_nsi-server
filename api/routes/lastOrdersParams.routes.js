@@ -12,6 +12,7 @@ const {
 
   DNC_FULL,
   DSP_FULL,
+  DSP_Operator,
   ECD_FULL,
 } = require('../constants');
 
@@ -33,7 +34,7 @@ router.post(
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
