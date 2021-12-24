@@ -12,6 +12,7 @@ const {
   getOrdersFromGivenDateRules,
 } = require('../validators/orders.validator');
 const { TStation } = require('../models/TStation');
+const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const { TBlock } = require('../models/TBlock');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
@@ -212,13 +213,19 @@ const {
         { upsert: true, new: true }
       ).session(session);
 
-      // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений
+      // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
+      // Здесь есть один нюанс. И связан он с распоряжениями, издаваемыми в рамках полигона "станция" либо
+      // адресуемыми на такой полигон. Станция - это не только ДСП, которым идет информация о распоряжениях.
+      // Это еще и операторы при ДСП, которые должны данную информацию просмотреть. Потому для каждой
+      // станции - будь то издатель или получатель распоряжения - проверяем, есть ли в ее составе операторы
+      // при ДСП. Если есть, то адресуем им копию издаваемого распоряжения.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
         return {
           senderWorkPoligon: { ...workPoligon },
           recipientWorkPoligon: {
             id: sectorInfo.id,
+            workPlaceId: sectorInfo.workPlaceId || null,
             type: sectorInfo.type,
           },
           sendOriginal: sectorInfo.sendOriginal,
@@ -227,14 +234,40 @@ const {
           orderChain: orderChainInfo,
         };
       };
+      const formOrderCopiesForDSPOperators = async (stationId, sendOriginal) => {
+        const stationWorkPlacesData = await TStationWorkPlace.findAll({
+          attributes: ['SWP_ID'],
+          where: { SWP_StationId: stationId },
+        });
+        const workOrders = [];
+        if (stationWorkPlacesData && stationWorkPlacesData.length) {
+          const workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
+          workPlacesIds.forEach((wpID) => {
+            const workOrder = new WorkOrder(getToSendObject({
+              id: stationId,
+              workPlaceId: wpID,
+              type: WORK_POLIGON_TYPES.STATION,
+              sendOriginal: sendOriginal,
+            }));
+            workOrders.push(workOrder);
+          });
+        }
+        return workOrders;
+      };
+      // рассылка на участки ДНЦ
       order.dncToSend.forEach((dncSector) => {
         const workOrder = new WorkOrder(getToSendObject(dncSector));
         workOrders.push(workOrder);
       });
-      order.dspToSend.forEach((dspSector) => {
+      // рассылка на станции (ДСП)
+      for (let dspSector of order.dspToSend) {
         const workOrder = new WorkOrder(getToSendObject(dspSector));
         workOrders.push(workOrder);
-      });
+        // рассылка операторам ДСП (если таковые рабочие места определены для станции)
+        const orderCopies = await formOrderCopiesForDSPOperators(dspSector.id, dspSector.sendOriginal);
+        workOrders.push(...orderCopies);
+      }
+      // рассылка на участки ЭЦД
       order.ecdToSend.forEach((ecdSector) => {
         const workOrder = new WorkOrder(getToSendObject(ecdSector));
         workOrders.push(workOrder);
@@ -250,6 +283,12 @@ const {
         confirmDateTime: new Date(),
         orderChain: orderChainInfo,
       }));
+      // если распоряжение издается на станции, то оно автоматически должно попасть на все
+      // рабочие места операторов ДСП данной станции
+      if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
+        const orderCopies = await formOrderCopiesForDSPOperators(workPoligon.id, true);
+        workOrders.push(...orderCopies);
+      }
 
       await WorkOrder.insertMany(workOrders, { session });
 
@@ -408,8 +447,8 @@ const {
 /**
  * Обрабатывает запрос на получение списка id распоряжений, изданных начиная с указанной даты
  * на указанном полигоне управления (полигон управления - глобальный, т.е. не рассматриваются рабочие
- * места на полигонах управления; для запросов, поступающих с рабочих мест, извлекаются все данные,
- * относящиеся к соответствующему полигону управления).
+ * места на полигонах управления; для запросов, поступающих с рабочего места, извлекаются все данные
+ * по полигону управления, к которому данное рабочее место относится).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *

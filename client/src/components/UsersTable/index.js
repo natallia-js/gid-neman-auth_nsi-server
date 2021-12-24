@@ -753,8 +753,8 @@ const UsersTable = () => {
                     const poligons = [];
                     selectedVals.forEach((item) => {
                       const stationId = getStationIdByNameCodeString(item.value);
+                      poligons.push({ id: stationId, workPlaceId: null });
                       if (!item.subOptions || !item.subOptions.length) {
-                        poligons.push({ id: stationId, workPlaceId: null });
                         return;
                       }
                       item.subOptions.forEach((option) => {

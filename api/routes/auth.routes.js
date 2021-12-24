@@ -130,7 +130,7 @@ router.put(
       res.status(OK).json({ message: 'Регистрация прошла успешно', userId: user._id });
 
     } catch (error) {
-      console.log(error.message);
+      console.log(error);
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -441,7 +441,7 @@ router.post(
       res.status(OK).json({ message: 'Регистрация прошла успешно', user: resObj });
 
     } catch (error) {
-      console.log(error.message);
+      console.log(error);
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

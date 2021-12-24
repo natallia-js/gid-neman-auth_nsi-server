@@ -23,7 +23,6 @@ const isOnDuty = async (req, res, next) => {
   }
 
   const candidate = await User.findOne({ _id: req.user.userId });
-  console.log(candidate)
 
   if (!candidate) {
     return res.status(UNAUTHORIZED).json({ message: USER_NOT_FOUND_ERR_MESS });

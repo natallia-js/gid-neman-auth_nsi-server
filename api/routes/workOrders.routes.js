@@ -104,8 +104,6 @@ const {
         });
       }
 
-      console.log(workSubPoligonId, JSON.stringify(findRecordConditions))
-
       const matchFilter = !startDate ? {} : { $and: findRecordConditions };
       const workData = await WorkOrder.find(matchFilter);
 
@@ -344,10 +342,10 @@ router.post(
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Для указанного распоряжения не найден участок, осуществляющий подтверждение' });
         }
-      }
 
-      // By default, `save()` uses the associated session
-      await order.save();
+        // By default, `save()` uses the associated session
+        await order.save();
+      }
 
       await session.commitTransaction();
 
