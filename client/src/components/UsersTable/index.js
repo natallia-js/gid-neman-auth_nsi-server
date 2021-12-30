@@ -134,7 +134,7 @@ const UsersTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));console.log(ecdSectors)
       setECDSectorsData(ecdSectors);
 
       // ---------------------------------
@@ -144,7 +144,7 @@ const UsersTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
+      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));console.log(stations)
       setStations(stations);
 
       // ---------------------------------
@@ -515,6 +515,10 @@ const UsersTable = () => {
     handleDelUser,
     recsBeingProcessed,
     getColumnSearchProps,
+    roleAbbrs,
+    stations,
+    dncSectorsData,
+    ecdSectorsData,
   });
 
   /**
@@ -561,7 +565,7 @@ const UsersTable = () => {
   };
 
   const getStationById = (id) => {
-    return stations.find((station) => station[STATION_FIELDS.KEY] == id);
+    return stations.find((station) => String(station[STATION_FIELDS.KEY]) == String(id));
   };
 
   const getStationWorkPlaceName = (stationId, workPlaceId) => {
@@ -572,7 +576,7 @@ const UsersTable = () => {
     if (!station || !station[STATION_FIELDS.WORK_PLACES] || !station[STATION_FIELDS.WORK_PLACES].length) {
       return null;
     }
-    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => wp[STATION_WORK_PLACE_FIELDS.KEY] == workPlaceId);
+    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => String(wp[STATION_WORK_PLACE_FIELDS.KEY]) == String(workPlaceId));
     if (!workPlace) {
       return null;
     }
