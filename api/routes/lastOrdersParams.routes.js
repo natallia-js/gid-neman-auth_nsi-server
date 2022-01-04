@@ -22,9 +22,10 @@ const {
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
- * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют рабочий полигон,
- * информацию по которому необходимо извлечь. Если рабочий полигон не указан, то будет извлечена
- * информация, имеющая отношение ко всем рабочим полигонам.
+ * Параметры запроса (workPoligonType, workPoligonId, workPoligonWorkPlaceId), если указаны,
+ * то определяют рабочий полигон, информацию по которому необходимо извлечь.
+ * Если рабочий полигон не указан, то будет извлечена информация, имеющая отношение ко всем
+ * рабочим полигонам.
  */
 router.post(
   '/data',
@@ -43,15 +44,19 @@ router.post(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId } = req.body;
+      const { workPoligonType, workPoligonId, workPoligonWorkPlaceId } = req.body;
 
-      const matchFilter = {};
-
-      if (workPoligonType && workPoligonId) {
-        matchFilter.$and = [
-          { workPoligon: { $exists: true } },
-          { "workPoligon.id": workPoligonId },
-          { "workPoligon.type": workPoligonType },
+      const matchFilter = {
+        workPoligon: { $exists: true },
+        'workPoligon.id': workPoligonId,
+        'workPoligon.type': workPoligonType,
+      };
+      if (workPoligonWorkPlaceId) {
+        matchFilter['workPoligon.workPlaceId'] = workPoligonWorkPlaceId;
+      } else {
+        matchFilter.$or = [
+          { 'workPoligon.workPlaceId': { $exists: false } },
+          { 'workPoligon.workPlaceId': null },
         ];
       }
       const data = await LastOrdersParam.find(matchFilter);

@@ -60,7 +60,9 @@ router.get(
 /**
  * Обрабатывает запрос на получение id всех пользователей, у которых рабочий полигон -
  * станция с одним из заданных id. В выборку включаются также пользователи, у которых
- * рабочий полигон - рабочее место на указанных станциях.
+ * рабочий полигон - рабочее место на указанных станциях. Если один пользователь
+ * зарегистрирован на нескольких станциях, то запрос вернет такого пользователя для каждой
+ * из записей о станции, на котором он зарегистрирован.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -108,24 +110,28 @@ router.get(
         data = await User.find(searchCondition);
       }
 
-      if (data) {
-        data = data.map((user) => {
-          const workPoligon = users.find((item) => String(item.SWP_UserID) === String(user._id));
-          return {
-            _id: user._id,
-            name: user.name,
-            fatherName: user.fatherName,
-            surname: user.surname,
-            online: user.online,
-            post: user.post,
-            service: user.service,
-            stationId: workPoligon.SWP_StID,
-            stationWorkPlaceId: workPoligon.SWP_StWP_ID,
-          };
+      const dataToReturn = [];
+      if (data && data.length) {
+        users.forEach((user) => {
+          const userInfo = data.find((ui) => String(ui._id) === String(user.SWP_UserID));
+          if (!userInfo) {
+            return;
+          }
+          dataToReturn.push({
+            _id: user.SWP_UserID,
+            name: userInfo.name,
+            fatherName: userInfo.fatherName,
+            surname: userInfo.surname,
+            online: userInfo.online,
+            post: userInfo.post,
+            service: userInfo.service,
+            stationId: user.SWP_StID,
+            stationWorkPlaceId: user.SWP_StWP_ID,
+          });
         });
       }
 
-      res.status(OK).json(data || []);
+      res.status(OK).json(dataToReturn);
 
     } catch (error) {
       console.log(error);

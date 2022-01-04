@@ -59,7 +59,9 @@ router.get(
 
 /**
  * Обрабатывает запрос на получение информации обо всех пользователях, у которых рабочий полигон -
- * участок ДНЦ с одним из заданных id.
+ * участок ДНЦ с одним из заданных id. Если один пользователь зарегистрирован на нескольких участках
+ * ДНЦ, то запрос вернет такого пользователя для каждой из записей об участке ДНЦ, на котором он
+ * зарегистрирован.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -105,22 +107,27 @@ router.get(
         data = await User.find(searchCondition);
       }
 
-      if (data) {
-        data = data.map((user) => {
-          return {
-            _id: user._id,
-            name: user.name,
-            fatherName: user.fatherName,
-            surname: user.surname,
-            online: user.online,
-            post: user.post,
-            service: user.service,
-            dncSectorId: users.find((item) => String(item.DNCSWP_UserID) === String(user._id)).DNCSWP_DNCSID,
-          };
+      const dataToReturn = [];
+      if (data && data.length) {
+        users.forEach((user) => {
+          const userInfo = data.find((ui) => String(ui._id) === String(user.DNCSWP_UserID));
+          if (!userInfo) {
+            return;
+          }
+          dataToReturn.push({
+            _id: user.DNCSWP_UserID,
+            name: userInfo.name,
+            fatherName: userInfo.fatherName,
+            surname: userInfo.surname,
+            online: userInfo.online,
+            post: userInfo.post,
+            service: userInfo.service,
+            dncSectorId: user.DNCSWP_DNCSID,
+          });
         });
       }
 
-      res.status(OK).json(data);
+      res.status(OK).json(dataToReturn);
 
     } catch (error) {
       console.log(error);

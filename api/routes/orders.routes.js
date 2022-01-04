@@ -91,7 +91,8 @@ const {
  * workPoligon - рабочий полигон пользователя (обязателен) - объект с параметрами:
  *   id - id рабочего полигона
  *   type - тип рабочего полигона
- *   title - наименование рабочего полигона
+ *   workPlaceId - id рабочего места
+ *   title - наименование рабочего полигона (рабочего места полигона)
  * creator - информация о создателе распоряжения (обязательно):
  *   id - id пользователя
  *   post - должность
@@ -205,9 +206,22 @@ const {
       await order.save({ session });
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
+      // на текущем полигоне управления
+      const filter = {
+        ordersType: type,
+        'workPoligon.id': workPoligon.id,
+        'workPoligon.type': workPoligon.type,
+      };
+      if (workPoligon.workPlaceId) {
+        filter['workPoligon.workPlaceId'] = workPoligon.workPlaceId;
+      } else {
+        filter.$or = [
+          { 'workPoligon.workPlaceId': { $exists: false } },
+          { 'workPoligon.workPlaceId': null },
+        ];
+      }
       await LastOrdersParam.findOneAndUpdate(
-        // filter
-        { 'workPoligon.id': workPoligon.id, 'workPoligon.type': workPoligon.type, ordersType: type },
+        filter,
         // update
         { lastOrderNumber: number, lastOrderDateTime: createDateTime },
         { upsert: true, new: true }
@@ -215,17 +229,19 @@ const {
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
       // Здесь есть один нюанс. И связан он с распоряжениями, издаваемыми в рамках полигона "станция" либо
-      // адресуемыми на такой полигон. Станция - это не только ДСП, которым идет информация о распоряжениях.
-      // Это еще и операторы при ДСП, которые должны данную информацию просмотреть. Потому для каждой
-      // станции - будь то издатель или получатель распоряжения - проверяем, есть ли в ее составе операторы
-      // при ДСП. Если есть, то адресуем им копию издаваемого распоряжения.
+      // адресуемыми на такой полигон. Станция - это не только ДСП, но и операторы при ДСП.
+      // Как ДСП, так и операторы при ДСП, - все они могут издавать распоряжения.
+      // И получать распоряжения, направляемые в адрес станции, они все тоже должны.
+      // Потому для каждой станции - будь то издатель или получатель распоряжения - проверяем наличие в
+      // ее составе операторов при ДСП. Копия издаваемого распоряжения должна попасть как ДСП, так и
+      // всем операторам на станции.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
         return {
           senderWorkPoligon: { ...workPoligon },
           recipientWorkPoligon: {
             id: sectorInfo.id,
-            workPlaceId: sectorInfo.workPlaceId || null,
+            workPlaceId: sectorInfo.workPlaceId,
             type: sectorInfo.type,
           },
           sendOriginal: sectorInfo.sendOriginal,
@@ -234,14 +250,31 @@ const {
           orderChain: orderChainInfo,
         };
       };
-      const formOrderCopiesForDSPOperators = async (stationId, sendOriginal) => {
+      // Формирование копий распоряжения для ДСП станции и всех операторов при ДСП
+      // (самому себе копия не формируется)
+      const formOrderCopiesForDSPAndOperators = async (stationId, sendOriginal) => {
+        const workOrders = [];
+        // Отправка ДСП
+        if (workPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+          stationId !== workPoligon.id || workPoligon.workPlaceId) {
+          workOrders.push(new WorkOrder(getToSendObject({
+            id: stationId,
+            workPlaceId: null,
+            type: WORK_POLIGON_TYPES.STATION,
+            sendOriginal: sendOriginal,
+          })));
+        }
         const stationWorkPlacesData = await TStationWorkPlace.findAll({
-          attributes: ['SWP_ID'],
+          attributes: ['SWP_ID'], // извлекаем id всех рабочих мест на станции
           where: { SWP_StationId: stationId },
         });
-        const workOrders = [];
         if (stationWorkPlacesData && stationWorkPlacesData.length) {
-          const workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
+          // направляем копию всем операторам при ДСП, кроме самого себя
+          // (если распоряжение издано оператором при ДСП)
+          let workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
+          if (workPoligon.type === WORK_POLIGON_TYPES.STATION && stationId === workPoligon.id && workPoligon.workPlaceId) {
+            workPlacesIds = workPlacesIds.filter((item) => item !== workPoligon.workPlaceId);
+          }
           workPlacesIds.forEach((wpID) => {
             const workOrder = new WorkOrder(getToSendObject({
               id: stationId,
@@ -259,12 +292,9 @@ const {
         const workOrder = new WorkOrder(getToSendObject(dncSector));
         workOrders.push(workOrder);
       });
-      // рассылка на станции (ДСП)
+      // рассылка на станции (ДСП и операторам при ДСП)
       for (let dspSector of order.dspToSend) {
-        const workOrder = new WorkOrder(getToSendObject(dspSector));
-        workOrders.push(workOrder);
-        // рассылка операторам ДСП (если таковые рабочие места определены для станции)
-        const orderCopies = await formOrderCopiesForDSPOperators(dspSector.id, dspSector.sendOriginal);
+        const orderCopies = await formOrderCopiesForDSPAndOperators(dspSector.id, dspSector.sendOriginal);
         workOrders.push(...orderCopies);
       }
       // рассылка на участки ЭЦД
@@ -283,10 +313,10 @@ const {
         confirmDateTime: new Date(),
         orderChain: orderChainInfo,
       }));
-      // если распоряжение издается на станции, то оно автоматически должно попасть на все
-      // рабочие места операторов ДСП данной станции
+      // если распоряжение издается на станции (ДСП или оператором при ДСП), то оно
+      // автоматически должно попасть как ДСП, так и на все рабочие места операторов ДСП данной станции
       if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
-        const orderCopies = await formOrderCopiesForDSPOperators(workPoligon.id, true);
+        const orderCopies = await formOrderCopiesForDSPAndOperators(workPoligon.id, true);
         workOrders.push(...orderCopies);
       }
 

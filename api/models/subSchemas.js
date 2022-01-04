@@ -24,19 +24,24 @@ const orderRecipientSchema = new Schema({
   confirmDateTime: { type: Date, required: false, default: null },
 });
 
-const senderWorkPoligonSchema = new Schema({
-  id: { type: Number, required: true },
-  type: { type: String, required: true },
-  title: { type: String, required: true },
-});
-
-const recipientWorkPoligonSchema = new Schema({
+const workPoligon = new Schema({
   // id рабочего полигона
   id: { type: Number, required: true },
   // id рабочего места полигона
   workPlaceId: { type: Number, required: false },
   // тип рабочего полигона
   type: { type: String, required: true },
+});
+
+const senderWorkPoligonSchema = new Schema({
+  // id рабочего полигона
+  id: { type: Number, required: true },
+  // id рабочего места полигона
+  workPlaceId: { type: Number, required: false },
+  // тип рабочего полигона
+  type: { type: String, required: true },
+  // наименование рабочего полигона
+  title: { type: String, required: true },
 });
 
 const timeSpanSchema = new Schema({
@@ -62,11 +67,6 @@ const shortUserInfoSchema = new Schema({
   post: { type: String, required: true },
   // ФИО пользователя (на момент издания распоряжения)
   fio: { type: String, required: true },
-});
-
-const workPoligon = new Schema({
-  id: { type: Number, required: true },
-  type: { type: String, required: true },
 });
 
 const otherToSendSchema = new Schema({
@@ -100,7 +100,6 @@ module.exports = {
   orderPlaceSchema,
   orderRecipientSchema,
   senderWorkPoligonSchema,
-  recipientWorkPoligonSchema,
   timeSpanSchema,
   orderChainSchema,
   shortUserInfoSchema,

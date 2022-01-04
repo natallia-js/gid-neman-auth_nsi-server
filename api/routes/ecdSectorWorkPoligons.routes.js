@@ -59,7 +59,9 @@ router.get(
 
 /**
  * Обрабатывает запрос на получение информации обо всех пользователях, у которых рабочий полигон -
- * участок ЭЦД с одним из заданных id.
+ * участок ЭЦД с одним из заданных id. Если один пользователь зарегистрирован на нескольких участках
+ * ЭЦД, то запрос вернет такого пользователя для каждой из записей об участке ЭЦД, на котором он
+ * зарегистрирован.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -97,7 +99,7 @@ router.get(
       });
 
       let data;
-      if (users) {
+      if (users && users.length) {
         const searchCondition = { _id: users.map((item) => item.ECDSWP_UserID) };
         if (onlyOnline) {
           searchCondition.online = true;
@@ -105,22 +107,27 @@ router.get(
         data = await User.find(searchCondition);
       }
 
-      if (data) {
-        data = data.map((user) => {
-          return {
-            _id: user._id,
-            name: user.name,
-            fatherName: user.fatherName,
-            surname: user.surname,
-            online: user.online,
-            post: user.post,
-            service: user.service,
-            ecdSectorId: users.find((item) => String(item.ECDSWP_UserID) === String(user._id)).ECDSWP_ECDSID,
-          };
+      const dataToReturn = [];
+      if (data && data.length) {
+        users.forEach((user) => {
+          const userInfo = data.find((ui) => String(ui._id) === String(user.ECDSWP_UserID));
+          if (!userInfo) {
+            return;
+          }
+          dataToReturn.push({
+            _id: user.ECDSWP_UserID,
+            name: userInfo.name,
+            fatherName: userInfo.fatherName,
+            surname: userInfo.surname,
+            online: userInfo.online,
+            post: userInfo.post,
+            service: userInfo.service,
+            ecdSectorId: user.ECDSWP_ECDSID,
+          });
         });
       }
 
-      res.status(OK).json(data);
+      res.status(OK).json(dataToReturn);
 
     } catch (error) {
       console.log(error);
