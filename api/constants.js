@@ -9,6 +9,7 @@ const PROJECT_CONSTANTS = Object.freeze({
   UNKNOWN_ERR_MESS: 'Что-то пошло не так, попробуйте снова',
   USER_NOT_FOUND_ERR_MESS: 'Пользователь не найден',
   UNAUTHORIZED_ERR_MESS: 'Пользователь не имеет права на выполнение данного действия',
+  NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS: 'Пользователь не имеет права работать на указанном рабочем полигоне',
   NOT_LOGGED_IN_ERR_MESS: 'Пользователь вышел из системы',
   NOT_MAIN_ADMIN_ERR_MESS: 'На выполнение данного действия требуются права главного администратора',
   NOT_ON_DUTY_ERR_MESS: 'Пользователь не на дежурстве',

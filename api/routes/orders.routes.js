@@ -88,11 +88,7 @@ const {
  *     post - должность лица, которому адресуется распоряжение
  *     fio - ФИО этого лица
  *     sendOriginal - true - отправить оригинал, false - отправить копию
- * workPoligon - рабочий полигон пользователя (обязателен) - объект с параметрами:
- *   id - id рабочего полигона
- *   type - тип рабочего полигона
- *   workPlaceId - id рабочего места
- *   title - наименование рабочего полигона (рабочего места полигона)
+ * workPoligonTitle - наименование рабочего полигона (рабочего места полигона)
  * creator - информация о создателе распоряжения (обязательно):
  *   id - id пользователя
  *   post - должность
@@ -116,7 +112,7 @@ const {
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
-  // проверка факта нахождения пользователя на смене
+  // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   // проверка параметров запроса
   addOrderValidationRules(),
@@ -139,13 +135,16 @@ const {
         dspToSend,
         ecdToSend,
         otherToSend,
-        workPoligon,
+        workPoligonTitle,
         creator,
         createdOnBehalfOf,
         specialTrainCategories,
         orderChainId,
         showOnGID,
       } = req.body;
+
+      // Определяем рабочий полигон пользователя
+      const workPoligon = req.user.workPoligon;
 
       const newOrderObjectId = new mongoose.Types.ObjectId();
 
@@ -238,7 +237,7 @@ const {
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
         return {
-          senderWorkPoligon: { ...workPoligon },
+          senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
           recipientWorkPoligon: {
             id: sectorInfo.id,
             workPlaceId: sectorInfo.workPlaceId,
@@ -304,7 +303,7 @@ const {
       });
       // себе
       workOrders.push(new WorkOrder({
-        senderWorkPoligon: { ...workPoligon },
+        senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
         recipientWorkPoligon: { ...workPoligon },
         orderId: order._id,
         timeSpan: timeSpan,
@@ -482,10 +481,12 @@ const {
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
+ * Информация о типе и id рабочего полигона извлекается из токена пользователя.
+ * Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
+ * то информация извлекаться не будет.
+ *
  * Параметры тела запроса:
  * datetime - дата-время начала поиска информации (обязателен)
- * workPoligonType - тип полигона управления, для которого необходимо осуществить поиск информации (обязателен)
- * workPoligonId - id полигона управления (обязателен)
  */
  router.post(
   '/ordersCreatedFromGivenDate',
@@ -505,13 +506,17 @@ const {
   getOrdersFromGivenDateRules(),
   validate,
   async (req, res) => {
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { datetime, workPoligonType, workPoligonId } = req.body;
+      const { datetime } = req.body;
 
       const matchFilter = { createDateTime: { $gte: new Date(datetime) } };
-      const poligonSearchFilter = { $elemMatch: { id: workPoligonId, type: workPoligonType } };
-      switch (workPoligonType) {
+      const poligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
+      switch (workPoligon.type) {
         case WORK_POLIGON_TYPES.STATION:
           matchFilter.dspToSend = poligonSearchFilter;
           break;

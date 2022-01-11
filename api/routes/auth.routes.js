@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 const auth = require('../middleware/auth.middleware');
+const canWorkOnWorkPoligon = require('../middleware/canWorkOnWorkPoligon.middleware');
+const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const {
@@ -18,12 +20,10 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const App = require('../models/App');
-const { TStation } = require('../models/TStation');
-const { TDNCSector } = require('../models/TDNCSector');
-const { TECDSector } = require('../models/TECDSector');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
+const { USER_NOT_FOUND_ERR_MESS } = require('../constants');
 
 const router = Router();
 
@@ -164,12 +164,23 @@ router.get(
       const serviceName = req.user.service;
 
       let data;
+      const fieldsToExtract = {
+        _id: 1,
+        login: 1,
+        password: 1,
+        name: 1,
+        surname: 1,
+        fatherName: 1,
+        post: 1,
+        service: 1,
+        roles: 1,
+      };
       if (!isMainAdmin(req)) {
         // Ищем пользователей, принадлежащих заданной службе
-        data = await User.find({ service: serviceName });
+        data = await User.find({ service: serviceName }, fieldsToExtract);
       } else {
         // Извлекаем информацию обо всех пользователях
-        data = await User.find();
+        data = await User.find({}, fieldsToExtract);
       }
 
       // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
@@ -355,23 +366,6 @@ router.post(
       // Определяем, при необходимости, для созданного пользователя рабочие полигоны
 
       if (stations && stations.length) {
-        // Массив уникальных id станций
-        /*const stationsIds = stations
-          .map((station) => station.id)
-          .filter((value, index, self) => self.indexOf(value) === index);
-
-        // Проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем
-        const stationObjects = await TStation.findAll({
-          where: { St_ID: stationsIds },
-          transaction: t,
-        });
-
-        if (!stationObjects || stationObjects.length !== stationsIds.length) {
-          await t.rollback();
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Не все станции найдены в базе' });
-        }*/
-
         // Создаем в БД рабочие полигоны-станции либо рабочие места в рамках станций для заданного пользователя
         const objectsToCreateInDatabase = [];
         for (let stationObj of stations) {
@@ -385,18 +379,6 @@ router.post(
       }
 
       if (dncSectors && dncSectors.length) {
-        // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем
-        /*const dncSectorObjects = await TDNCSector.findAll({
-          where: { DNCS_ID: dncSectors },
-          transaction: t,
-        });
-
-        if (!dncSectorObjects || dncSectorObjects.length !== dncSectors.length) {
-          await t.rollback();
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Не все участки ДНЦ найдены в базе' });
-        }*/
-
         // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
         for (let id of dncSectors) {
           await TDNCSectorWorkPoligon.create({
@@ -407,18 +389,6 @@ router.post(
       }
 
       if (ecdSectors && ecdSectors.length) {
-        // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем
-        /*const ecdSectorObjects = await TECDSector.findAll({
-          where: { ECDS_ID: ecdSectors },
-          transaction: t,
-        });
-
-        if (!ecdSectorObjects || ecdSectorObjects.length !== ecdSectors.length) {
-          await t.rollback();
-          await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Не все участки ЭЦД найдены в базе' });
-        }*/
-
         // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
         for (let id of ecdSectors) {
           await TECDSectorWorkPoligon.create({
@@ -495,7 +465,7 @@ router.post(
 
       // Если не находим, то процесс добавления роли продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
@@ -540,8 +510,6 @@ router.post(
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
  * password - пароль пользователя (обязателен),
- * takeDuty - true (пользователь принимает дежурство) / false (пользователь входит в систему
- *   без принятия дежурства) - (необязательно, по умолчанию false)
  */
 router.post(
   '/login',
@@ -549,16 +517,16 @@ router.post(
   loginValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе login, password
-      const { login, password, takeDuty } = req.body;
+    // Считываем находящиеся в пользовательском запросе login, password
+    const { login, password } = req.body;
 
+    try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
       const user = await User.findOne({ login });
 
       // Если не находим, то процесс входа в систему продолжать не можем
       if (!user) {
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
       // Проверяем переданный пользователем пароль
@@ -714,12 +682,6 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
-      // Отмечаем, при необходимости, принятие пользователем дежурства
-      if (takeDuty) {
-        user.lastTakeDutyTime = new Date();
-        await user.save();
-      }
-
       res.status(OK).json({
         token,
         userId: user._id,
@@ -730,14 +692,226 @@ router.post(
           service: user.service,
           post: user.post,
         },
-        lastTakeDutyTime: user.lastTakeDutyTime,
-        lastPassDutyTime: user.lastPassDutyTime,
         roles: rolesAbbreviations,
         credentials: appsCredentials,
         stationWorkPoligons: stations,
         dncSectorsWorkPoligons: dncSectors,
         ecdSectorsWorkPoligons: ecdSectors,
       });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на начало работы на заданном рабочем полигоне без принятия дежурства.
+ * Это значит, что если пользователь ранее принял дежурство на данном рабочем полигоне, но не
+ * сдал дежурство после этого, то после входа в систему он будет считаться находящимся на смене.
+ * Если же пользователь не принимал ранее дежурство, то он просто входит в систему на указанном
+ * рабочем полигоне.
+ *
+ * Параметры запроса:
+ *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
+ *     в рамках рабочего полигона, если указан параметр workSubPoligonId), на котором пользователь
+ *     будет работать без принятия дежурства
+ */
+router.post(
+  '/startWorkWithoutTakingDuty',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем возможность выполнения запрашиваемого действия
+  canWorkOnWorkPoligon,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
+
+    try {
+      // Ищем в БД пользователя, который прислал запрос
+      const user = await User.findOne({ _id: req.user.userId });
+      if (!user) {
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
+      }
+
+      const workPoligon = {
+        type: workPoligonType,
+        id: workPoligonId,
+        workPlaceId: workSubPoligonId,
+      };
+
+      // Смотрим, принимал ли ранее пользователь дежурство на указанном рабочем полигоне.
+      const lastInfo = (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length) ? null :
+        user.lastTakePassDutyTimes.find((item) =>
+          item.workPoligon.type === workPoligonType &&
+          item.workPoligon.id === workPoligonId &&
+          (
+            (!workSubPoligonId && !item.workPoligon.workPlaceId) ||
+            (workSubPoligonId && item.workPoligon.workPlaceId === workSubPoligonId)
+          )
+        );
+
+      // Включаем необходимую информацию (в зависимости от ситуации) в token пользователя
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, jwtSecret);
+
+      let lastTakeDutyTime = null;
+      let lastPassDutyTime = null;
+
+      if (lastInfo) {
+        // сюда попадаем в том случае, если на указанном рабочем полигоне пользователь ранее
+        // работал в системе с принятием дежурства
+        lastTakeDutyTime = lastInfo.lastTakeDutyTime || null;
+        lastPassDutyTime = lastInfo.lastPassDutyTime || null;
+      }
+
+      const newToken = jwt.sign(
+        {
+          ...decoded,
+          lastTakeDutyTime,
+          lastPassDutyTime,
+          workPoligon,
+        },
+        jwtSecret,
+        //{ expiresIn: '1h' }
+      );
+
+      res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+)
+
+
+/**
+ * Обработка запроса на принятие пользователем дежурства на заданном рабочем полигоне.
+ * Если пользователь ранее принял дежурство на данном рабочем полигоне, но не
+ * сдал дежурство после этого, то данный обработчик отметит лишь новое время принятия дежурства,
+ * время последней сдачи дежурства останется неизменно.
+ *
+ * Параметры запроса:
+ *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
+ *     в рамках рабочего полигона, если указан параметр workSubPoligonId), на котором пользователь
+ *     принимает дежурство
+ */
+router.post(
+  '/takeDuty',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем возможность выполнения запрашиваемого действия
+  canWorkOnWorkPoligon,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
+
+    try {
+      // Дежурство принимает пользователь с id = req.user.userId
+
+      // Ищем в БД пользователя, который прислал запрос на принятие дежурства
+      const user = await User.findOne({ _id: req.user.userId });
+      if (!user) {
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
+      }
+
+      // Смотрим, принимал ли ранее пользователь дежурство на указанном рабочем полигоне.
+      // Если нет, то создаем новую запись о принятии пользователем дежурства.
+      // Если да, то обновляем существующую запись.
+      if (!user.lastTakePassDutyTimes) {
+        user.lastTakePassDutyTimes = [];
+      }
+      const lastInfo = user.lastTakePassDutyTimes.find((item) =>
+        item.workPoligon.type === workPoligonType &&
+        item.workPoligon.id === workPoligonId &&
+        (
+          (!workSubPoligonId && !item.workPoligon.workPlaceId) ||
+          (workSubPoligonId && item.workPoligon.workPlaceId === workSubPoligonId)
+        ));
+
+      const lastTakeDutyTime = new Date();
+      let lastPassDutyTime = null;
+      const workPoligon = {
+        type: workPoligonType,
+        id: workPoligonId,
+        workPlaceId: workSubPoligonId,
+      };
+
+      if (!lastInfo) {
+        user.lastTakePassDutyTimes.push({
+          workPoligon,
+          lastTakeDutyTime: lastTakeDutyTime,
+          lastPassDutyTime: null,
+        });
+      } else {
+        lastInfo.lastTakeDutyTime = lastTakeDutyTime;
+        lastPassDutyTime = lastInfo.lastPassDutyTime;
+      }
+
+      // Включаем информацию о рабочем полигоне и временах принятия и сдачи на нем дежурства в token пользователя
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      const newToken = jwt.sign(
+        {
+          ...decoded,
+          lastTakeDutyTime,
+          lastPassDutyTime,
+          workPoligon,
+        },
+        jwtSecret,
+        //{ expiresIn: '1h' }
+      );
+
+      await user.save();
+
+      res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на выход из системы без сдачи дежурства.
+ * Никаких изменений в БД не производится.
+ * Изменения вносятся лишь в token пользователя.
+ */
+ router.post(
+  '/logout',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  async (req, res) => {
+    try {
+      // Из системы выходит пользователь с id = req.user.userId,
+      // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
+
+      // Ищем в БД пользователя, который прислал запрос на выход из системы
+      const user = await User.findOne({ _id: req.user.userId });
+      if (!user) {
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
+      }
+
+      // Вносим изменения в token пользователя
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      const newToken = jwt.sign(
+        {
+          ...decoded,
+          lastTakeDutyTime: null,
+          lastPassDutyTime: null,
+          workPoligon: null,
+        },
+        jwtSecret,
+        //{ expiresIn: '1h' }
+      );
+
+      res.status(OK).json({ token: newToken });
 
     } catch (error) {
       console.log(error);
@@ -755,30 +929,53 @@ router.post(
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем возможность выполнения запрашиваемого действия
-  (req, res, next) => {
-    if (!req.user || !req.user.userId) {
-      return res.status(ERR).json({
-        message: 'Выход из системы невозможен: неизвестен id пользователя, выходящего из системы'
-      });
-    }
-    next();
-  },
+  isOnDuty,
   async (req, res) => {
     try {
-      // Из системы выходит пользователь с id = req.user.userId
+      // Из системы выходит пользователь с id = req.user.userId,
+      // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
       const user = await User.findOne({ _id: req.user.userId });
-
-      // Если не находим, то процесс выхода из системы продолжать не можем
       if (!user) {
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      user.lastPassDutyTime = new Date();
+      const workPoligon = req.user.workPoligon;
+      const lastTakePassDutyOnWorkPoligonInfo =
+        (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length) ? null
+        : user.lastTakePassDutyTimes.find((el) =>
+          el.workPoligon.type === workPoligon.type &&
+          el.workPoligon.id === workPoligon.id &&
+          (
+            (!workPoligon.workPlaceId && !el.workPoligon.workPlaceId) ||
+            (workPoligon.workPlaceId && workPoligon.workPlaceId === el.workPoligon.workPlaceId)
+          ));
+
+      if (!lastTakePassDutyOnWorkPoligonInfo) {
+        return res.status(ERR).json({ message: 'Пользователь не принимал дежурство на указанном рабочем полигоне' });
+      }
+
+      // Отмечаем сдачу дежурства в БД
+      const lastPassDutyTime = new Date();
+      lastTakePassDutyOnWorkPoligonInfo.lastPassDutyTime = lastPassDutyTime;
       await user.save();
 
-      res.status(OK).json({ id: req.user.userId });
+      // Отмечаем сдачу дежурства в токене пользователя
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      const newToken = jwt.sign(
+        {
+          ...decoded,
+          lastTakeDutyTime: null,
+          lastPassDutyTime: null,
+          workPoligon: null,
+        },
+        jwtSecret,
+        //{ expiresIn: '1h' }
+      );
+
+      res.status(OK).json({ token: newToken, lastPassDutyTime });
 
     } catch (error) {
       console.log(error);
@@ -839,7 +1036,7 @@ router.post(
       if (!candidate) {
         await t.rollback();
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
@@ -915,7 +1112,7 @@ router.post(
 
       // Если не находим, то процесс удаления роли продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Пользователь не найден' });
+        return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {

@@ -72,22 +72,6 @@ const checkOrderText = (val) => {
   return true;
 }
 
-const checkWorkPoligon = (val) => {
-  if (typeof val !== 'object') {
-    throw new Error('Рабочий полигон издателя распоряжения должен быть объектом');
-  }
-  if (typeof val.id !== 'number') {
-    throw new Error('Не указан id рабочего полигона издателя распоряжения');
-  }
-  if (typeof val.type !== 'string' || !val.type.length) {
-    throw new Error('Не указан тип рабочего полигона издателя распоряжения');
-  }
-  if (typeof val.title !== 'string' || !val.type.length) {
-    throw new Error('Не указано наименование рабочего полигона');
-  }
-  return true;
-}
-
 const checkCreator = (val) => {
   if (typeof val !== 'object') {
     throw new Error('Издатель распоряжения должен быть объектом');
@@ -131,11 +115,6 @@ const addOrderValidationRules = () => {
     // ...dncToSend
     // ...dspToSend
     // ...ecdToSend
-    check('workPoligon')
-      .exists()
-      .withMessage('Не указан рабочий полигон издателя распоряжения')
-      .bail()
-      .custom((val) => checkWorkPoligon(val)),
     check('creator')
       .exists()
       .withMessage('Не указана информация о создателе распоряжения')
@@ -186,12 +165,6 @@ const getOrdersFromGivenDateRules = () => {
       .withMessage('Не указана дата начала поиска информации о количестве распоряжений, изданных начиная с этой даты')
       .bail()
       .custom((val) => checkOrdersFromGivenDateTime(val)),
-    check('workPoligonType')
-      .exists()
-      .withMessage('Не указан тип полигона управления для поиска информации о количестве распоряжений, изданных начиная с указанной даты'),
-    check('workPoligonId')
-      .exists()
-      .withMessage('Не указан id полигона управления дата поиска информации о количестве распоряжений, изданных начиная с этой даты'),
   ];
 };
 

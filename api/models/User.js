@@ -1,4 +1,5 @@
 const { Schema, model, Types } = require('mongoose');
+const { lastTakePassDutyTimesSchema } = require('./subSchemas');
 
 function isPostFieldRequired() {
   return typeof this.post === 'string' ? false : true;
@@ -22,11 +23,8 @@ const schema = new Schema({
   service: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId],
-  // дата-время последнего принятия дежурства
-  lastTakeDutyTime: { type: Date, required: false },
-  // дата-время последней сдачи дежурства (если пользователь дежурство принял, но не сдал, то значение
-  // в данном поле либо отсутствует, либо не определено, либо меньше значения в lastTakeDutyTime)
-  lastPassDutyTime: { type: Date, required: false },
+  // список рабочих полигонов и времен последнего принятия и сдачи дежурства пользователем на них
+  lastTakePassDutyTimes: [lastTakePassDutyTimesSchema],
 });
 
 

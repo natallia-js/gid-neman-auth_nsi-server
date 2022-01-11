@@ -22,10 +22,9 @@ const {
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
- * Параметры запроса (workPoligonType, workPoligonId, workPoligonWorkPlaceId), если указаны,
- * то определяют рабочий полигон, информацию по которому необходимо извлечь.
- * Если рабочий полигон не указан, то будет извлечена информация, имеющая отношение ко всем
- * рабочим полигонам.
+ * Информация о типе, id рабочего полигона (и id рабочего места в рамках рабочего полигона) извлекается из
+ * токена пользователя. Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
+ * то информация извлекаться не будет.
  */
 router.post(
   '/data',
@@ -42,17 +41,18 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkAuthority,
   async (req, res) => {
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { workPoligonType, workPoligonId, workPoligonWorkPlaceId } = req.body;
-
       const matchFilter = {
         workPoligon: { $exists: true },
-        'workPoligon.id': workPoligonId,
-        'workPoligon.type': workPoligonType,
+        'workPoligon.id': workPoligon.id,
+        'workPoligon.type': workPoligon.type,
       };
-      if (workPoligonWorkPlaceId) {
-        matchFilter['workPoligon.workPlaceId'] = workPoligonWorkPlaceId;
+      if (workPoligon.workPlaceId) {
+        matchFilter['workPoligon.workPlaceId'] = workPoligon.workPlaceId;
       } else {
         matchFilter.$or = [
           { 'workPoligon.workPlaceId': { $exists: false } },
