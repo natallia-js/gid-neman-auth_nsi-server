@@ -7,7 +7,10 @@ const {
 } = require('../validators/stationWorkPoligons.validator');
 const validate = require('../validators/validate');
 const User = require('../models/User');
+const App = require('../models/App');
+const Role = require('../models/Role');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
+const { DSP_FULL, DSP_Operator, DNC_FULL, ECD_FULL } = require('../constants');
 
 const router = Router();
 
@@ -62,14 +65,19 @@ router.get(
  * станция с одним из заданных id. В выборку включаются также пользователи, у которых
  * рабочий полигон - рабочее место на указанных станциях. Если один пользователь
  * зарегистрирован на нескольких станциях, то запрос вернет такого пользователя для каждой
- * из записей о станции, на котором он зарегистрирован.
+ * из записей о станции, где он зарегистрирован.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
  * stationIds - id станций (обязателен)
- * onlyOnline - true, если необходимо получить список лишь тех пользователей, которые в данный
+ * onlyOnline - (пока НЕ РАБОТАЕТ: данное поле отсутствует в БД!!!)
+ *              true, если необходимо получить список лишь тех пользователей, которые в данный
  *              момент online; false - если необходимо получить список всех пользователей
+ * apps - массив объектов с полями app (строка-условное наименование приложения ГИД Неман из коллекции apps) и
+ *        creds - массив строк - наименований полномочий в соответствующем приложении;
+ *        параметр apps используется для поиска для каждого пользователя дополнительной информации о его
+ *        полномочиях (из заданного списка) в каждом из указанных приложений
  */
  router.post(
   '/definitData',
@@ -91,7 +99,70 @@ router.get(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds, onlyOnline } = req.body;
+      const { stationIds, onlyOnline, apps } = req.body;
+
+      // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
+      let roles;
+
+      if (apps && apps.length) {
+        // Ищу в БД информацию по каждому указанному в запросе приложению и полномочиях в данном приложении
+        const applications = await App.find(
+          { shortTitle: apps.map((el) => el.app) },
+          { _id: 1, shortTitle: 1, credentials: 1 }
+        );
+        if (applications && applications.length) {
+          const credNecessary = (appTitle, credTitle) => {
+            const a = apps.find((el) => el.app === appTitle);
+            if (!a || !a.creds) return false;
+            return a.creds.find((el) => el === credTitle) ? true : false;
+          }
+          // Для каждого приложения оставляю только указанные в запросе полномочия
+          applications.forEach((item) => {
+            if (!item.credentials || !item.credentials.length) {
+              return;
+            }
+            item.credentials = item.credentials.filter((el) => credNecessary(item.shortTitle, el.englAbbreviation));
+          });
+          // Ищем определенные для пользователей ГИД Неман роли, связанные с найденными приложениями
+          roles = await Role.find({
+            $and: [
+              { apps: { $exists: true } },
+              { "apps.appId": applications.map((a) => a._id) },
+            ],
+          }, { _id: 1, apps: 1 });
+          if (roles && roles.length) {
+            const getAppAbbrById = (appId) => {
+              const app = applications.find((a) => String(a._id) === String(appId));
+              return app ? app.shortTitle : null;
+            };
+            const getCredAbbrById = (appId, credId) => {
+              const app = applications.find((a) => String(a._id) === String(appId));
+              const cred = app && app.credentials ? app.credentials.find((c) => String(c._id) === String(credId)) : null;
+              return cred ? cred.englAbbreviation : null;
+            };
+            // Оставляю у ролей лишь искомые приложения с искомыми в них полномочиями (приложения с путыми
+            // списками полномочий удаляю, роли с пустыми списками приложений тоже удаляю)
+            roles = roles.map((r) => ({
+              _id: r._id,
+              apps: r.apps
+                .filter((el) => applications.map((a) => String(a._id)).includes(String(el.appId)))
+                .map((el) => {
+                  const app = applications.find((a) => String(a._id) === String(el.appId));
+                  return {
+                    appId: el.appId,
+                    creds: (!app.credentials || !app.credentials.length) ? [] :
+                      el.creds.filter((c) => app.credentials.map((c) => String(c._id)).includes(String(c)))
+                      .map((c) => getCredAbbrById(el.appId, c._id)),
+                  };
+                })
+                .filter((el) => el.creds.length > 0)
+                .map((el) => ({ appAbbrev: getAppAbbrById(el.appId), creds: el.creds })),
+            })).filter((r) => r.apps.length > 0);
+          }
+          console.log(roles)
+          console.log(JSON.stringify(roles))
+        }
+      }
 
       // Ищем id пользователей и id соответствующих им рабочих полигонов (станций и рабочих мест на станциях)
       const users = await TStationWorkPoligon.findAll({
@@ -122,6 +193,9 @@ router.get(
             name: userInfo.name,
             fatherName: userInfo.fatherName,
             surname: userInfo.surname,
+            appsCredentials: !roles || !roles.length || !userInfo.roles ? [] :
+              roles.filter((r) => userInfo.roles.includes(String(r._id)))
+                   .map((r) => r.apps),
             online: userInfo.online,
             post: userInfo.post,
             service: userInfo.service,

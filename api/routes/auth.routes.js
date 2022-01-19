@@ -184,7 +184,7 @@ router.get(
       }
 
       // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
-      // по рабочим перегонам
+      // по рабочим полигонам
       const userIds = data.map((user) => String(user._id));
 
       const stationWorkPoligons = await TStationWorkPoligon.findAll({

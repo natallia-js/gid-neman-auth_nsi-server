@@ -1,6 +1,7 @@
 const express = require('express');
 const setupWebSocket = require('./webSocket/setup');
-const http = require('http');
+//const http = require('http');
+const https = require('https');
 const cors = require('cors');
 const config = require('config');
 const mongoose = require('mongoose');
@@ -28,6 +29,11 @@ const { createStationTrackModel } = require('./models/TStationTrack');
 const { createStationWorkPlaceModel } = require('./models/TStationWorkPlace');
 const { createECDStructuralDivisionModel } = require('./models/TECDStructuralDivision');
 const processDelDBData = require('./serverSideProcessing/processDelDBData');
+const fs = require('fs');
+const path = require('path');
+const privateKey = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'key.pem'), 'utf8');
+const certificate = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'cert.pem'), 'utf8');
+const rootCertificate = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'rootCA.pem'), 'utf8');
 
 // Создаем объект приложения express
 const app = express();
@@ -39,12 +45,20 @@ app.use(express.json({ extended: true }));
 // CORS middleware
 app.use(cors());
 
-// initialize a simple http server
-const server = http.createServer(app);
+// initialize a server (https)
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+  //requestCert: false,
+  rejectUnauthorized: false,
+  ca: rootCertificate,
+};
+const httpsServer = https.createServer(credentials, app);
+//const server = http.createServer(app);
 
 // pass the same server to our websocket setup function;
-// the websocket server will run on the same port accepting ws:// connections
-setupWebSocket(server);
+// the websocket server will run on the same port accepting wss:// connections
+setupWebSocket(httpsServer);
 
 // Для связи с конфигурационной БД ЦИВК (MS SQL)
 let sequelize;
@@ -169,8 +183,9 @@ async function start() {
 
     // ----------------------------------------------------
 
-    // Запускаем http-сервер на указанном порту
-    server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    // Запускаем https-сервер на указанном порту
+    httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    //server.listen(5001, () => console.log(`Server started on port 5001`));
 
   } catch (e) {
     console.log('Server Error', e.message);
