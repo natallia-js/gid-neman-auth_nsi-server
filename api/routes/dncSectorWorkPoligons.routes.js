@@ -8,6 +8,8 @@ const {
 const validate = require('../validators/validate');
 const User = require('../models/User');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
+const matchUserRolesToAppsAndCreds = require('./additional/matchUserRolesToAppsAndCreds');
+const getUserCredsInApps = require('./additional/getUserCredsInApps');
 
 const router = Router();
 
@@ -67,8 +69,13 @@ router.get(
  *
  * Параметры тела запроса:
  * sectorIds - id участков ДНЦ (обязателен)
- * onlyOnline - true, если необходимо получить список лишь тех пользователей, которые в данный
+ * onlyOnline - (пока НЕ РАБОТАЕТ: данное поле отсутствует в БД!!!)
+ *              true, если необходимо получить список лишь тех пользователей, которые в данный
  *              момент online; false - если необходимо получить список всех пользователей
+ * apps - массив объектов с полями app (строка-условное наименование приложения ГИД Неман из коллекции apps) и
+ *        creds - массив строк - наименований полномочий в соответствующем приложении;
+ *        параметр apps используется для поиска для каждого пользователя дополнительной информации о его
+ *        полномочиях (из заданного списка) в каждом из указанных приложений
  */
  router.post(
   '/definitData',
@@ -90,7 +97,10 @@ router.get(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { sectorIds, onlyOnline } = req.body;
+      const { sectorIds, onlyOnline, apps } = req.body;
+
+      // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
+      const roles = await matchUserRolesToAppsAndCreds(apps);
 
       const users = await TDNCSectorWorkPoligon.findAll({
         raw: true,
@@ -119,6 +129,7 @@ router.get(
             name: userInfo.name,
             fatherName: userInfo.fatherName,
             surname: userInfo.surname,
+            appsCredentials: getUserCredsInApps(roles, userInfo.roles),
             online: userInfo.online,
             post: userInfo.post,
             service: userInfo.service,
