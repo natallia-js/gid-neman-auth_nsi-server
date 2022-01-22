@@ -68,16 +68,19 @@ const {
  *     value - значение параметра (представленное в виде строки!)
  * dncToSend - массив участков ДНЦ, на которые необходимо отправить распоряжение (не обязательно; если не данных, то должен быть пустой массив);
  *   элемент массива - объект с параметрами:
+ *     post - должность ДНЦ
  *     fio - ФИО ДНЦ
  *     id - id участка ДНЦ
  *     sendOriginal - true - отправить оригинал, false - отправить копию
  * dspToSend - массив участков ДСП, на которые необходимо отправить распоряжение (не обязательно; если не данных, то должен быть пустой массив);
  *   элемент массива - объект с параметрами:
+ *     post - должность ДСП
  *     fio - ФИО ДСП
  *     id - id станции
  *     sendOriginal - true - отправить оригинал, false - отправить копию
  * ecdToSend - массив участков ЭЦД, на которые необходимо отправить распоряжение (не обязательно; если не данных, то должен быть пустой массив);
  *   элемент массива - объект с параметрами:
+ *     post - должность ЭЦД
  *     fio - ФИО ЭЦД
  *     id - id участка ЭЦД
  *     sendOriginal - true - отправить оригинал, false - отправить копию
@@ -97,6 +100,10 @@ const {
  * specialTrainCategories - отметки об особых категориях поездов, к которым имеет отношение распоряжение
  * orderChainId - id цепочки распоряжений, которой принадлежит издаваемое распоряжение
  * showOnGID - true - отображать на ГИД, false - не отображать на ГИД (не обязательно)
+ * idOfTheOrderToCancel - id распоряжения, которое необходимо отменить при издании текущего распоряжения
+ *   (специально для случая издания распоряжения о принятии дежурства ДСП: при издании нового распоряжения
+ *   у предыдущего время окончания действия становится не "до отмены", а ему присваивается дата и время
+ *   начала действия данного распоряжения)
  */
  router.post(
   '/add',
@@ -106,7 +113,7 @@ const {
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
     };
     next();
   },
@@ -141,6 +148,7 @@ const {
         specialTrainCategories,
         orderChainId,
         showOnGID,
+        idOfTheOrderToCancel,
       } = req.body;
 
       // Определяем рабочий полигон пользователя
@@ -236,6 +244,7 @@ const {
       // всем операторам на станции.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
+        // возвращает объект записи о распоряжении, копию которого необходимо передать
         return {
           senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
           recipientWorkPoligon: {
@@ -320,6 +329,26 @@ const {
       }
 
       await WorkOrder.insertMany(workOrders, { session });
+
+      // При необходимости, отменяем некоторое распоряжение по окончании издания текущего
+      if (idOfTheOrderToCancel) {
+        const orderToCancel = await Order.findById(idOfTheOrderToCancel).session(session);
+        if (orderToCancel) {
+          await WorkOrder.updateMany(
+            { orderId: idOfTheOrderToCancel },
+            { $set: {
+              "timeSpan.end": orderToCancel.timeSpan.start,
+              "timeSpan.tillCancellation": false,
+              "orderChain.chainEndDateTime": orderToCancel.timeSpan.start,
+            } },
+            { session },
+          );
+          orderToCancel.timeSpan.end = orderToCancel.timeSpan.start;
+          orderToCancel.timeSpan.tillCancellation = false;
+          orderToCancel.orderChain.chainEndDateTime = orderToCancel.timeSpan.start;
+          await orderToCancel.save();
+        }
+      }
 
       await session.commitTransaction();
 

@@ -357,13 +357,13 @@ router.post(
           sector = findSector(order.ecdToSend);
           break;
       }
-      if (!sector) {
+      /*if (!sector) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не адресовалось данному рабочему полигону' });
-      }
+      }*/
       let orderConfirmedLocally = true;
-      // Если распоряжение глобально не подтверждалось...
-      if (!sector.confirmDateTime) {
+      // Если распоряжение было ЯВНО адресовано данному рабочему полигону и глобально не подтверждалось...
+      if (sector && !sector.confirmDateTime) {
         // ...то подтверждаем и указываем лицо, его подтвердившее; но сначала информацию об этом лице найдем
         const user = await User.findOne({ _id: req.user.userId }).session(session);
         if (!user) {

@@ -12,7 +12,9 @@ const orderRecipientSchema = new Schema({
   type: { type: String, required: true },
   // наименование станции / участка (на момент издания распоряжения)
   placeTitle: { type: String, required: true },
-  // должность и ФИО адресата
+  // должность адресата (на момент издания распоряжения)
+  post: { type: String, required: false },
+  // ФИО адресата (на момент издания распоряжения)
   fio: { type: String, required: false },
   // true - передать оригинал, false - передать копию
   sendOriginal: { type: Boolean, required: true },
