@@ -210,7 +210,6 @@ const {
         orderChain: orderChainInfo,
         showOnGID,
       });
-      await order.save({ session });
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
       // на текущем полигоне управления
@@ -240,7 +239,7 @@ const {
       // Как ДСП, так и операторы при ДСП, - все они могут издавать распоряжения.
       // И получать распоряжения, направляемые в адрес станции, они все тоже должны.
       // Потому для каждой станции - будь то издатель или получатель распоряжения - проверяем наличие в
-      // ее составе операторов при ДСП. Копия издаваемого распоряжения должна попасть как ДСП, так и
+      // ее составе рабочих мест. Копия издаваемого распоряжения должна попасть как ДСП, так и
       // всем операторам на станции.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
@@ -260,50 +259,76 @@ const {
       };
       // Формирование копий распоряжения для ДСП станции и всех операторов при ДСП
       // (самому себе копия не формируется)
-      const formOrderCopiesForDSPAndOperators = async (stationId, sendOriginal) => {
-        const workOrders = [];
-        // Отправка ДСП
+      const formOrderCopiesForDSPAndOperators = async (stationId, stationName, sendOriginal) => {
+        const orderCopies = [];
+        const stationWorkPlacesOrderIsSentTo = [];
+        // Отправка ДСП (если распоряжение издается не на станции, но ей адресуется, либо издается
+        // оператором при ДСП на станции и должна попасть самому ДСП)
         if (workPoligon.type !== WORK_POLIGON_TYPES.STATION ||
           stationId !== workPoligon.id || workPoligon.workPlaceId) {
-          workOrders.push(new WorkOrder(getToSendObject({
+            orderCopies.push(new WorkOrder(getToSendObject({
             id: stationId,
             workPlaceId: null,
             type: WORK_POLIGON_TYPES.STATION,
-            sendOriginal: sendOriginal,
+            sendOriginal,
           })));
+          let stationTitle = stationName;
+          if (!stationTitle) {
+            const st = await TStation.findOne({ where: { St_ID: stationId } });
+            if (st) {
+              stationTitle = st.St_Title;
+            }
+          }
+          stationWorkPlacesOrderIsSentTo.push({
+            id: stationId,
+            type: WORK_POLIGON_TYPES.STATION,
+            workPlaceId: null,
+            placeTitle: stationTitle,
+            sendOriginal,
+          });
         }
+        // извлекаем информацию обо всех рабочих местах на станции
         const stationWorkPlacesData = await TStationWorkPlace.findAll({
-          attributes: ['SWP_ID'], // извлекаем id всех рабочих мест на станции
+          attributes: ['SWP_ID', 'SWP_Name'],
           where: { SWP_StationId: stationId },
         });
         if (stationWorkPlacesData && stationWorkPlacesData.length) {
           // направляем копию всем операторам при ДСП, кроме самого себя
           // (если распоряжение издано оператором при ДСП)
-          let workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
+          //let workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
+          let workPlaces = stationWorkPlacesData.map((item) => ({ id: item.SWP_ID, name: item.SWP_Name }));
           if (workPoligon.type === WORK_POLIGON_TYPES.STATION && stationId === workPoligon.id && workPoligon.workPlaceId) {
-            workPlacesIds = workPlacesIds.filter((item) => item !== workPoligon.workPlaceId);
+            workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
           }
-          workPlacesIds.forEach((wpID) => {
-            const workOrder = new WorkOrder(getToSendObject({
+          workPlaces.forEach((wp) => {
+            orderCopies.push(new WorkOrder(getToSendObject({
               id: stationId,
-              workPlaceId: wpID,
+              workPlaceId: wp.id,
               type: WORK_POLIGON_TYPES.STATION,
-              sendOriginal: sendOriginal,
-            }));
-            workOrders.push(workOrder);
+              sendOriginal,
+            })));
+            stationWorkPlacesOrderIsSentTo.push({
+              id: stationId,
+              type: WORK_POLIGON_TYPES.STATION,
+              workPlaceId: wp.id,
+              placeTitle: wp.name,
+              sendOriginal,
+            });
           });
         }
-        return workOrders;
+        return { orderCopies, stationWorkPlacesOrderIsSentTo };
       };
       // рассылка на участки ДНЦ
       order.dncToSend.forEach((dncSector) => {
         const workOrder = new WorkOrder(getToSendObject(dncSector));
         workOrders.push(workOrder);
       });
-      // рассылка на станции (ДСП и операторам при ДСП)
+      // рассылка на станции (ДСП и операторам при ДСП) - явно указанные издателем распоряжения как адресаты
       for (let dspSector of order.dspToSend) {
-        const orderCopies = await formOrderCopiesForDSPAndOperators(dspSector.id, dspSector.sendOriginal);
+        const { orderCopies, stationWorkPlacesOrderIsSentTo } =
+          await formOrderCopiesForDSPAndOperators(dspSector.id, dspSector.placeTitle, dspSector.sendOriginal);
         workOrders.push(...orderCopies);
+        order.stationWorkPlacesToSend.push(...stationWorkPlacesOrderIsSentTo);
       }
       // рассылка на участки ЭЦД
       order.ecdToSend.forEach((ecdSector) => {
@@ -322,13 +347,17 @@ const {
         orderChain: orderChainInfo,
       }));
       // если распоряжение издается на станции (ДСП или оператором при ДСП), то оно
-      // автоматически должно попасть как ДСП, так и на все рабочие места операторов ДСП данной станции
+      // автоматически должно попасть как ДСП, так и на все рабочие места операторов при ДСП данной станции
       if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
-        const orderCopies = await formOrderCopiesForDSPAndOperators(workPoligon.id, true);
+        const { orderCopies, stationWorkPlacesOrderIsSentTo } =
+          await formOrderCopiesForDSPAndOperators(workPoligon.id, null, true);
         workOrders.push(...orderCopies);
+        order.stationWorkPlacesToSend.push(...stationWorkPlacesOrderIsSentTo);
       }
 
+      // Сохраняем все в БД
       await WorkOrder.insertMany(workOrders, { session });
+      await order.save({ session });
 
       // При необходимости, отменяем некоторое распоряжение по окончании издания текущего
       if (idOfTheOrderToCancel) {
@@ -353,6 +382,120 @@ const {
       await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно сохранена', order });
+
+    } catch (error) {
+      console.log(error);
+
+      await session.abortTransaction();
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на редактирование существующего распоряжения.
+ * Позволяется редактировать только одиночные распоряжения.
+ * Данный запрос не работает с цепочками распоряжений!
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * id - id распоряжения (обязателен),
+ * timeSpan - время действия распоряжения (не обязательно) - объект с полями:
+ *   start - время начала действия распоряжения
+ *   end - время окончания действия распоряжения (если известно)
+ *   tillCancellation - true / false (распоряжение действует / не действует до отмены)
+ * orderText - текст распоряжения (не обязательно) - объект с полями:
+ *   orderTextSource - источник текста (шаблон / не шаблон)
+ *   patternId - id шаблона распоряжения, если источник текста - шаблон
+ *   orderTitle - наименование распоряжения
+ *   orderText - массив объектов с параметрами:
+ *     ref - строка, содержащая смысловое значение параметра в шаблоне
+ *     type - тип параметра
+ *     value - значение параметра (представленное в виде строки!)
+ */
+router.post(
+  '/mod',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkAuthority,
+  // проверка факта нахождения пользователя на смене (дежурстве)
+  isOnDuty,
+  async (req, res) => {
+    // Действия выполняем в транзакции
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const { id, timeSpan, orderText } = req.body;
+
+      const existingOrder = await Order.findById(id).session(session);
+      if (!existingOrder) {
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });
+      }
+
+      const ordersInChain = await Order.count({
+        orderChain: { $exists: true },
+        "orderChain.chainId": existingOrder.orderChain.chainId,
+      });
+      if (ordersInChain === 0) {
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'Цепочка распоряжений не существует в базе данных' });
+      }
+      if (ordersInChain > 1) {
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'В цепочке распоряжений более одного распоряжения: редактирование невозможно' });
+      }
+
+      // Редактируем запись в основной коллекции распоряжений
+      let edited = false;
+      if (timeSpan) {
+        existingOrder.timeSpan = timeSpan;
+        existingOrder.orderChain.chainStartDateTime = timeSpan.start;
+        existingOrder.orderChain.chainEndDateTime = timeSpan.end;
+        edited = true;
+      }
+      if (orderText) {
+        existingOrder.orderText = orderText;
+        edited = true;
+      }
+      if (edited) {
+        existingOrder.save();
+      }
+
+      // Редактируем (при необходимости) записи в коллекции рабочих распоряжений
+      if (timeSpan) {
+        await WorkOrder.updateMany(
+          { orderId: id },
+          { $set: {
+            "timeSpan.start": timeSpan.start,
+            "timeSpan.end": timeSpan.end,
+            "timeSpan.tillCancellation": timeSpan.tillCancellation,
+            "orderChain.chainStartDateTime": timeSpan.start,
+            "orderChain.chainEndDateTime": timeSpan.end,
+          } },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+
+      res.status(OK).json({ message: 'Информация успешно сохранена', order: existingOrder });
 
     } catch (error) {
       console.log(error);

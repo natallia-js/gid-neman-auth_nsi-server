@@ -78,6 +78,7 @@ const getUserFIOString = ({ name, fatherName, surname }) => {
 
       let data;
 
+      // Формируем условие фильтрации для извлечения информации из коллекции рабочих распоряжений.
       const findRecordConditions = [
         { recipientWorkPoligon: { $exists: true } },
         { "recipientWorkPoligon.id": workPoligon.id },
@@ -112,6 +113,46 @@ const getUserFIOString = ({ name, fatherName, surname }) => {
       const matchFilter = !startDate ? {} : { $and: findRecordConditions };
       const workData = await WorkOrder.find(matchFilter);
 
+      // Если рабочий полигон - станция, то для каждого распоряжения, адресованного ДАННОМУ рабочему месту,
+      // формирую массив получателей копии этого же распоряжения на этой же станции.
+      /*const additionalOrders = [];
+      const workData = !workDataInitial ? null :
+        workDataInitial.filter((item) => {
+          if (workPoligon.workPlaceId) {
+            if (item.recipientWorkPoligon.workPlaceId === workPoligon.workPlaceId) {
+              return true;
+            } else {
+              additionalOrders.push(item);
+              return false;
+            }
+          }
+          if (!item.recipientWorkPoligon.workPlaceId) {
+            return true;
+          } else {
+            additionalOrders.push(item);
+            return false;
+          }
+        });
+
+      additionalOrders.forEach((item) => {
+        const parentOrder = workData.find((order) => String(order.orderId) === String(item.orderId));
+        if (!parentOrder) {
+          return;
+        }
+        if (!parentOrder.adjacentReceivers) {
+          parentOrder.adjacentReceivers = [];
+        }
+        parentOrder.adjacentReceivers.push({
+          id: item.recipientWorkPoligon.id,
+          workPlaceId: item.recipientWorkPoligon.workPlaceId,
+          type: item.recipientWorkPoligon.type,
+          deliverDateTime: item.deliverDateTime,
+          confirmDateTime: item.confirmDateTime,
+        });
+      });*/
+
+      // Ищем распоряжения в основной коллекции распоряжений и сопоставляем их с распоряжениями,
+      // найденными в рабочей коллекции распоряжений
       if (workData && workData.length) {
         data = await Order.find({ _id: workData.map((item) => item.orderId) });
         data = data.map((item) => {
@@ -123,6 +164,7 @@ const getUserFIOString = ({ name, fatherName, surname }) => {
               deliverDateTime: correspWorkDataObject.deliverDateTime,
               confirmDateTime: correspWorkDataObject.confirmDateTime,
               sendOriginal: correspWorkDataObject.sendOriginal,
+              //adjacentReceivers: correspWorkDataObject.adjacentReceivers,
             };
           }
           return { ...item._doc };

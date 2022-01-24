@@ -33,6 +33,8 @@ const schema = new Schema({
   ecdToSend: [orderRecipientSchema],
   // Список остальных адресатов
   otherToSend: [otherToSendSchema],
+  // Список рабочих мест на станциях, на которые направлено распоряжение
+  stationWorkPlacesToSend: [orderRecipientSchema],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение
   workPoligon: { type: workPoligon, required: true },
   // пользователь, издавший распоряжение (post - должность пользователя на момент издания распоряжения)

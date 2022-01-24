@@ -10,7 +10,9 @@ const orderRecipientSchema = new Schema({
   id: { type: Number, required: true },
   // тип участка ("станция" / "участок ДНЦ" / "участок ЭЦД")
   type: { type: String, required: true },
-  // наименование станции / участка (на момент издания распоряжения)
+  // id рабочего места (на станции)
+  workPlaceId: { type: Number, required: false },
+  // наименование станции / участка / рабочего места (на момент издания распоряжения)
   placeTitle: { type: String, required: true },
   // должность адресата (на момент издания распоряжения)
   post: { type: String, required: false },
