@@ -212,20 +212,12 @@ const {
       });
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
-      // на текущем полигоне управления
+      // на текущем глобальном полигоне управления
       const filter = {
         ordersType: type,
         'workPoligon.id': workPoligon.id,
         'workPoligon.type': workPoligon.type,
       };
-      if (workPoligon.workPlaceId) {
-        filter['workPoligon.workPlaceId'] = workPoligon.workPlaceId;
-      } else {
-        filter.$or = [
-          { 'workPoligon.workPlaceId': { $exists: false } },
-          { 'workPoligon.workPlaceId': null },
-        ];
-      }
       await LastOrdersParam.findOneAndUpdate(
         filter,
         // update
