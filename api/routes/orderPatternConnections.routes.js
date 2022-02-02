@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const OrderPattern = require('../models/OrderPattern');
 const {
   addOrderChildPatternValidationRules,
@@ -51,7 +51,7 @@ const {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addOrderChildPatternValidationRules(),
   validate,
@@ -148,7 +148,7 @@ const {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delOrderChildPatternValidationRules(),
   validate,

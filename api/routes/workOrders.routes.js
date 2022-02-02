@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
@@ -24,6 +24,23 @@ const {
 
 const getUserFIOString = ({ name, fatherName, surname }) => {
   return `${surname} ${name.charAt(0)}.${fatherName && fatherName.length ? fatherName.charAt(0) + '.': ''}`;
+};
+
+/**
+ * Позволяет найти workPoligon в массиве sectors учитывая флаг findGlobalSector (true - поиск по глобальным
+ * полигонам: станция, участок ДНЦ, участок ЭЦД; false - поиск по рабочим местам в рамках глобального полигона)
+ */
+const findSector = (sectors, workPoligon, findGlobalSector) => {
+  if (sectors && sectors[0] && sectors[0].type === workPoligon.type) {
+    return sectors.find((el) =>
+      (String(el.id) === String(workPoligon.id)) &&
+      (findGlobalSector || (
+        (!workPoligon.workPlaceId && !el.workPlaceId) ||
+        (workPoligon.workPlaceId && el.workPlaceId && String(workPoligon.workPlaceId) === String(el.workPlaceId))
+      ))
+    );
+  }
+  return null;
 };
 
 
@@ -66,7 +83,7 @@ const getUserFIOString = ({ name, fatherName, surname }) => {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       const workPoligon = req.user.workPoligon;
@@ -205,7 +222,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
@@ -241,41 +258,35 @@ router.post(
       await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }).session(session);
 
       // Отмечаем подтверждение доставки распоряжений в основной коллекции распоряжений.
-      // При этом нам неважно, с какого рабочего места на станции (ДСП либо оператора при ДСП)
-      // пришло подтверждение доставки распоряжения - от кого первого пришло, такое время и будет зафиксировано.
+      // Для установки даты подтверждения распоряжения в секции "Кому" в основной коллекции необходимо,
+      // чтобы его подтверждение пришло с глобального полигона. Так, в частности, при подтверждении
+      // учитывается рабочее место ДСП и не учитывается рабочее место оператора при ДСП.
+      // Для всех подтверждений, идущих со станции, подтверждение в основной коллекции проставляется лишь
+      // в секции адресатов на станциях.
       const orders = await Order.find({ _id: orderIds }).session(session);
 
       if (orders && orders.length) {
-        const findSector = (sectors, findGlobalSector) => {
-          if (sectors && sectors[0] && sectors[0].type === workPoligon.type) {
-            return sectors.find((el) =>
-              (String(el.id) === String(workPoligon.id)) &&
-              (findGlobalSector || (
-                (!workPoligon.workPlaceId && !el.workPlaceId) ||
-                (workPoligon.workPlaceId && el.workPlaceId && String(workPoligon.workPlaceId) === String(el.workPlaceId))
-              ))
-            );
-          }
-          return null;
-        };
         for (let order of orders) {
-          let sector; // участок глобального подтверждения распоряжения
+          let sector; // участок глобального подтверждения распоряжения (секция "Кому")
           let thereAreChangesInObject = false;
           switch (workPoligon.type) {
             case WORK_POLIGON_TYPES.STATION:
-              sector = findSector(order.dspToSend, true);
+              if (req.user.specialCredentials && req.user.specialCredentials.includes(DSP_FULL)) {
+                // на уровне станции подтвердить распоряжение может только ДСП (секция "Кому" распоряжения)
+                sector = findSector(order.dspToSend, workPoligon, true);
+              }
               // подтверждаем распоряжение в рамках станции (локально)
-              const localSector = findSector(order.stationWorkPlacesToSend, false);
+              const localSector = findSector(order.stationWorkPlacesToSend, workPoligon, false);
               if (localSector) {
                 localSector.deliverDateTime = deliverDateTime;
                 thereAreChangesInObject = true;
               }
               break;
             case WORK_POLIGON_TYPES.DNC_SECTOR:
-              sector = findSector(order.dncToSend, true);
+              sector = findSector(order.dncToSend, workPoligon, true);
               break;
             case WORK_POLIGON_TYPES.ECD_SECTOR:
-              sector = findSector(order.ecdToSend, true);
+              sector = findSector(order.ecdToSend, workPoligon, true);
               break;
           }
           if (sector && !sector.deliverDateTime) {
@@ -291,7 +302,7 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: 'Распоряжения подтверждены', orderIds, deliverDateTime });
 
     } catch (error) {
       console.log(error);
@@ -313,6 +324,9 @@ router.post(
  * подтверждается на соответствующем глобальном полигоне управления лишь в том случае, если ранее на данном
  * полигоне управления его никто не подтверждал. На локальном полигоне управления (рабочем месте) подтверждается
  * при условии наличия этого рабочего места.
+ * Для случая ДСП и Операторов при ДСП на станции: на уровне рабочих распоряжений и своих локальных рабочих
+ * полигонов каждый подтверждает распоряжение сам за себя, на уровне самого распоряжения (из общей коллекции)
+ * подтверждать может только ДСП.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -338,8 +352,8 @@ router.post(
     };
     next();
   },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  // проверка наличия у пользователя определенных выше полномочий
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на смене
   isOnDuty,
   async (req, res) => {
@@ -354,7 +368,7 @@ router.post(
       const { id, confirmDateTime } = req.body;
 
       // Отмечаем подтверждение распоряжения в коллекции рабочих распоряжений, а также
-      // в общей коллеции распоряжений (в общей коллекции - если оно там еще не подтверждено)
+      // (при необходимости) в общей коллеции распоряжений
 
       // Итак, вначале подтвержаем на своем рабочем полигоне
 
@@ -381,7 +395,7 @@ router.post(
       }
       if (workOrder.confirmDateTime) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное распоряжение ранее было подтверждено на полигоне управления' });
+        return res.status(ERR).json({ message: 'Указанное распоряжение ранее было подтверждено в списке рабочих распоряжений полигона управления' });
       }
       workOrder.confirmDateTime = confirmDateTime;
        // By default, `save()` uses the associated session
@@ -397,80 +411,61 @@ router.post(
 
       // Проверяем, подтверждено ли распоряжение на указанном рабочем полигоне глобально и (в случае станции) локально
 
-      const findSector = (sectors, findGlobalSector) => {
-        if (sectors && sectors[0] && sectors[0].type === workPoligon.type) {
-          return sectors.find((el) =>
-            (String(el.id) === String(workPoligon.id)) &&
-            (findGlobalSector || (
-              (!workPoligon.workPlaceId && !el.workPlaceId) ||
-              (workPoligon.workPlaceId && el.workPlaceId && String(workPoligon.workPlaceId) === String(el.workPlaceId))
-            ))
-          );
-        }
-        return null;
-      };
-
       let sector;
       let localSector;
+
       switch (workPoligon.type) {
         case WORK_POLIGON_TYPES.STATION:
-          sector = findSector(order.dspToSend, true);
-          // смотрим, нужно ли подтверждать распоряжение в рамках станции (локально)
-          localSector = findSector(order.stationWorkPlacesToSend, false);
+          if (req.user.specialCredentials && req.user.specialCredentials.includes(DSP_FULL)) {
+            // в рамках станции (глобального полигона управления) подтверждать распоряжения может только ДСП
+            // (операторы при ДСП не могут)
+            sector = findSector(order.dspToSend, workPoligon, true);
+          }
+          // зато в рамках станции (локально) могут подтверждать распоряжения как ДСП, так и Операторы при ДСП
+          localSector = findSector(order.stationWorkPlacesToSend, workPoligon, false);
           break;
         case WORK_POLIGON_TYPES.DNC_SECTOR:
-          sector = findSector(order.dncToSend, true);
+          sector = findSector(order.dncToSend, workPoligon, true);
           break;
         case WORK_POLIGON_TYPES.ECD_SECTOR:
-          sector = findSector(order.ecdToSend, true);
+          sector = findSector(order.ecdToSend, workPoligon, true);
           break;
       }
-/*
-// Если эту проверку включить, то не будут подтверждаться распоряжения, изданные в рамках станции и неявно
-// адресованные рабочим местам на этой же станции.
-      if (!sector) {
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное распоряжение не адресовалось данному рабочему полигону' });
-      }
-*/
-      // отметка о том, как распоряжение было подтверждено в рамках глобального полигона (если true, то лицо,
-      // отправившее запрос, было зафиксировано как подтвердившее распоряжение за свой глобальный рабочий полигон -
-      // станцию, участок ДСП либо участок ЭЦД; если false, то лицо не было зафиксировано как лицо, подтвердившее
-      // распоряжение глобально (данное распоряжение уже было ранее кем-то подтверждено глобально), оно лишь
-      // подтвердило распоряжение в рамках своего рабочего места
-      let orderConfirmedLocally = true;
-      let orderConfirmed = false;
 
+      // Ситуация, когда не определены и sector, и localSector, вполне допустима.
+      // Такое может произойти тогда, когда ДСП, получив распоряжение, удаляет из списка
+      // адресатов по станции определенное рабочее место на этой станции. В этом случае
+      // работник данного рабочего места сможет подтвердить распоряжение лишь в списке
+      // рабочих распоряжений.
+
+      let userPost;
+      let userFIO;
       if ((sector && !sector.confirmDateTime) || (localSector && !localSector.confirmDateTime)) {
-        // ищем информацию о лице, подтвердившем распоряжение
+        // ищем информацию о лице, подтверждающем распоряжение
         const user = await User.findOne({ _id: req.user.userId }).session(session);
         if (!user) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
         }
-        const userFIO = getUserFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname });
+        userPost = user.post;
+        userFIO = getUserFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname });
         if (sector && !sector.confirmDateTime) {
           sector.confirmDateTime = confirmDateTime;
-          sector.post = user.post;
+          sector.post = userPost;
           sector.fio = userFIO;
-          orderConfirmedLocally = false;
-          orderConfirmed = true;
         }
         if (localSector && !localSector.confirmDateTime) {
           localSector.confirmDateTime = confirmDateTime;
-          localSector.post = user.post;
+          localSector.post = userPost;
           localSector.fio = userFIO;
-          if (!orderConfirmed) orderConfirmed = true;
         }
-        if (orderConfirmed) {
-          // By default, `save()` uses the associated session
-          await order.save();
-        }
+        // By default, `save()` uses the associated session
+        await order.save();
       }
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: `Распоряжение подтверждено ${orderConfirmedLocally ? 'локально' : 'глобально'}`, id });
+      res.status(OK).json({ message: `Распоряжение подтверждено`, id, confirmDateTime, userPost, userFIO });
 
     } catch (error) {
       console.log(error);
@@ -490,13 +485,20 @@ router.post(
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Подтвердить распоряжение за других может лишь:
- * 1) лицо - работник рабочего полигона (локального), на котором распоряжение было создано (т.е., например,
- *    если распоряжение создается на рабочем месте на станции и адресуется ДНЦ, то за этого ДНЦ можно
- *    подтвердить распоряжение с данного станционного рабочего места)
- * 2) либо лицо - работник рабочего полигона (глобального), которому распоряжение адресовалось (например,
- *    распоряжение адресовалось станции, значит подтвердить его могут и ДСП, и оператор при ДСП данной станции
- *    друг за друга, но ни один из них не может подтвердить распоряжение за другие рабочие полигоны, на которые
- *    оно адресовалось)
+ * 1) создатель распоряжения - за те рабочие полигоны, которые явно были прописаны в секции "Кому" при
+ *    создании распоряжения; если распоряжение издается на станции, то за рабочие места на станции
+ *    подтвердить распоряжение может лишь его издатель (например, распоряжение издается на рабочем месте
+ *    Оператора при ДСП №1, значит, его подтвердить за все рабочие места на станции может только лицо с
+ *    этого рабочего места, ДСП не может)
+ * 2) получатель распоряжения на станции (ДСП) может подтвердить распоряжение за все рабочие места на этой
+ *    станции (получатель распоряжения, изданного вне станции - станция, значит, подтвердить за других на
+ *    станции может только ДСП).
+ *
+ * ! Запрос не может вызываться одновременно для подтверждения распоряжений за рабочие полигоны, которым оно
+ * было адресовано через секцию "Кому" и подтверждения за рабочие места на станции. Только независимые вызовы!
+ *
+ * При подтверждении распоряжения за другой рабочий полигон данное распоряжение автоматически переходит из
+ * списка "Входящие уведомления" в список "Распоряжения в работе" на этом рабочем полигоне.
  *
  * Информация о типе, id рабочего полигона (и id рабочего места в рамках рабочего полигона), с которого направлен
  * запрос на подтверждение, извлекается из токена пользователя. Если этой информации в токене нет, то распоряжения
@@ -523,7 +525,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на дежурстве
   isOnDuty,
   async (req, res) => {
@@ -553,38 +555,37 @@ router.post(
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
       }
 
-      // Далее, нам необходимо убедиться в том, что распоряжение было издано на том глобальном рабочем
-      // полигоне, на котором может работать пользователь, сделавший запрос (для ДСП и Оператора при ДСП
-      // рабочий полигон - станция)
+      // Далее, нам необходимо убедиться в том, что распоряжение было издано на том рабочем
+      // полигоне, на котором может работать пользователь, сделавший запрос
       const wrongPoligonByDispatchSector =
         (order.workPoligon.type !== userWorkPoligon.type) ||
-        (String(order.workPoligon.id) !== String(userWorkPoligon.id))/* ||
+        (String(order.workPoligon.id) !== String(userWorkPoligon.id)) ||
         (
           (!order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) !== String(userWorkPoligon.workPlaceId))
-        )*/;
+        );
       if (wrongPoligonByDispatchSector) {
         // Если рабочий полигон не прошел проверку, то убеждаемся в том, что распоряжение было адресовано
-        // глобальному рабочему полигону, которому принадлежит рабочий полигон пользователя, сделавшего запрос
-        // (для ДСП и для оператора при ДСП глобальный рабочий полигон - станция)
+        // станции, при этом рабочие полигоны, за которые необходимо подтвердить распоряжение - рабочие места
+        // на этой станции, а подтверждающий за других - обязательно ДСП этой станции!
+        const wrongConfirmedWorkPoligon = confirmWorkPoligons.find((wp) =>
+          wp.workPoligonType !== userWorkPoligon.type ||
+          wp.workPoligonId !== userWorkPoligon.id
+        );
         const wrongPoligonByAddressee =
           (
-            (userWorkPoligon.type === WORK_POLIGON_TYPES.STATION) &&
-            (!order.dspToSend || !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)))
-          ) ||
-          (
-            (userWorkPoligon.type === WORK_POLIGON_TYPES.DNC_SECTOR) &&
-            (!order.dncToSend || !order.dncToSend.find((item) => String(item.id) === String(userWorkPoligon.id)))
-          ) ||
-          (
-            (userWorkPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) &&
-            (!order.ecdToSend || !order.ecdToSend.find((item) => String(item.id) === String(userWorkPoligon.id)))
+            userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+            wrongConfirmedWorkPoligon ||
+            !order.dspToSend ||
+            !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
+            !req.user.specialCredentials ||
+            !req.user.specialCredentials.includes(DSP_FULL)
           );
         if (wrongPoligonByAddressee) {
           await session.abortTransaction();
           return res.status(ERR).json({
-            message: 'Подтверждать распоряжение за других может лишь работник того рабочего полигона, на котором распоряжение было издано, либо работник того рабочего полигона, которому распоряжение адресовалось',
+            message: 'Подтверждать распоряжение за других может лишь его издатель либо ДСП в случае подтверждения адресованного станции распоряжения за рабочие места на станции',
           });
         }
       }
@@ -592,7 +593,6 @@ router.post(
       // Для записи в основной коллекции распоряжений ищем каждый из указанных полигонов управления,
       // за который необходимо осуществить подтверждение распоряжения, и подтверждаем это распоряжение,
       // если оно еще на данном полигоне не подтверждено (ФИО и должность подтвердившего не указываем)
-      // и если текущий пользователь имеет право это делать
 
       const findSector = (sectors, workPoligonType, workPoligonId, findGlobalSector, workPlaceId = null) => {
         if (sectors && sectors[0] && sectors[0].type === workPoligonType) {
@@ -610,57 +610,38 @@ router.post(
       // сюда поместим и возвратим пользователю реальную ситуацию по рабочим полигонам, указанным в запросе
       // (возможно, какие-то из них не подтвердятся ввиду того, что кто-то их успел подтвердить раньше,
       // потому нужно вернуть информацию по более раннему подтверждению)
-      const actualConfirmWorkPoligonsInfo = [];
+      const actualGlobalConfirmWorkPoligonsInfo = []; // для информации по секции "Кому" распоряжения
+      const actualLocalConfirmWorkPoligonsInfo = []; // для информации по рабочим местам на станции
 
       for (let workPoligon of confirmWorkPoligons) {
-        let sector;
-        let localSector;
+        let sector; // полигон управления для глобального подтверждения распоряжения (секция "Кому" распоряжения)
+        let localSector; // рабочее место в рамках станции
 
         switch (workPoligon.workPoligonType) {
           case WORK_POLIGON_TYPES.STATION:
-            sector = findSector(order.dspToSend, workPoligon.workPoligonType, null, true);
+            if (!workPoligon.workPlaceId)
+              sector = findSector(order.dspToSend, workPoligon.workPoligonType, workPoligon.workPoligonId, true);
             // смотрим, нужно ли подтверждать распоряжение в рамках станции (локально)
             localSector = findSector(order.stationWorkPlacesToSend, workPoligon.workPoligonType, workPoligon.workPoligonId, false, workPoligon.workPlaceId);
             break;
           case WORK_POLIGON_TYPES.DNC_SECTOR:
-            sector = findSector(order.dncToSend, workPoligon.workPoligonType, null, true);
+            sector = findSector(order.dncToSend, workPoligon.workPoligonType, workPoligon.workPoligonId, true);
             break;
           case WORK_POLIGON_TYPES.ECD_SECTOR:
-            sector = findSector(order.ecdToSend, workPoligon.workPoligonType, null, true);
+            sector = findSector(order.ecdToSend, workPoligon.workPoligonType, workPoligon.workPoligonId, true);
             break;
         }
         // объект sector может оказаться неопределен; такое, в частности, возможно, если распоряжение было издано
         // в рамках станции и никуда не рассылалось, кроме рабочих мест на самой станции
-        /*
-        if (!sector) {
-          await session.abortTransaction();
-          return res.status(ERR).json({
-            message: `Для указанного распоряжения не найден полигон управления ${workPoligon.workPoligonType} с id=${workPoligon.workPoligonId}, на котором необходимо осуществить подтверждение`,
-          });
-        }*/
-        if (sector && wrongPoligonByDispatchSector) {
-          // проверяю, что распоряжение подтверждается на том глобальном полигоне, которому оно адресовалось
-          if ((sector.type !== userWorkPoligon.type) || (String(sector.id) !== String(userWorkPoligon.id))) {
-            await session.abortTransaction();
-            return res.status(ERR).json({
-              message: 'Подтверждать распоряжение за других может лишь работник того рабочего полигона, которому распоряжение адресовалось',
-            });
+
+        if (sector) {
+          if (!sector.confirmDateTime) {
+            sector.confirmDateTime = confirmDateTime;
+            if (workPoligon.post) sector.post = workPoligon.post;
+            if (workPoligon.fio) sector.fio = workPoligon.fio;
+            if (!orderConfirmed) orderConfirmed = true;
           }
-        }
-        if (sector && !sector.confirmDateTime) {
-          sector.confirmDateTime = confirmDateTime;
-          if (workPoligon.post) sector.post = workPoligon.post;
-          if (workPoligon.fio) sector.fio = workPoligon.fio;
-          orderConfirmed = true;
-        }
-        if (localSector && !localSector.confirmDateTime) {
-          localSector.confirmDateTime = confirmDateTime;
-          if (workPoligon.post) localSector.post = workPoligon.post;
-          if (workPoligon.fio) localSector.fio = workPoligon.fio;
-          if (!orderConfirmed) orderConfirmed = true;
-        }
-        if (!workPoligon.workPlaceId && sector) {
-          actualConfirmWorkPoligonsInfo.push({
+          actualGlobalConfirmWorkPoligonsInfo.push({
             workPoligonType: sector.type,
             workPoligonId: sector.id,
             workPlaceId: null,
@@ -668,8 +649,15 @@ router.post(
             post: sector.post,
             fio: sector.fio,
           });
-        } else if (localSector) {
-          actualConfirmWorkPoligonsInfo.push({
+        }
+        if (localSector) {
+          if (!localSector.confirmDateTime) {
+            localSector.confirmDateTime = confirmDateTime;
+            if (workPoligon.post) localSector.post = workPoligon.post;
+            if (workPoligon.fio) localSector.fio = workPoligon.fio;
+            if (!orderConfirmed) orderConfirmed = true;
+          }
+          actualLocalConfirmWorkPoligonsInfo.push({
             workPoligonType: localSector.type,
             workPoligonId: localSector.id,
             workPlaceId: localSector.workPlaceId,
@@ -716,7 +704,8 @@ router.post(
       res.status(OK).json({
         message: 'Распоряжение подтверждено',
         orderId,
-        confirmWorkPoligons: actualConfirmWorkPoligonsInfo,
+        actualGlobalConfirmWorkPoligonsInfo,
+        actualLocalConfirmWorkPoligonsInfo,
       });
 
     } catch (error) {
@@ -758,7 +747,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на смене
   isOnDuty,
   async (req, res) => {
@@ -805,12 +794,16 @@ router.post(
 
 /**
  * Обрабатывает запрос на удаление записи об адресате распоряжения в рамках станции.
+ * ! Удалить можно только не подтвержденную запись.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * Только пользователь, зарегистрированный на станции и наделенный полномочием работать на данном рабочем
- * полигоне может удалить информацию по получателю распоряжения на этой станции.
+ * Информацию по получателю распоряжения на рабочем месте станции может удалить:
+ * 1) издатель данного распоряжения, если он - работник станции (ДСП или Оператор при ДСП) -
+ *    может удалить любого из получателей на станции (в том числе и ДСП),
+ * 2) ДСП (не Оператор при ДСП!) в случае распоряжения, изданного не на станции, но адресованного ей,
+ *    может удалить любого из получателей на станции, кроме себя
  *
- * Информация о типе, id рабочего полигона извлекается из токена пользователя.
+ * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
  * Если этой информации в токене нет, то запрос не будет обработан.
  *
  * Параметры запроса:
@@ -830,40 +823,102 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на смене
   isOnDuty,
   async (req, res) => {
-    const workPoligon = req.user.workPoligon;
+    const userWorkPoligon = req.user.workPoligon;
+
+    // Действия выполняем в транзакции
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
       // Считываем находящиеся в пользовательском запросе данные
       const { orderId, workPlaceId } = req.body;
 
-      const order = await Order.findById(orderId);
+      // Ищем распоряжение в основной коллекции
+      const order = await Order.findById(orderId).session(session);
       if (!order) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Распоряжение не найдено' });
       }
-      const condition = (el) =>
-        el.type === workPoligon.type && el.id === workPoligon.id &&
-        (
-          (!el.workPlaceId && !workPlaceId) ||
-          (el.workPlaceId && workPlaceId && String(el.workPlaceId) === String(workPlaceId))
+
+      const recordToDelete = !order.stationWorkPlacesToSend ? null :
+        order.stationWorkPlacesToSend.find((item) =>
+          item.type === userWorkPoligon.type && String(item.id) === String(userWorkPoligon.id) &&
+          (
+            (!item.workPlaceId && !workPlaceId) ||
+            (item.workPlaceId && workPlaceId && String(item.workPlaceId) === String(workPlaceId))
+          )
         );
-      const recordToDel = !order.stationWorkPlacesToSend ? null : order.stationWorkPlacesToSend.find((el) => condition(el));
-      if (!recordToDel) {
+
+      if (!recordToDelete) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Удаляемая запись не найдена' });
+        return res.status(ERR).json({ message: 'Получатель распоряжения на станции не найден' });
       }
-      order.stationWorkPlacesToSend = order.stationWorkPlacesToSend.filter((el) => !condition(el));
+
+      if (recordToDelete.confirmDateTime) {
+        await session.abortTransaction();
+        return res.status(ERR).json({ message: 'Нельзя удалить подтвержденную запись' });
+      }
+
+      // Далее, нам необходимо убедиться в том, что распоряжение было издано на том рабочем
+      // полигоне, на котором может работать пользователь, сделавший запрос, и этот полигон - станция
+      const wrongPoligonByDispatchSector =
+        (order.workPoligon.type !== WORK_POLIGON_TYPES.STATION) ||
+        (order.workPoligon.type !== userWorkPoligon.type) ||
+        (String(order.workPoligon.id) !== String(userWorkPoligon.id)) ||
+        (
+          (!order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId) ||
+          (order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
+          (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) !== String(userWorkPoligon.workPlaceId))
+        );
+      if (wrongPoligonByDispatchSector) {
+        // Если пользователь - не издатель распоряжения, то он должен быть ДСП, станции которого
+        // адресовано распоряжение
+        const wrongPoligonByAddressee =
+          (
+            userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+            !order.dspToSend ||
+            !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
+            !req.user.specialCredentials ||
+            !req.user.specialCredentials.includes(DSP_FULL)
+          );
+        if (wrongPoligonByAddressee) {
+          await session.abortTransaction();
+          return res.status(ERR).json({
+            message: 'Удалить адресата на станции может лишь работник того рабочего места на станции, на котором распоряжение было издано, либо ДСП в случае распоряжения, изданного вне станции',
+          });
+        }
+        // ДСП не может удалить сам себя!
+        if (!recordToDelete.workPlaceId) {
+          await session.abortTransaction();
+          return res.status(ERR).json({
+            message: 'Удаление основного получателя на станции недопустимо',
+          });
+        }
+      }
+
+      order.stationWorkPlacesToSend = order.stationWorkPlacesToSend.filter((el) => el !== recordToDelete);
+
+      // В таблице рабочих распоряжений запись удалять не нужно!
+
+      // By default, `save()` uses the associated session
       await order.save();
+
+      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
       console.log(error);
+
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const LastOrdersParam = require('../models/LastOrdersParam');
@@ -118,7 +118,7 @@ const {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   // проверка параметров запроса
@@ -423,7 +423,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   async (req, res) => {
@@ -665,7 +665,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   getOrdersFromGivenDateRules(),
   validate,

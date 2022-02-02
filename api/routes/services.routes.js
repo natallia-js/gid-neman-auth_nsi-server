@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addServiceValidationRules,
   delServiceValidationRules,
@@ -43,7 +43,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (_req, res) => {
     try {
       const data = await TService.findAll({
@@ -82,7 +82,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addServiceValidationRules(),
   validate,
@@ -133,7 +133,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delServiceValidationRules(),
   validate,
@@ -222,7 +222,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   modServiceValidationRules(),
   validate,

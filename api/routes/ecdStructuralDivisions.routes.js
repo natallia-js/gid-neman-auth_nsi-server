@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { TECDStructuralDivision } = require('../models/TECDStructuralDivision');
 const validate = require('../validators/validate');
 const {
@@ -46,7 +46,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addStructuralDivisionValidationRules(),
   validate,
@@ -94,7 +94,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delStructuralDivisionValidationRules(),
   validate,
@@ -139,7 +139,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   modStructuralDivisionValidationRules(),
   validate,

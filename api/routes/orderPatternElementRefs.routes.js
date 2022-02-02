@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 
 const router = Router();
@@ -33,7 +33,7 @@ const {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (_req, res) => {
     try {
       const data = await OrderPatternElementRef.find();
@@ -66,7 +66,7 @@ const {
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (_req, res) => {
     try {
       const data = await OrderPatternElementRef.find();

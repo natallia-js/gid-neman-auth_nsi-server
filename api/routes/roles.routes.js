@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isMainAdmin, checkMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const Role = require('../models/Role');
 const App = require('../models/App');
@@ -50,7 +50,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       let data;
@@ -91,7 +91,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       let data;
@@ -184,7 +184,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addRoleValidationRules(),
   validate,
@@ -252,7 +252,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addCredValidationRules(),
   validate,
@@ -329,7 +329,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   changeCredsValidationRules(),
   validate,
@@ -395,7 +395,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delRoleValidationRules(),
   validate,
@@ -480,7 +480,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   modRoleValidationRules(),
   validate,

@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addECDToDNCValidationRules,
   addDNCToECDValidationRules,
@@ -47,7 +47,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (_req, res) => {
     try {
       const data = await TNearestDNCandECDSector.findAll({
@@ -85,7 +85,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       const { sectorId } = req.body;
@@ -138,7 +138,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       const { sectorId } = req.body;
@@ -192,7 +192,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addECDToDNCValidationRules(),
   validate,
@@ -262,7 +262,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addDNCToECDValidationRules(),
   validate,
@@ -332,7 +332,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delNearestDNCOrECDValidationRules(),
   validate,
@@ -384,7 +384,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   changeNearestECDSectorsValidationRules(),
   validate,
@@ -492,7 +492,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   changeNearestDNCSectorsValidationRules(),
   validate,

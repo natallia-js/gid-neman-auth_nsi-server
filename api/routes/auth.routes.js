@@ -4,8 +4,9 @@ const jwt = require('jsonwebtoken');
 const config = require('config');
 const auth = require('../middleware/auth.middleware');
 const canWorkOnWorkPoligon = require('../middleware/canWorkOnWorkPoligon.middleware');
+const hasSpecialCredentials = require('../middleware/hasSpecialCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
-const { checkAuthority, HOW_CHECK_CREDS } = require('../middleware/checkAuthority.middleware');
+const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const {
   registerValidationRules,
@@ -158,7 +159,7 @@ router.get(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   async (req, res) => {
     try {
       const serviceName = req.user.service;
@@ -281,7 +282,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   registerValidationRules(),
   validate,
@@ -448,7 +449,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   addRoleValidationRules(),
   validate,
@@ -718,16 +719,21 @@ router.post(
  *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
  *     в рамках рабочего полигона, если указан параметр workSubPoligonId), на котором пользователь
  *     будет работать без принятия дежурства
+ *   specialCredentials - массив строк-наименований специальных полномочий пользователя - тех полномочий,
+ *     которые должны быть ЯВНО определены для выполнения ряда запросов (общий список всех полномочий
+ *     закрепляется за пользователем в момент его входа в систему - т.е. когда пользователь делает login,
+ *     но есть ряд взаимоисключающих полномочий - их необходимо указать явно)
  */
 router.post(
   '/startWorkWithoutTakingDuty',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем возможность выполнения запрашиваемого действия
-  canWorkOnWorkPoligon,
+  hasSpecialCredentials, // проверка specialCredentials
+  canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
+    const { workPoligonType, workPoligonId, workSubPoligonId, specialCredentials } = req.body;
 
     try {
       // Ищем в БД пользователя, который прислал запрос
@@ -773,6 +779,7 @@ router.post(
           lastTakeDutyTime,
           lastPassDutyTime,
           workPoligon,
+          specialCredentials,
         },
         jwtSecret,
         //{ expiresIn: '1h' }
@@ -798,16 +805,21 @@ router.post(
  *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
  *     в рамках рабочего полигона, если указан параметр workSubPoligonId), на котором пользователь
  *     принимает дежурство
+ *   specialCredentials - массив строк-наименований специальных полномочий пользователя - тех полномочий,
+ *     которые должны быть ЯВНО определены для выполнения ряда запросов (общий список всех полномочий
+ *     закрепляется за пользователем в момент его входа в систему - т.е. когда пользователь делает login,
+ *     но есть ряд взаимоисключающих полномочий - их необходимо указать явно)
  */
 router.post(
   '/takeDuty',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем возможность выполнения запрашиваемого действия
-  canWorkOnWorkPoligon,
+  hasSpecialCredentials, // проверка specialCredentials
+  canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
+    const { workPoligonType, workPoligonId, workSubPoligonId, specialCredentials } = req.body;
 
     try {
       // Дежурство принимает пользователь с id = req.user.userId
@@ -851,15 +863,18 @@ router.post(
         lastPassDutyTime = lastInfo.lastPassDutyTime;
       }
 
-      // Включаем информацию о рабочем полигоне и временах принятия и сдачи на нем дежурства в token пользователя
+      // Включаем информацию о рабочем полигоне, временах принятия и сдачи на нем дежурства,
+      // указанных в запросе специальных полномочиях в token пользователя
       const token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, jwtSecret);
+
       const newToken = jwt.sign(
         {
           ...decoded,
           lastTakeDutyTime,
           lastPassDutyTime,
           workPoligon,
+          specialCredentials,
         },
         jwtSecret,
         //{ expiresIn: '1h' }
@@ -906,6 +921,7 @@ router.post(
           lastTakeDutyTime: null,
           lastPassDutyTime: null,
           workPoligon: null,
+          specialCredentials: null,
         },
         jwtSecret,
         //{ expiresIn: '1h' }
@@ -935,6 +951,21 @@ router.post(
       // Из системы выходит пользователь с id = req.user.userId,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
+      // Отмечаем сдачу дежурства в токене пользователя
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      const newToken = jwt.sign(
+        {
+          ...decoded,
+          lastTakeDutyTime: null,
+          lastPassDutyTime: null,
+          workPoligon: null,
+          specialCredentials: null,
+        },
+        jwtSecret,
+        //{ expiresIn: '1h' }
+      );
+
       // Ищем в БД пользователя, который прислал запрос на выход из системы
       const user = await User.findOne({ _id: req.user.userId });
       if (!user) {
@@ -960,20 +991,6 @@ router.post(
       const lastPassDutyTime = new Date();
       lastTakePassDutyOnWorkPoligonInfo.lastPassDutyTime = lastPassDutyTime;
       await user.save();
-
-      // Отмечаем сдачу дежурства в токене пользователя
-      const token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, jwtSecret);
-      const newToken = jwt.sign(
-        {
-          ...decoded,
-          lastTakeDutyTime: null,
-          lastPassDutyTime: null,
-          workPoligon: null,
-        },
-        jwtSecret,
-        //{ expiresIn: '1h' }
-      );
 
       res.status(OK).json({ token: newToken, lastPassDutyTime });
 
@@ -1008,7 +1025,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delUserValidationRules(),
   validate,
@@ -1095,7 +1112,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   delRoleValidationRules(),
   validate,
@@ -1177,7 +1194,7 @@ router.post(
     next();
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkAuthority,
+  checkGeneralCredentials,
   // проверка параметров запроса
   modUserValidationRules(),
   validate,

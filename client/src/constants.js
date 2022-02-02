@@ -4,7 +4,7 @@ const ServerAddress = process.env.REACT_APP_SERVER_URL;
 
 // ----------------------------------------
 
-export const LOCALSTORAGE_NAME = 'gid-neman-user';
+export const LOCALSTORAGE_NAME = 'gid-neman-nsi-auth-user';
 
 // ----------------------------------------
 
