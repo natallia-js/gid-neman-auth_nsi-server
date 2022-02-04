@@ -168,8 +168,19 @@ const getOrdersFromGivenDateRules = () => {
   ];
 };
 
+const getOrdersRules = () => {
+  return [
+    check('datetimeStart')
+      .exists()
+      .withMessage('Не указана дата начала поиска информации')
+      .bail()
+      .custom((val) => checkOrdersFromGivenDateTime(val)),
+  ];
+};
+
 module.exports = {
   addOrderValidationRules,
   getDataForGIDValidationRules,
   getOrdersFromGivenDateRules,
+  getOrdersRules,
 };
