@@ -329,14 +329,16 @@ const {
         workOrders.push(workOrder);
       });
       // себе
+      const senderInfo = { ...workPoligon, title: workPoligonTitle };
+      const deliverAndConfirmDateTimeOnCurrentWorkPoligon = new Date();
       workOrders.push(new WorkOrder({
-        senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
+        senderWorkPoligon: senderInfo,
         recipientWorkPoligon: { ...workPoligon },
         orderId: order._id,
         timeSpan: timeSpan,
         sendOriginal: true,
-        deliverDateTime: new Date(),
-        confirmDateTime: new Date(),
+        deliverDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
+        confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
         orderChain: orderChainInfo,
       }));
       // если распоряжение издается на станции (ДСП или оператором при ДСП), то оно
@@ -374,7 +376,15 @@ const {
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', order });
+      res.status(OK).json({ message: 'Информация успешно сохранена', order:
+        {
+          ...order._doc,
+          senderWorkPoligon: senderInfo,
+          deliverDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
+          confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
+          sendOriginal: true,
+        },
+      });
 
     } catch (error) {
       console.log(error);
@@ -442,7 +452,7 @@ router.post(
         return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });
       }
 
-      const ordersInChain = await Order.count({
+      const ordersInChain = await Order.countDocuments({
         orderChain: { $exists: true },
         "orderChain.chainId": existingOrder.orderChain.chainId,
       });
@@ -488,7 +498,10 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', order: existingOrder });
+      res.status(OK).json({
+        message: 'Информация успешно сохранена',
+        order: existingOrder._doc,
+      });
 
     } catch (error) {
       console.log(error);
