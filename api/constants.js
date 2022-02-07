@@ -99,6 +99,10 @@ const WORK_POLIGON_TYPES = Object.freeze({
   ECD_SECTOR: 'участок ЭЦД',
 });
 
+const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
+  ONLY_OUTGOUING: 'ONLY_OUTGOUING',
+});
+
 module.exports = {
   ...PROJECT_CONSTANTS,
 
@@ -109,6 +113,8 @@ module.exports = {
   ...WEBSOCKET_CONSTANTS,
 
   WORK_POLIGON_TYPES,
+
+  INCLUDE_DOCUMENTS_CRITERIA,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

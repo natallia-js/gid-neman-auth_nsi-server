@@ -33,6 +33,7 @@ const {
   ECD_FULL,
 
   WORK_POLIGON_TYPES,
+  INCLUDE_DOCUMENTS_CRITERIA,
 } = require('../constants');
 
 
@@ -722,6 +723,8 @@ router.post(
  * рассматриваются рабочие места на полигонах управления; для запросов, поступающих с рабочего места,
  * извлекаются все данные по полигону управления, к которому данное рабочее место относится).
  *
+ * Распоряжения сортируются по дате и времени их издания (прямой хронологический порядок).
+ *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Информация о типе и id рабочего полигона извлекается из токена пользователя.
@@ -732,6 +735,7 @@ router.post(
  * datetimeStart - дата-время начала поиска информации (обязателен)
  * datetimeEnd - дата-время окончания поиска информации (не обязателен, если не указан, то
  *               информация извлекается начиная с указанной даты до настоящего момента времени)
+ * includeDocsCriteria - дополнительные критерии поиска информации (не обязателен)
  */
  router.post(
   '/data',
@@ -757,8 +761,9 @@ router.post(
     }
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { datetimeStart, datetimeEnd } = req.body;
+      const { datetimeStart, datetimeEnd, includeDocsCriteria } = req.body;
 
+      // Фильтрация по дате-времени издания
       let matchFilter;
       if (!datetimeEnd) {
         matchFilter = { createDateTime: { $gte: new Date(datetimeStart) } };
@@ -769,24 +774,31 @@ router.post(
         };
       }
 
+      // Фильтрация по издателю
       matchFilter.$or = [
         { "workPoligon.id": workPoligon.id, "workPoligon.type": workPoligon.type },
       ];
 
-      const addresseePoligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
-      switch (workPoligon.type) {
-        case WORK_POLIGON_TYPES.STATION:
-          matchFilter.$or.push({ dspToSend: addresseePoligonSearchFilter });
-          break;
-        case WORK_POLIGON_TYPES.DNC_SECTOR:
-          matchFilter.$or.push({ dncToSend: addresseePoligonSearchFilter });
-          break;
-        case WORK_POLIGON_TYPES.ECD_SECTOR:
-          matchFilter.$or.push({ ecdToSend: addresseePoligonSearchFilter });
-          break;
+      // Фильтрация по адресату
+      if(!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.ONLY_OUTGOUING)) {
+        const addresseePoligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
+        switch (workPoligon.type) {
+          case WORK_POLIGON_TYPES.STATION:
+            matchFilter.$or.push({ dspToSend: addresseePoligonSearchFilter });
+            break;
+          case WORK_POLIGON_TYPES.DNC_SECTOR:
+            matchFilter.$or.push({ dncToSend: addresseePoligonSearchFilter });
+            break;
+          case WORK_POLIGON_TYPES.ECD_SECTOR:
+            matchFilter.$or.push({ ecdToSend: addresseePoligonSearchFilter });
+            break;
+        }
       }
-      const data = await Order.find(matchFilter);console.log('matchFilter',matchFilter)
-      res.status(OK).json(data || []);
+
+      // Ищем данные
+      const data = await Order.find(matchFilter).sort([['createDateTime', 'ascending']]) || [];
+
+      res.status(OK).json(data);
 
     } catch (error) {
       console.log(error);
