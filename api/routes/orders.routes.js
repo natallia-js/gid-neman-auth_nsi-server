@@ -211,6 +211,15 @@ const {
         specialTrainCategories,
         orderChain: orderChainInfo,
         showOnGID,
+        // если распоряжение не имеет адресатов либо не рассылается ли одного оригинала распоряжения (только
+        // копии), то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
+        // дата-время создания распоряжения
+        assertDateTime:
+          (!dncToSend || !dncToSend.length || !dncToSend.find((el) => el.sendOriginal)) &&
+          (!dspToSend || !dspToSend.length || !dspToSend.find((el) => el.sendOriginal)) &&
+          (!ecdToSend || !ecdToSend.length || !ecdToSend.find((el) => el.sendOriginal)) &&
+          (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal))
+          ? createDateTime : null,
       });
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
@@ -799,6 +808,88 @@ router.post(
       const data = await Order.find(matchFilter).sort([['createDateTime', 'ascending']]) || [];
 
       res.status(OK).json(data);
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+/**
+ * Обрабатывает запрос на проверку утвержденности распоряжения.
+ * Распоряжение считается утвержденным, если все получатели его оригинала подтвердили данное распоряжение.
+ * При этом дата и время утверждения = самая поздняя из всех дат утверждения распоряжения оригиналами.
+ * Получатели оригинала ищутся среди ДСП, ДНЦ, ЭЦД и Иных адресатов (т.е. всех тех, кто был упомянут в
+ * секции "Кому" при издании распоряжения). Если распоряжение утверждено, данный запрос ничего не делает.
+ * Если еще не утверждено, то проверяет, может ли оно быть утверждено. Если да, то проставляет дату
+ * утверждения и возвращает ее.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * id - id распоряжения (обязательный параметр)
+ */
+ router.post(
+  '/checkIfOrderIsAsserted',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
+    try {
+      // Вначале ищем распоряжение в основной коллекции распоряжений
+      const order = await Order.findOne({ _id: id });
+      if (!order) {
+        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
+      }
+
+      if (order.assertDateTime) {
+        return res.status(OK).json({ message: 'Указанное распоряжение уже утверждено', assertDateTime: order.assertDateTime });
+      }
+
+      let assertDateTime = null;
+      let continueSearch = true;
+
+      const searchAssertDateTimeAmongAddresses = (addresses) => {
+        if (continueSearch && addresses && addresses.length) {
+          for (let el of addresses) {
+            if (!el.sendOriginal) {
+              continue;
+            }
+            if (!el.confirmDateTime) {
+              continueSearch = false;
+              break;
+            }
+            if (!assertDateTime || assertDateTime < el.confirmDateTime) {
+              assertDateTime = el.confirmDateTime;
+            }
+          }
+        }
+      };
+
+      searchAssertDateTimeAmongAddresses(order.dncToSend);
+      searchAssertDateTimeAmongAddresses(order.dspToSend);
+      searchAssertDateTimeAmongAddresses(order.ecdToSend);
+      searchAssertDateTimeAmongAddresses(order.otherToSend);
+
+      if (continueSearch && assertDateTime) {
+        order.assertDateTime = assertDateTime;
+        order.save();
+      }
+
+      return res.status(OK).json({ assertDateTime: order.assertDateTime });
 
     } catch (error) {
       console.log(error);

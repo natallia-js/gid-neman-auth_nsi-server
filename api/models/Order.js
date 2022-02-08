@@ -48,6 +48,8 @@ const schema = new Schema({
   orderChain: { type: orderChainSchema, required: true },
   // true - отображать на ГИД, false - не отображать на ГИД
   showOnGID: { type: Boolean, required: false },
+  // Дата и время утверждения распоряжения
+  assertDateTime: { type: Date, required: false, default: null },
 });
 
 

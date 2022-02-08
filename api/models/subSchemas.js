@@ -88,6 +88,7 @@ const otherToSendSchema = new Schema({
   post: { type: String, required: false },
   fio: { type: String, required: false },
   sendOriginal: { type: Boolean, required: true },
+  confirmDateTime: { type: Date, required: false, default: null },
 });
 
 const orderTextSchema = new Schema({

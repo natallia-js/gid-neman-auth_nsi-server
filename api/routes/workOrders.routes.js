@@ -442,6 +442,79 @@ router.post(
 
 
 /**
+ * Обрабатывает запрос на подтверждение распоряжения за "иные" рабочие полигоны.
+ * Это возможно сделать лишь на полигоне-издателе распоряжения.
+ *
+ * Информация о типе, id рабочего полигона (и id рабочего места в рамках рабочего полигона) извлекается из
+ * токена пользователя. Если этой информации в токене нет, то распоряжение подтвержаться не будет.
+ *
+ * Параметры запроса:
+ *   id - идентификатор подтверждаемого распоряжения
+ *   confirmDateTime - дата и время, когда пользователь подтвердил распоряжение
+ */
+ router.post(
+  '/confirmOrderForOtherReceivers',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  // проверка факта нахождения пользователя на дежурстве
+  isOnDuty,
+  async (req, res) => {
+    const userWorkPoligon = req.user.workPoligon;
+
+    // Считываем находящиеся в пользовательском запросе данные
+    const { orderId, confirmDateTime } = req.body;
+
+    try {
+      // Вначале ищем распоряжение в основной коллекции распоряжений
+      const order = await Order.findOne({ _id: orderId });
+      if (!order) {
+        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
+      }
+
+      // Нужно, чтобы распоряжение было издано на том рабочем полигоне, с которого пришел запрос.
+      const wrongPoligonByDispatchSector =
+        (order.workPoligon.type !== userWorkPoligon.type) ||
+        (String(order.workPoligon.id) !== String(userWorkPoligon.id)) ||
+        (
+          (!order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId) ||
+          (order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
+          (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) !== String(userWorkPoligon.workPlaceId))
+        );
+      if (wrongPoligonByDispatchSector) {
+        return res.status(ERR).json({ message: 'Подтвердить за иных адресатов можно лишь с того рабочего полигона, на котором распоряжение было издано' });
+      }
+
+      if (!order.otherToSend || !order.otherToSend.length) {
+        return res.status(ERR).json({ message: 'Нет полигонов для подтверждения' });
+      }
+
+      order.otherToSend.forEach((el) => {
+        el.confirmDateTime = confirmDateTime;
+      });
+
+      order.save();
+
+      res.status(OK).json({ message: 'Распоряжение подтверждено', orderId });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обрабатывает запрос на подтверждение распоряжений за других лиц (с других рабочих полигонов / рабочих мест).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
