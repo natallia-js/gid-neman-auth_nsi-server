@@ -552,12 +552,12 @@ export const OrderPatternsTree = (props) => {
                       value={editedPattern[ORDER_PATTERN_FIELDS.TITLE]}
                       onChange={handleEditOrderPatternTitle}
                     />
-                    <Text strong>Особая категория поезда</Text>
+                    <Text strong>Особые отметки</Text>
                     <Select
                       mode="multiple"
                       allowClear
                       style={{ width: '100%' }}
-                      placeholder="Выберите особые категории поезда"
+                      placeholder="Выберите особые отметки распоряжения"
                       defaultValue={editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]}
                       onChange={handleEditSpecialTrainCategories}
                     >

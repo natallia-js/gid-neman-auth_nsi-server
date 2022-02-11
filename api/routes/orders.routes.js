@@ -34,6 +34,7 @@ const {
 
   WORK_POLIGON_TYPES,
   INCLUDE_DOCUMENTS_CRITERIA,
+  ORDER_PATTERN_TYPES,
 } = require('../constants');
 
 
@@ -488,7 +489,7 @@ router.post(
         edited = true;
       }
       if (edited) {
-        existingOrder.save();
+        await existingOrder.save();
       }
 
       // Редактируем (при необходимости) записи в коллекции рабочих распоряжений
@@ -772,14 +773,17 @@ router.post(
       // Считываем находящиеся в пользовательском запросе данные
       const { datetimeStart, datetimeEnd, includeDocsCriteria } = req.body;
 
-      // Фильтрация по дате-времени издания
       let matchFilter;
+
+      // Фильтрация по дате-времени издания
+      const startDate = new Date(datetimeStart);
+      const endDate = new Date(datetimeEnd);
       if (!datetimeEnd) {
-        matchFilter = { createDateTime: { $gte: new Date(datetimeStart) } };
+        matchFilter = { createDateTime: { $gte: startDate } };
       } else {
         matchFilter = {
-          createDateTime: { $gte: new Date(datetimeStart) },
-          createDateTime: { $lte: new Date(datetimeEnd) },
+          createDateTime: { $gte: startDate },
+          createDateTime: { $lte: endDate },
         };
       }
 
@@ -815,6 +819,178 @@ router.post(
     }
   }
 );
+
+
+/**
+ * Обрабатывает запрос на получение списка распоряжений для журнала ЭЦД.
+ *
+ * Данный запрос доступен любому лицу, наделенному полномочием ЭЦД.
+ *
+ * Информация о типе и id рабочего полигона извлекается из токена пользователя.
+ * Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
+ * то информация извлекаться не будет.
+ *
+ * Параметры тела запроса:
+ * datetimeStart - дата-время начала поиска информации (обязателен)
+ * datetimeEnd - дата-время окончания поиска информации (не обязателен, если не указан, то
+ *               информация извлекается начиная с указанной даты до настоящего момента времени)
+ * includeDocsCriteria - дополнительные критерии поиска информации (не обязателен) - массив строк:
+ *                       1) включать только исходящие документы;
+ *                       2) учитывать действующие документы - данный параметр определяет смысловое значение
+ *                       параметров datetimeStart и datetimeEnd: если он не указан, то datetimeStart и datetimeEnd
+ *                       используются для поиска документов по дате издания; если же указан, то документы
+ *                       ищутся по временному интервалу действия соответствующих им цепочек распоряжений
+ *                       (т.е. если документ принадлежит цепочке, время действия которой попадает во временной
+ *                       интервал от datetimeStart до datetimeEnd, то такой документ включается в выборку)
+ * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются по
+ *              дате-времени издания соответствующих документов; если есть, то к условиям в sortFields
+ *              добавляется условие сортировки по id соответствующих документов (сортировка по возрастанию),
+ *              все это необходимо для поддерки пагинации)
+ * filterFields - объект полей с условиями поиска по массиву данных
+ * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
+ *        то запрос возвращает все найденные документы)
+ * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
+ *             то запрос возвращает все найденные документы)
+ */
+ router.post(
+  '/ecdData',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  async (req, res) => {
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
+    try {
+      // Считываем находящиеся в пользовательском запросе данные
+      const {
+        datetimeStart,
+        datetimeEnd,
+        includeDocsCriteria,
+        sortFields,
+        /*filterFields,*/
+        page,
+        docsCount,
+      } = req.body;
+
+      // Только для журнала ЭЦД: изначально в выборку не включаем документы типа "уведомление/отмена запрещения".
+      // Потому что данные документы не фигурируют в журнале как отдельные строки - только как дополнение строк
+      // с информацией о приказе / запрещении. Если их включить в выборку, то будут проблемы с пагинацией.
+      // Потому находим сначала все остальные документы, а потом - для тех, у которых есть связь с документом
+      // типа "уведомление/отмена запрещения", найдем дополнительную информацию.
+      const matchFilter = {
+        $and: [
+          { type: { $ne: ORDER_PATTERN_TYPES.ECD_NOTIFICATION } },
+        ],
+      };
+
+      const startDate = new Date(datetimeStart);
+      const endDate = new Date(datetimeEnd);
+
+      if (!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.INCLUDE_ACTIVE)) {
+        // Поиск по дате-времени издания
+        if (!datetimeEnd) {
+          matchFilter.$and.push({ createDateTime: { $gte: startDate } });
+        } else {
+          matchFilter.$and.push({ createDateTime: { $gte: startDate, $lte: endDate } });
+        }
+      } else {
+        // Поиск по времени действия соответствующих цепочек распоряжений
+        if (!datetimeEnd) {
+          matchFilter.$and.push(
+            {
+              $or: [
+                // The { item : null } query matches documents that either contain the item field
+                // whose value is null or that do not contain the item field
+                { "orderChain.chainEndDateTime": null },
+                { "orderChain.chainEndDateTime": { $gte: startDate } },
+              ],
+            },
+          );
+        } else {
+          matchFilter.$and.push(
+            {
+              "orderChain.chainStartDateTime": { $lte: endDate },
+              "orderChain.chainEndDateTime": { $gte: startDate },
+            },
+          );
+        }
+      }
+
+      // Фильтрация по издателю (в выборку всегда включаются документы, изданные на том рабочем месте,
+      // с которого пришел запрос)
+      const orderCreatorFilter = { "workPoligon.id": workPoligon.id, "workPoligon.type": workPoligon.type };
+
+      let orderCreatorAddresseeFilter = {};
+
+      // Фильтрация по адресату (не используется, если необходимо включать в выборку лишь исходящие документы)
+      if (!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.ONLY_OUTGOUING)) {
+        let orderAddresseeFilter = {};
+        const addresseePoligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
+        switch (workPoligon.type) {
+          case WORK_POLIGON_TYPES.STATION:
+            orderAddresseeFilter = { dspToSend: addresseePoligonSearchFilter };
+            break;
+          case WORK_POLIGON_TYPES.DNC_SECTOR:
+            orderAddresseeFilter = { dncToSend: addresseePoligonSearchFilter };
+            break;
+          case WORK_POLIGON_TYPES.ECD_SECTOR:
+            orderAddresseeFilter = { ecdToSend: addresseePoligonSearchFilter };
+            break;
+        }
+        orderCreatorAddresseeFilter.$or = [
+          orderCreatorFilter,
+          orderAddresseeFilter,
+        ];
+      } else {
+        orderCreatorAddresseeFilter = orderCreatorFilter;
+      }
+
+      matchFilter.$and.push(orderCreatorAddresseeFilter);
+
+      // Применяем сортировку
+      const sortConditions = [];
+      if (sortFields) {
+        for (let field in sortFields) {
+          sortConditions.push([field, sortFields[field]]);
+        }
+      } else {
+        sortConditions.push(['createDateTime', 1]);
+      }
+      sortConditions.push(['_id', 1]);
+
+      // Ищем данные
+      const totalRecords = await Order.countDocuments(matchFilter);
+
+      const data = await Order
+        .find(matchFilter)
+        .sort(sortConditions)
+        .skip(page > 0 ? (page - 1) * docsCount : 0)
+        .limit(docsCount);
+
+      // Имея конечную выборку документов, можем для тех из них, тип которых "приказ ЭЦД" либо
+      // "запрещение ЭЦД" и у которых есть связанный с ними документ, найти этот документ типа
+      // "уведомление/отмена запрещения" и связать его с найденным
+
+      res.status(OK).json({ data, totalRecords });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
 
 /**
  * Обрабатывает запрос на проверку утвержденности распоряжения.
@@ -886,7 +1062,7 @@ router.post(
 
       if (continueSearch && assertDateTime) {
         order.assertDateTime = assertDateTime;
-        order.save();
+        await order.save();
       }
 
       return res.status(OK).json({ assertDateTime: order.assertDateTime });

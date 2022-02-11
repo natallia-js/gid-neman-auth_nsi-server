@@ -100,7 +100,17 @@ const WORK_POLIGON_TYPES = Object.freeze({
 });
 
 const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
-  ONLY_OUTGOUING: 'ONLY_OUTGOUING',
+  ONLY_OUTGOUING: 'ONLY_OUTGOUING', // учитывать только исходящие документы
+  INCLUDE_ACTIVE: 'INCLUDE_ACTIVE', // учитывать действующие документы
+});
+
+const ORDER_PATTERN_TYPES = Object.freeze({
+  ORDER: 'распоряжение',
+  REQUEST: 'заявка',
+  NOTIFICATION: 'уведомление',
+  ECD_ORDER: 'приказ',
+  ECD_PROHIBITION: 'запрещение',
+  ECD_NOTIFICATION: 'уведомление/отмена запрещения',
 });
 
 module.exports = {
@@ -115,6 +125,8 @@ module.exports = {
   WORK_POLIGON_TYPES,
 
   INCLUDE_DOCUMENTS_CRITERIA,
+
+  ORDER_PATTERN_TYPES,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

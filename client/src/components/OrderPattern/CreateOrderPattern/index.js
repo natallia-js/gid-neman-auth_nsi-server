@@ -404,7 +404,7 @@ export const CreateOrderPattern = (props) => {
           </Form.Item>
 
           <Form.Item
-            label={<Text strong>Особая категория поезда</Text>}
+            label={<Text strong>Особые отметки</Text>}
             name={ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES}
             validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]) ? ERR_VALIDATE_STATUS : null}
             help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES])}
@@ -413,7 +413,7 @@ export const CreateOrderPattern = (props) => {
               mode="multiple"
               allowClear
               style={{ width: '100%' }}
-              placeholder="Выберите особые категории поезда"
+              placeholder="Выберите особые отметки распоряжения"
             >
               {
                 SPECIAL_TRAIN_CATEGORIES.map(category =>

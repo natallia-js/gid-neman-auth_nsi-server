@@ -119,12 +119,9 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
       if (workPoligon.workPlaceId) {
         findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
       } else {
-        findRecordConditions.push({
-          $or: [
-            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
-            { "recipientWorkPoligon.workPlaceId": null },
-          ]
-        });
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
       }
 
       const matchFilter = !startDate ? {} : { $and: findRecordConditions };
@@ -208,12 +205,9 @@ router.post(
       if (workPoligon.workPlaceId) {
         findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
       } else {
-        findRecordConditions.push({
-          $or: [
-            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
-            { "recipientWorkPoligon.workPlaceId": null },
-          ]
-        });
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
       }
 
       await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }).session(session);
@@ -342,12 +336,9 @@ router.post(
       if (workPoligon.workPlaceId) {
         findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
       } else {
-        findRecordConditions.push({
-          $or: [
-            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
-            { "recipientWorkPoligon.workPlaceId": null },
-          ]
-        });
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
       }
       const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
       if (!workOrder) {
@@ -502,7 +493,7 @@ router.post(
         el.confirmDateTime = confirmDateTime;
       });
 
-      order.save();
+      await order.save();
 
       res.status(OK).json({ message: 'Распоряжение подтверждено', orderId });
 
@@ -711,12 +702,9 @@ router.post(
         if (workPoligon.workPlaceId) {
           findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
         } else {
-          findRecordConditions.push({
-            $or: [
-              { "recipientWorkPoligon.workPlaceId": { $exists: false } },
-              { "recipientWorkPoligon.workPlaceId": null },
-            ]
-          });
+          // The { item : null } query matches documents that either contain the item field
+          // whose value is null or that do not contain the item field
+          findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
         }
         const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
         // Здесь не генерируем никаких ошибок, если в коллекции рабочих распоряжений ничего не найдем
@@ -805,12 +793,9 @@ router.post(
       if (workPoligon.workPlaceId) {
         findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
       } else {
-        findRecordsConditions.push({
-          $or: [
-            { "recipientWorkPoligon.workPlaceId": { $exists: false } },
-            { "recipientWorkPoligon.workPlaceId": null },
-          ]
-        });
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": null });
       }
 
       // Удаляем записи в таблице рабочих распоряжений
