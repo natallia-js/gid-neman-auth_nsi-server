@@ -878,7 +878,7 @@ router.post(
         datetimeEnd,
         includeDocsCriteria,
         sortFields,
-        /*filterFields,*/
+        filterFields,
         page,
         docsCount,
       } = req.body;
@@ -958,29 +958,125 @@ router.post(
 
       matchFilter.$and.push(orderCreatorAddresseeFilter);
 
-      // Применяем сортировку
-      const sortConditions = [];
-      if (sortFields) {
-        for (let field in sortFields) {
-          sortConditions.push([field, sortFields[field]]);
-        }
-      } else {
-        sortConditions.push(['createDateTime', 1]);
+      if (filterFields) {
+        const orderAcceptorFilter = (value) => {
+          return { $elemMatch: {
+            // $ne selects the documents where the value of the field is not equal to the specified value.
+            // This includes documents that do not contain the field.
+            confirmDateTime: { $exists: true },
+            confirmDateTime: { $ne: null },
+            $or: [
+              { placeTitle: new RegExp(value, 'i') },
+              { post: new RegExp(value, 'i') },
+              { fio: new RegExp(value, 'i') },
+            ],
+          } };
+        };
+        filterFields.forEach((filter) => {
+          switch (filter.field) {
+            case 'toWhom':
+              // Поиск по иным адресатам производится только в том случае, если распоряжение издано ЭЦД
+              matchFilter.$and.push({
+                "workPoligon.type": WORK_POLIGON_TYPES.ECD_SECTOR,
+                otherToSend: { $elemMatch: {
+                  $or: [
+                    { placeTitle: new RegExp(filter.value, 'i') },
+                    { post: new RegExp(filter.value, 'i') },
+                    { fio: new RegExp(filter.value, 'i') },
+                  ]
+                } },
+              });
+              break;
+            // Поиск подчисла в числе
+            case 'number':
+              matchFilter.$and.push({
+                $expr: {
+                  $regexMatch: {
+                    input: { $toString: `$${filter.field}` },
+                    regex: new RegExp(filter.value),
+                  },
+                },
+              });
+              break;
+            // Поиск по значениям полей объектов массива
+            case 'orderContent':
+              matchFilter.$and.push({
+                'orderText.orderText': { $elemMatch: { value: new RegExp(filter.value, 'i') } },
+              });
+              break;
+            case 'orderAcceptor':
+              matchFilter.$and.push({
+                $or: [
+                  { dspToSend: orderAcceptorFilter(filter.value) },
+                  { dncToSend: orderAcceptorFilter(filter.value) },
+                  { ecdToSend: orderAcceptorFilter(filter.value) },
+                  { otherToSend: orderAcceptorFilter(filter.value) },
+                ],
+              });
+              break;
+            case 'orderSender':
+              matchFilter.$and.push({
+                $or: [
+                  { 'creator.post': new RegExp(filter.value, 'i') },
+                  { 'creator.fio': new RegExp(filter.value, 'i') },
+                ],
+              });
+          }
+        });
       }
-      sortConditions.push(['_id', 1]);
+
+      const util = require('util')
+      console.log(util.inspect(matchFilter, {showHidden: false, depth: null, colors: true}))
+
+      // Применяем сортировку
+      let sortConditions = {};
+      if (sortFields) {
+        sortConditions = sortFields;
+      } else {
+        sortConditions.createDateTime = 1;
+      }
+      sortConditions._id = 1;
 
       // Ищем данные
       const totalRecords = await Order.countDocuments(matchFilter);
 
-      const data = await Order
+      let data = await Order
         .find(matchFilter)
         .sort(sortConditions)
         .skip(page > 0 ? (page - 1) * docsCount : 0)
-        .limit(docsCount);
+        .limit(docsCount)
+        .exec();
 
       // Имея конечную выборку документов, можем для тех из них, тип которых "приказ ЭЦД" либо
       // "запрещение ЭЦД" и у которых есть связанный с ними документ, найти этот документ типа
       // "уведомление/отмена запрещения" и связать его с найденным
+
+      if (data && data.length) {
+        const orderChainIds = data.filter((el) =>
+          [ORDER_PATTERN_TYPES.ECD_ORDER, ORDER_PATTERN_TYPES.ECD_PROHIBITION].includes(el.type) &&
+          String(el.orderChain.chainId) === String(el._id) && el.orderChain.chainEndDateTime !== el.timeSpan.end)
+          .map((el) => el.orderChain.chainId);
+        if (orderChainIds.length) {
+          const connectedData = await Order
+            .find({
+              type: ORDER_PATTERN_TYPES.ECD_NOTIFICATION,
+              "orderChain.chainId": orderChainIds,
+            });
+          if (connectedData.length) {
+            data = data.map((order) => {
+              const connectedOrder = connectedData.find((el) => String(el.orderChain.chainId) === String(order.orderChain.chainId));
+              if (!connectedOrder) {
+                return order;
+              }
+              return {
+                ...order._doc,
+                orderNotificationDateTime: connectedOrder._doc.timeSpan.start,
+                notificationNumber: connectedOrder._doc.number,
+              };
+            });
+          }
+        }
+      }
 
       res.status(OK).json({ data, totalRecords });
 
