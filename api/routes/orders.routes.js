@@ -846,7 +846,8 @@ router.post(
  *              дате-времени издания соответствующих документов; если есть, то к условиям в sortFields
  *              добавляется условие сортировки по id соответствующих документов (сортировка по возрастанию),
  *              все это необходимо для поддерки пагинации)
- * filterFields - объект полей с условиями поиска по массиву данных
+ * filterFields - объект полей с условиями поиска по массиву данных (если поиск запрашивается по номеру уведомления,
+ *                то остальные критерии поиска и сортировка автоматически не принимаются во внимание)
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
@@ -959,6 +960,7 @@ router.post(
       matchFilter.$and.push(orderCreatorAddresseeFilter);
 
       if (filterFields) {
+        // Фильтрация по адресату
         const orderAcceptorFilter = (value) => {
           return { $elemMatch: {
             // $ne selects the documents where the value of the field is not equal to the specified value.
@@ -972,6 +974,7 @@ router.post(
             ],
           } };
         };
+        // Фильтрация по остальным полям
         filterFields.forEach((filter) => {
           switch (filter.field) {
             case 'toWhom':
@@ -1021,64 +1024,97 @@ router.post(
                   { 'creator.fio': new RegExp(filter.value, 'i') },
                 ],
               });
+              break;
           }
         });
       }
 
-      const util = require('util')
-      console.log(util.inspect(matchFilter, {showHidden: false, depth: null, colors: true}))
+      // Поиск связанных документов типа 'Уведомление ЭЦД'
+      const lookupConditions = {
+        from: 'orders',
+        let: { the_id: '$_id', the_chainId: '$orderChain.chainId'},
+        pipeline: [
+          { $match:
+            { $expr:
+              { $and:
+                [
+                  { $eq: ['$type', ORDER_PATTERN_TYPES.ECD_NOTIFICATION] },
+                  { $eq: ['$$the_chainId', '$orderChain.chainId'] },
+                ],
+              },
+            },
+          },
+          { $project:
+            {
+              _id: 0,
+              number: 1,
+              startDate: '$timeSpan.start',
+            },
+          },
+        ],
+        as: 'connectedOrder',
+      };
+
+      // Фильтрация по номеру уведомления (если необходима)
+      let connectedDataFilterExists = false;
+      if (filterFields) {
+        const notificationNumberFilter = filterFields.find((el) => el.field === 'notificationNumber');
+        if (notificationNumberFilter) {
+          connectedDataFilterExists = true;
+          lookupConditions.pipeline[0].$match.$expr.$and.push({
+            $regexMatch: { input: { $toString: '$number'}, regex: new RegExp(notificationNumberFilter.value) },
+          });
+        }
+      }
 
       // Применяем сортировку
       let sortConditions = {};
       if (sortFields) {
-        sortConditions = sortFields;
+        for (let sortCond in sortFields) {
+          if (sortCond !== 'orderNotificationDateTime') {
+            sortConditions[sortCond] = sortFields[sortCond];
+          } else {
+            sortConditions['connectedOrder.startDate'] = sortFields[sortCond];
+          }
+        }
       } else {
         sortConditions.createDateTime = 1;
       }
       sortConditions._id = 1;
 
+      const aggregation = [
+        { $match: matchFilter },
+        { $lookup: lookupConditions },
+        { $unwind: {
+          path: '$connectedOrder',
+          // если нет фильтрации по связанному документу, то делаем LEFT JOIN, в противном случае
+          // делаем FULL JOIN
+          preserveNullAndEmptyArrays: !connectedDataFilterExists,
+        } },
+        { $sort: sortConditions },
+        { $group: {
+          _id: null,
+          total: { $sum: 1 },
+          data: { $push: '$$ROOT' },
+        } },
+        { $project: {
+          total: 1,
+          // skip = page > 0 ? (page - 1) * docsCount : 0
+          // limit = docsCount
+          data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount] },
+        } },
+      ];
+
+      const util = require('util')
+      console.log(util.inspect(aggregation, {showHidden: false, depth: null, colors: true}))
+
       // Ищем данные
-      const totalRecords = await Order.countDocuments(matchFilter);
+      const data = await Order.aggregate(aggregation);
 
-      let data = await Order
-        .find(matchFilter)
-        .sort(sortConditions)
-        .skip(page > 0 ? (page - 1) * docsCount : 0)
-        .limit(docsCount)
-        .exec();
-
-      // Имея конечную выборку документов, можем для тех из них, тип которых "приказ ЭЦД" либо
-      // "запрещение ЭЦД" и у которых есть связанный с ними документ, найти этот документ типа
-      // "уведомление/отмена запрещения" и связать его с найденным
-
-      if (data && data.length) {
-        const orderChainIds = data.filter((el) =>
-          [ORDER_PATTERN_TYPES.ECD_ORDER, ORDER_PATTERN_TYPES.ECD_PROHIBITION].includes(el.type) &&
-          String(el.orderChain.chainId) === String(el._id) && el.orderChain.chainEndDateTime !== el.timeSpan.end)
-          .map((el) => el.orderChain.chainId);
-        if (orderChainIds.length) {
-          const connectedData = await Order
-            .find({
-              type: ORDER_PATTERN_TYPES.ECD_NOTIFICATION,
-              "orderChain.chainId": orderChainIds,
-            });
-          if (connectedData.length) {
-            data = data.map((order) => {
-              const connectedOrder = connectedData.find((el) => String(el.orderChain.chainId) === String(order.orderChain.chainId));
-              if (!connectedOrder) {
-                return order;
-              }
-              return {
-                ...order._doc,
-                orderNotificationDateTime: connectedOrder._doc.timeSpan.start,
-                notificationNumber: connectedOrder._doc.number,
-              };
-            });
-          }
-        }
-      }
-
-      res.status(OK).json({ data, totalRecords });
+      res.status(OK).json({
+        data: data && data[0] ? data[0].data : [],
+        totalRecords: data && data[0] ? data[0].total : 0,
+      });
 
     } catch (error) {
       console.log(error);
