@@ -663,8 +663,8 @@ router.post(
 
 
 /**
- * Обрабатывает запрос на получение списка id распоряжений, изданных начиная с указанной даты
- * на указанном полигоне управления (полигон управления - глобальный, т.е. не рассматриваются рабочие
+ * Обрабатывает запрос на получение массива id распоряжений, изданных начиная с указанной даты
+ * и адресованных заданному полигону управления (полигон управления - глобальный, т.е. не рассматриваются рабочие
  * места на полигонах управления; для запросов, поступающих с рабочего места, извлекаются все данные
  * по полигону управления, к которому данное рабочее место относится).
  *
@@ -678,7 +678,7 @@ router.post(
  * datetime - дата-время начала поиска информации (обязателен)
  */
  router.post(
-  '/ordersCreatedFromGivenDateOnGivenWorkPoligon',
+  '/ordersAddressedToGivenWorkPoligonFromGivenDate',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем требуемые полномочия на запрашиваемое действие
@@ -704,6 +704,7 @@ router.post(
       const { datetime } = req.body;
 
       const matchFilter = { createDateTime: { $gte: new Date(datetime) } };
+
       const poligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
       switch (workPoligon.type) {
         case WORK_POLIGON_TYPES.STATION:
@@ -715,103 +716,13 @@ router.post(
         case WORK_POLIGON_TYPES.ECD_SECTOR:
           matchFilter.ecdToSend = poligonSearchFilter;
           break;
+        default:
+          res.status(OK).json({ docsNumber: 0 });
+          break;
       }
+
       const data = await Order.find(matchFilter);
-      res.status(OK).json(data.map((doc) => doc._id));
-
-    } catch (error) {
-      console.log(error);
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
-    }
-  }
-);
-
-
-/**
- * Обрабатывает запрос на получение списка распоряжений, изданных в заданный промежуток времени на
- * указанном полигоне управления либо адресованных ему (полигон управления - глобальный, т.е. не
- * рассматриваются рабочие места на полигонах управления; для запросов, поступающих с рабочего места,
- * извлекаются все данные по полигону управления, к которому данное рабочее место относится).
- *
- * Распоряжения сортируются по дате и времени их издания (прямой хронологический порядок).
- *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- *
- * Информация о типе и id рабочего полигона извлекается из токена пользователя.
- * Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
- * то информация извлекаться не будет.
- *
- * Параметры тела запроса:
- * datetimeStart - дата-время начала поиска информации (обязателен)
- * datetimeEnd - дата-время окончания поиска информации (не обязателен, если не указан, то
- *               информация извлекается начиная с указанной даты до настоящего момента времени)
- * includeDocsCriteria - дополнительные критерии поиска информации (не обязателен)
- */
- router.post(
-  '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
-  // проверка параметров запроса
-  getOrdersRules(),
-  validate,
-  async (req, res) => {
-    const workPoligon = req.user.workPoligon;
-    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
-      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
-    }
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { datetimeStart, datetimeEnd, includeDocsCriteria } = req.body;
-
-      let matchFilter;
-
-      // Фильтрация по дате-времени издания
-      const startDate = new Date(datetimeStart);
-      const endDate = new Date(datetimeEnd);
-      if (!datetimeEnd) {
-        matchFilter = { createDateTime: { $gte: startDate } };
-      } else {
-        matchFilter = {
-          createDateTime: { $gte: startDate },
-          createDateTime: { $lte: endDate },
-        };
-      }
-
-      // Фильтрация по издателю
-      matchFilter.$or = [
-        { "workPoligon.id": workPoligon.id, "workPoligon.type": workPoligon.type },
-      ];
-
-      // Фильтрация по адресату
-      if(!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.ONLY_OUTGOUING)) {
-        const addresseePoligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
-        switch (workPoligon.type) {
-          case WORK_POLIGON_TYPES.STATION:
-            matchFilter.$or.push({ dspToSend: addresseePoligonSearchFilter });
-            break;
-          case WORK_POLIGON_TYPES.DNC_SECTOR:
-            matchFilter.$or.push({ dncToSend: addresseePoligonSearchFilter });
-            break;
-          case WORK_POLIGON_TYPES.ECD_SECTOR:
-            matchFilter.$or.push({ ecdToSend: addresseePoligonSearchFilter });
-            break;
-        }
-      }
-
-      // Ищем данные
-      const data = await Order.find(matchFilter).sort([['createDateTime', 'ascending']]) || [];
-
-      res.status(OK).json(data);
+      res.status(OK).json(data ? data.map((el) => el._id) : []);
 
     } catch (error) {
       console.log(error);
@@ -1100,13 +1011,10 @@ router.post(
         { $project: {
           total: 1,
           // skip = page > 0 ? (page - 1) * docsCount : 0
-          // limit = docsCount
-          data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount] },
+          // limit = docsCount || 1000000
+          data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
         } },
       ];
-
-      const util = require('util')
-      console.log(util.inspect(aggregation, {showHidden: false, depth: null, colors: true}))
 
       // Ищем данные
       const data = await Order.aggregate(aggregation);
