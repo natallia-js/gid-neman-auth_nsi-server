@@ -10,7 +10,6 @@ const {
   addOrderValidationRules,
   getDataForGIDValidationRules,
   getOrdersFromGivenDateRules,
-  getOrdersRules,
 } = require('../validators/orders.validator');
 const { TStation } = require('../models/TStation');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
@@ -128,37 +127,41 @@ const {
   addOrderValidationRules(),
   validate,
   async (req, res) => {
+    // Определяем рабочий полигон пользователя
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
+
     // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const {
+      type,
+      number,
+      createDateTime,
+      place,
+      timeSpan,
+      orderText,
+      dncToSend,
+      dspToSend,
+      ecdToSend,
+      otherToSend,
+      workPoligonTitle,
+      creator,
+      createdOnBehalfOf,
+      specialTrainCategories,
+      orderChainId,
+      showOnGID,
+      idOfTheOrderToCancel,
+    } = req.body;
+
+    // Генерируем id нового распоряжения
+    const newOrderObjectId = new mongoose.Types.ObjectId();
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const {
-        type,
-        number,
-        createDateTime,
-        place,
-        timeSpan,
-        orderText,
-        dncToSend,
-        dspToSend,
-        ecdToSend,
-        otherToSend,
-        workPoligonTitle,
-        creator,
-        createdOnBehalfOf,
-        specialTrainCategories,
-        orderChainId,
-        showOnGID,
-        idOfTheOrderToCancel,
-      } = req.body;
-
-      // Определяем рабочий полигон пользователя
-      const workPoligon = req.user.workPoligon;
-
-      const newOrderObjectId = new mongoose.Types.ObjectId();
-
       // Полагаем по умолчанию, что распоряжение принадлежит цепочке, в которой оно одно
       let orderChainInfo = {
         chainId: newOrderObjectId,
