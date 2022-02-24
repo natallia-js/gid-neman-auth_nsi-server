@@ -134,10 +134,10 @@ router.post(
     } = req.body;
 
     try {
-      const foundDraft = await App.Draft(id);
+      const foundDraft = await Draft.findById(id);
 
       if (!foundDraft) {
-        return res.status(ERR).json({ message: 'Не указан id черновика' });
+        return res.status(ERR).json({ message: 'Не найден черновик документа' });
       }
 
       foundDraft.place = place;
@@ -154,6 +154,49 @@ router.post(
       await foundDraft.save();
 
       res.status(OK).json({ message: 'Информация успешно сохранена', draft: foundDraft });
+
+    } catch (error) {
+      console.log(error);
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на удаление существующего черновика распоряжения.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры запроса:
+ *   id - идентификатор черновика
+ */
+ router.post(
+  '/del',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  // проверка факта нахождения пользователя на смене (дежурстве)
+  isOnDuty,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
+    try {
+      const delRes = await Draft.deleteOne({ _id: id });
+      if (!delRes.deletedCount) {
+        return res.status(ERR).json({ message: 'Не найден черновик документа' });
+      }
+      res.status(OK).json({ message: 'Информация успешно удалена', id });
 
     } catch (error) {
       console.log(error);
