@@ -1,13 +1,5 @@
 const { Schema, model } = require('mongoose');
-
-const {
-  /*orderPlaceSchema,
-  timeSpanSchema,
-  orderRecipientSchema,*/
-  workPoligon,
-  /*otherToSendSchema,
-  fullOrderTextSchema,*/
-} = require('./subSchemas');
+const { workPoligon } = require('./subSchemas');
 
 // Схема записи в коллекции черновиков распоряжений
 const schema = new Schema({
@@ -16,31 +8,26 @@ const schema = new Schema({
   // Дата и время создания черновика
   createDateTime: { type: Date, required: true },
   // Тип и код места (участка) действия распоряжения
-  //place: { type: orderPlaceSchema, required: false },
   place: { type: Object, required: false },
   // Время (временной интервал) действия распоряжения
-  //timeSpan: { type: timeSpanSchema, required: false },
   timeSpan: { type: Object, required: false },
   defineOrderTimeSpan: { type: Object, required: false },
   // Наименование и текст распоряжения
-  //orderText: { type: fullOrderTextSchema, required: false },
   orderText: { type: Object, required: false },
   // Список участков ДНЦ, на которые необходимо передать распоряжение
-  dncToSend: [Object], //[orderRecipientSchema],
+  dncToSend: [Object],
   // Список станций, на которые необходимо передать распоряжение
-  dspToSend: [Object], //[orderRecipientSchema],
+  dspToSend: [Object],
   // Список участков ЭЦД, на которые необходимо передать распоряжение
-  ecdToSend: [Object], //[orderRecipientSchema],
+  ecdToSend: [Object],
   // Список остальных адресатов
-  otherToSend: [Object], //[otherToSendSchema],
+  otherToSend: [Object],
   // id и тип участка / рабочего полигона пользователя, создавшего черновик
   workPoligon: { type: workPoligon, required: true },
   // От имени кого издается распоряжение
   createdOnBehalfOf: { type: String, required: false },
-  // true - отображать на ГИД, false - не отображать на ГИД
-  //showOnGID: { type: Boolean, required: false },
+  // Отображать либо не отображать на ГИД
   showOnGID: { type: Object, required: false },
 });
-
 
 module.exports = model('Draft', schema);

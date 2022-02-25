@@ -75,7 +75,7 @@ router.post(
         dncToSend,
         dspToSend,
         ecdToSend,
-        otherToSend: otherToSend.map((item) => ({ ...item, _id: item.id })),
+        otherToSend,
         workPoligon,
         createdOnBehalfOf,
         showOnGID,
@@ -147,7 +147,7 @@ router.post(
       foundDraft.dncToSend = dncToSend;
       foundDraft.dspToSend = dspToSend;
       foundDraft.ecdToSend = ecdToSend;
-      foundDraft.otherToSend = otherToSend.map((item) => ({ ...item, _id: item.id }));
+      foundDraft.otherToSend = otherToSend,
       foundDraft.createdOnBehalfOf = createdOnBehalfOf;
       foundDraft.showOnGID = showOnGID;
 

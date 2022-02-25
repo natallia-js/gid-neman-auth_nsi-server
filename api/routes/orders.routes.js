@@ -208,7 +208,7 @@ const {
         dncToSend,
         dspToSend,
         ecdToSend,
-        otherToSend: otherToSend.map((item) => ({ ...item, _id: item.id })),
+        otherToSend,
         workPoligon,
         creator,
         createdOnBehalfOf,
