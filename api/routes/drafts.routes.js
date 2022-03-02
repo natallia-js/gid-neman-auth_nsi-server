@@ -63,6 +63,19 @@ router.post(
       showOnGID,
     } = req.body;
 
+    console.log(type,
+      createDateTime,
+      place,
+      timeSpan,
+      defineOrderTimeSpan,
+      orderText,
+      dncToSend,
+      dspToSend,
+      ecdToSend,
+      otherToSend,
+      createdOnBehalfOf,
+      showOnGID);
+
     try {
       // Создаем в БД запись с данными о новом черновике распоряжения
       const draft = new Draft({

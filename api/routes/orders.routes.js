@@ -4,6 +4,7 @@ const auth = require('../middleware/auth.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
+const Draft = require('../models/Draft');
 const LastOrdersParam = require('../models/LastOrdersParam');
 const WorkOrder = require('../models/WorkOrder');
 const {
@@ -106,6 +107,7 @@ const {
  *   (специально для случая издания распоряжения о принятии дежурства ДСП: при издании нового распоряжения
  *   у предыдущего время окончания действия становится не "до отмены", а ему присваивается дата и время
  *   начала действия данного распоряжения)
+ * draftId - id черновика, который необходимо удалить при успешном издании распоряжения
  */
  router.post(
   '/add',
@@ -156,6 +158,7 @@ const {
       orderChainId,
       showOnGID,
       idOfTheOrderToCancel,
+      draftId,
     } = req.body;
 
     // Генерируем id нового распоряжения
@@ -388,6 +391,9 @@ const {
         }
       }
 
+      // Удаляем (при необходимости) черновик распоряжения
+      const delRes = draftId ? await Draft.deleteOne({ _id: draftId }).session(session) : null;
+
       await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно сохранена', order:
@@ -398,6 +404,7 @@ const {
           confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
           sendOriginal: true,
         },
+        draftId: (delRes && delRes.deletedCount === 1) ? draftId : null,
       });
 
     } catch (error) {
