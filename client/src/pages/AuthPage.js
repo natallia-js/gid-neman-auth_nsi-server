@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { useHttp } from '../hooks/http.hook';
 import { MESSAGE_TYPES, useCustomMessage } from '../hooks/customMessage.hook';
 import { AuthContext } from '../context/AuthContext';
-import { ServerAPI } from '../constants';
+import { ServerAPI, CURR_APP_ABBREV_NAME } from '../constants';
 import { Form, Input, Button, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
@@ -31,7 +31,7 @@ export const AuthPage = () => {
   const loginHandler = async (loginData) => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const data = await request(ServerAPI.LOGIN, 'POST', { ...loginData });
+      const data = await request(ServerAPI.LOGIN, 'POST', { ...loginData, appplicationAbbreviation: CURR_APP_ABBREV_NAME });
 
       // Входим в систему
       auth.login(data.token, data.userId, data.userInfo, data.roles, data.credentials);

@@ -8,6 +8,7 @@ const hasSpecialCredentials = require('../middleware/hasSpecialCredentials.middl
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
+const { getUserPostFIOString, getUserData } = require('../middleware/getUserData.middleware');
 const {
   registerValidationRules,
   addRoleValidationRules,
@@ -24,7 +25,7 @@ const App = require('../models/App');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
-const { USER_NOT_FOUND_ERR_MESS } = require('../constants');
+const { addDY58UserActionInfo, addAdminActionInfo } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -35,11 +36,13 @@ const {
   ERR,
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
+  USER_NOT_FOUND_ERR_MESS,
 
   ALL_PERMISSIONS,
 
   GidNemanAuthNSIUtil_ShortTitle,
   GidNemanAuthNSIUtil_Title,
+  DY58_APP_CODE_NAME,
 
   MAIN_ADMIN_ROLE_NAME,
   MAIN_ADMIN_ROLE_DESCRIPTION,
@@ -273,6 +276,8 @@ router.post(
   '/register',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // Извлекаем из БД данные о пользователе, выполняющем действие
+  getUserData,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -402,6 +407,26 @@ router.post(
       await t.commit();
       await session.commitTransaction();
 
+      // Логируем действие пользователя
+      await addAdminActionInfo({
+        user: req.user.postFIO,
+        actionTime: new Date(),
+        action: 'Регистрация пользователя',
+        actionParams: {
+          userId: user._id,
+          login,
+          name,
+          fatherName,
+          surname,
+          post,
+          service,
+          roles,
+          stations,
+          dncSectors,
+          ecdSectors,
+        },
+      });
+
       const resObj = {
         ...user._doc,
         stationWorkPoligons: stations,
@@ -511,6 +536,7 @@ router.post(
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
  * password - пароль пользователя (обязателен),
+ * appplicationAbbreviation - аббревиатура приложения (обязателен)
  */
 router.post(
   '/login',
@@ -519,7 +545,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе login, password
-    const { login, password } = req.body;
+    const { login, password, appplicationAbbreviation } = req.body;
 
     try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
@@ -682,6 +708,28 @@ router.post(
         jwtSecret,
         //{ expiresIn: '1h' }
       );
+
+      // Логируем действие пользователя
+      const logObject = {
+        user: getUserPostFIOString({
+          post: user.post,
+          name: user.name,
+          fatherName: user.fatherName,
+          surname: user.surname,
+        }),
+        workPoligon: '',
+        actionTime: new Date(),
+        action: 'Вход пользователя в систему',
+        actionParams: {
+          application: appplicationAbbreviation,
+          login,
+        },
+      };
+      if (appplicationAbbreviation === DY58_APP_CODE_NAME) {
+        await addDY58UserActionInfo(logObject);
+      } else if (appplicationAbbreviation === GidNemanAuthNSIUtil_ShortTitle) {
+        await addAdminActionInfo(logObject);
+      }
 
       res.status(OK).json({
         token,

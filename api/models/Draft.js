@@ -1,6 +1,7 @@
 const { Schema, model } = require('mongoose');
 const { workPoligon } = require('./subSchemas');
 
+
 // Схема записи в коллекции черновиков распоряжений
 const schema = new Schema({
   // Тип распоряжения (распоряжение / заявка / уведомление / запрещение...)

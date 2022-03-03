@@ -128,5 +128,7 @@ module.exports = {
 
   ORDER_PATTERN_TYPES,
 
+  DY58_APP_CODE_NAME: 'DY-58',
+
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };
