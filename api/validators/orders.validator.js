@@ -72,22 +72,6 @@ const checkOrderText = (val) => {
   return true;
 }
 
-const checkCreator = (val) => {
-  if (typeof val !== 'object') {
-    throw new Error('Издатель распоряжения должен быть объектом');
-  }
-  if (typeof val.id !== 'string' || !val.id.length) {
-    throw new Error('Не указан id издателя распоряжения');
-  }
-  if (typeof val.post !== 'string' || !val.post.length) {
-    throw new Error('Не указана должность издателя распоряжения');
-  }
-  if (typeof val.fio !== 'string' || !val.fio.length) {
-    throw new Error('Не указано ФИО издателя распоряжения');
-  }
-  return true;
-}
-
 const addOrderValidationRules = () => {
   return [
     check('type')
@@ -115,11 +99,6 @@ const addOrderValidationRules = () => {
     // ...dncToSend
     // ...dspToSend
     // ...ecdToSend
-    check('creator')
-      .exists()
-      .withMessage('Не указана информация о создателе распоряжения')
-      .bail()
-      .custom((val) => checkCreator(val)),
   ];
 };
 

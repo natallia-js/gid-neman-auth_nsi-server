@@ -1,5 +1,8 @@
 const WorkOrder = require('../models/WorkOrder');
 const Order = require('../models/Order');
+const DY58UsersLog = require('../models/DY58UsersLog');
+const ErrorsLog = require('../models/ErrorsLog');
+const AdminsLog = require('../models/AdminsLog');
 const config = require('config');
 
 
@@ -26,13 +29,16 @@ const config = require('config');
  *
  * !!! Для корректной работы с программой необходимо, чтобы максимальное время хранения распоряжений в
  * коллекции рабочих распоряжений было меньше времени хранения распоряжений в основной коллекции распоряжений.
+ *
+ * 3) Удаляются также записи из коллекций логов.
  */
 async function processDelDBData() {
-  const today = new Date();
+  const todayTime = new Date().getTime();
   const workPeriodInDays = config.has('workPeriodInDays') ? config.get('workPeriodInDays') : 1;
   const storeOrdersInDBInDays = config.has('storeOrdersInDBInDays') ? config.get('storeOrdersInDBInDays') : 365;
   const maxDaysToStoreUnconfirmedOrders = config.has('maxDaysToStoreUnconfirmedOrders')
     ? config.get('maxDaysToStoreUnconfirmedOrders') : 100;
+  const storeLogsInDBInDays = config.has('storeLogsInDBInDays') ? config.get('storeLogsInDBInDays') : 365;
   const daysToMillisecondsMultiplier = 24 * 60 * 60 * 1000;
 
   // 1)
@@ -46,7 +52,7 @@ async function processDelDBData() {
           { orderChain: { $exists: true } },
           { "orderChain.chainEndDateTime": { $exists: true } },
           { "orderChain.chainEndDateTime": { $ne: null } },
-          { "orderChain.chainEndDateTime": { $lt: new Date(today.getTime() - maxDaysToStoreUnconfirmedOrders * daysToMillisecondsMultiplier) } },
+          { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - maxDaysToStoreUnconfirmedOrders * daysToMillisecondsMultiplier) } },
         ],
       },
       {
@@ -60,7 +66,7 @@ async function processDelDBData() {
           { orderChain: { $exists: true } },
           { "orderChain.chainEndDateTime": { $exists: true } },
           { "orderChain.chainEndDateTime": { $ne: null } },
-          { "orderChain.chainEndDateTime": { $lt: new Date(today.getTime() - workPeriodInDays * daysToMillisecondsMultiplier) } },
+          { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - workPeriodInDays * daysToMillisecondsMultiplier) } },
         ],
       },
     ],
@@ -73,10 +79,21 @@ async function processDelDBData() {
       { orderChain: { $exists: true } },
       { "orderChain.chainEndDateTime": { $exists: true } },
       { "orderChain.chainEndDateTime": { $ne: null } },
-      { "orderChain.chainEndDateTime": { $lt: new Date(today.getTime() - storeOrdersInDBInDays * daysToMillisecondsMultiplier) } },
+      { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) } },
     ],
   };
   await Order.deleteMany(matchFilter);
+
+  // 3)
+  matchFilter = {
+    actionTime: { $lt: new Date(todayTime - storeLogsInDBInDays * daysToMillisecondsMultiplier) },
+  };
+  await DY58UsersLog.deleteMany(matchFilter);
+  await AdminsLog.deleteMany(matchFilter);
+  matchFilter = {
+    errorTime: { $lt: new Date(todayTime - storeLogsInDBInDays * daysToMillisecondsMultiplier) },
+  };
+  await ErrorsLog.deleteMany(matchFilter);
 }
 
 

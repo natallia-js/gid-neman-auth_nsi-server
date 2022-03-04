@@ -46,6 +46,7 @@ module.exports = (req, res, next) => {
      * EXAMPLE:
      * decoded = {
 [0]   userId: '60d9beefe2f14904f0a315b4',
+[0]   postFIO: '...',
 [0]   service: 'Д',
 [0]   roles: [ 'DNC', 'ECD', 'DSP', 'DSP_Operator' ],
 [0]   credentials: [

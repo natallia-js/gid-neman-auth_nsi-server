@@ -43,8 +43,8 @@ async function addDY58UserActionInfo(params) {
   } catch (error) {
     addError({
       errorTime: new Date(),
-      action: addDY58UserActionInfo.name,
-      error: 'Попытка сохранить информацию о действии пользователем ДУ-58',
+      action: 'Сохранение информации о действии пользователя ДУ-58',
+      error,
       actionParams: params,
     });
   }
@@ -68,8 +68,8 @@ async function addAdminActionInfo(params) {
   } catch (error) {
     addError({
       errorTime: new Date(),
-      action: addAdminActionInfo.name,
-      error: 'Попытка сохранить информацию о действии администратора',
+      action: 'Сохранение информации о действии администратора',
+      error,
       actionParams: params,
     });
   }

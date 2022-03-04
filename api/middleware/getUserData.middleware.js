@@ -1,17 +1,7 @@
-const {
-  UNAUTHORIZED,
-  USER_NOT_FOUND_ERR_MESS,
-} = require('../constants');
 const User = require('../models/User');
+const { UNAUTHORIZED, USER_NOT_FOUND_ERR_MESS } = require('../constants');
+const { getUserPostFIOString } = require('../routes/additional/getUserTransformedData');
 
-
-const getUserFIOString = ({ name, fatherName, surname }) => {
-  return `${surname} ${name.charAt(0)}.${fatherName && fatherName.length ? fatherName.charAt(0) + '.': ''}`;
-};
-
-const getUserPostFIOString = ({ post, name, fatherName, surname }) => {
-  return `${post} ${getUserFIOString({ name, fatherName, surname })}`;
-};
 
 /**
  * Промежуточный обработчик получения информации о пользователе из БД на основании его id,
@@ -53,8 +43,4 @@ async function getUserData(req, res, next) {
 }
 
 
-module.exports = {
-  getUserFIOString,
-  getUserPostFIOString,
-  getUserData,
-};
+module.exports = getUserData;

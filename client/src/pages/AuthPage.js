@@ -31,8 +31,10 @@ export const AuthPage = () => {
   const loginHandler = async (loginData) => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const data = await request(ServerAPI.LOGIN, 'POST', { ...loginData, appplicationAbbreviation: CURR_APP_ABBREV_NAME });
-
+      const data = await request(ServerAPI.LOGIN, 'POST', {
+        ...loginData,
+        applicationAbbreviation: CURR_APP_ABBREV_NAME,
+      });
       // Входим в систему
       auth.login(data.token, data.userId, data.userInfo, data.roles, data.credentials);
 

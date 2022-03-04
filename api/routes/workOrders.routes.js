@@ -7,6 +7,8 @@ const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
 const User = require('../models/User');
 const { WORK_POLIGON_TYPES } = require('../constants');
+const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -22,9 +24,6 @@ const {
   ECD_FULL,
 } = require('../constants');
 
-const getUserFIOString = ({ name, fatherName, surname }) => {
-  return `${surname} ${name.charAt(0)}.${fatherName && fatherName.length ? fatherName.charAt(0) + '.': ''}`;
-};
 
 /**
  * Позволяет найти workPoligon в массиве sectors учитывая флаг findGlobalSector (true - поиск по глобальным
@@ -85,14 +84,15 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      const workPoligon = req.user.workPoligon;
-      if (!workPoligon || !workPoligon.type || !workPoligon.id) {
-        return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
-      }
-      // Считываем находящиеся в пользовательском запросе данные
-      const { startDate } = req.body;
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { startDate } = req.body;
+
+    try {
       let data;
 
       // Формируем условие фильтрации для извлечения информации из коллекции рабочих распоряжений.
@@ -148,7 +148,14 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
       res.status(OK).json(data || []);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка входящих распоряжений',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), startDate,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -187,14 +194,14 @@ router.post(
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { orderIds, deliverDateTime } = req.body;
+
     // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { orderIds, deliverDateTime } = req.body;
-
       // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений
       const findRecordConditions = [
         { orderId: orderIds },
@@ -257,11 +264,17 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Распоряжения подтверждены', orderIds, deliverDateTime });
+      res.status(OK).json({ message: 'Подтверждена доставка распоряжений', orderIds, deliverDateTime });
 
     } catch (error) {
-      console.log(error);
-
+      addError({
+        errorTime: new Date(),
+        action: 'Подтверждение доставки распоряжений на рабочий полигон',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), orderIds, deliverDateTime,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -400,7 +413,7 @@ router.post(
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
         }
         userPost = user.post;
-        userFIO = getUserFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname });
+        userFIO = getUserConciseFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname });
         if (sector && !sector.confirmDateTime) {
           sector.confirmDateTime = confirmDateTime;
           sector.post = userPost;
@@ -419,9 +432,27 @@ router.post(
 
       res.status(OK).json({ message: `Распоряжение подтверждено`, id, confirmDateTime, userPost, userFIO });
 
-    } catch (error) {
-      console.log(error);
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${workPoligon.type}, id=${workPoligon.id}, workPlaceId=${workPoligon.workPlaceId}`,
+        actionTime: confirmDateTime,
+        action: 'Подтверждение распоряжения',
+        actionParams: {
+          userId: req.user.userId, orderId: id, confirmDateTime,
+        },
+      };
+      addDY58UserActionInfo(logObject);
 
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Подтверждение распоряжения',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), orderId: id, confirmDateTime,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -497,8 +528,27 @@ router.post(
 
       res.status(OK).json({ message: 'Распоряжение подтверждено', orderId });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${userWorkPoligon.type}, id=${userWorkPoligon.id}, workPlaceId=${userWorkPoligon.workPlaceId}`,
+        actionTime: confirmDateTime,
+        action: 'Подтверждение распоряжения за других',
+        actionParams: {
+          userId: req.user.userId, orderId, confirmDateTime,
+        },
+      };
+      addDY58UserActionInfo(logObject);
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Подтверждение распоряжения за других',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), orderId, confirmDateTime,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -506,7 +556,7 @@ router.post(
 
 
 /**
- * Обрабатывает запрос на подтверждение распоряжений за других лиц (с других рабочих полигонов / рабочих мест).
+ * Обрабатывает запрос на подтверждение распоряжения за других лиц (с других рабочих полигонов / рабочих мест).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Подтвердить распоряжение за других может лишь:
@@ -730,9 +780,27 @@ router.post(
         actualLocalConfirmWorkPoligonsInfo,
       });
 
-    } catch (error) {
-      console.log(error);
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${userWorkPoligon.type}, id=${userWorkPoligon.id}, workPlaceId=${userWorkPoligon.workPlaceId}`,
+        actionTime: confirmDateTime,
+        action: 'Подтверждение распоряжения за других',
+        actionParams: {
+          userId: req.user.userId, confirmWorkPoligons, orderId, confirmDateTime,
+        },
+      };
+      addDY58UserActionInfo(logObject);
 
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Подтверждение распоряжения за других',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), confirmWorkPoligons, orderId, confirmDateTime,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -804,7 +872,14 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление рабочего распоряжения / цепочки распоряжений',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), chainId,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -931,8 +1006,14 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
-
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление адресата распоряжения в рамках станции',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), orderId, workPlaceId,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 

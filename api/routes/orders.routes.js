@@ -18,6 +18,8 @@ const { TBlock } = require('../models/TBlock');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
+const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+const { getUserFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -95,10 +97,6 @@ const {
  *     fio - ФИО этого лица
  *     sendOriginal - true - отправить оригинал, false - отправить копию
  * workPoligonTitle - наименование рабочего полигона (рабочего места полигона)
- * creator - информация о создателе распоряжения (обязательно):
- *   id - id пользователя
- *   post - должность
- *   fio - ФИО
  * createdOnBehalfOf - от чьего имени издано распоряжение (не обязательно)
  * specialTrainCategories - отметки об особых категориях поездов, к которым имеет отношение распоряжение
  * orderChainId - id цепочки распоряжений, которой принадлежит издаваемое распоряжение
@@ -141,24 +139,10 @@ const {
 
     // Считываем находящиеся в пользовательском запросе данные
     const {
-      type,
-      number,
-      createDateTime,
-      place,
-      timeSpan,
-      orderText,
-      dncToSend,
-      dspToSend,
-      ecdToSend,
-      otherToSend,
-      workPoligonTitle,
-      creator,
-      createdOnBehalfOf,
-      specialTrainCategories,
-      orderChainId,
-      showOnGID,
-      idOfTheOrderToCancel,
-      draftId,
+      type, number, createDateTime, place, timeSpan, orderText,
+      dncToSend, dspToSend, ecdToSend, otherToSend,
+      workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
+      orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
     } = req.body;
 
     // Генерируем id нового распоряжения
@@ -202,22 +186,13 @@ const {
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({
         _id: newOrderObjectId,
-        type,
-        number,
-        createDateTime,
-        place,
-        timeSpan,
-        orderText,
-        dncToSend,
-        dspToSend,
-        ecdToSend,
-        otherToSend,
-        workPoligon,
-        creator,
-        createdOnBehalfOf,
-        specialTrainCategories,
-        orderChain: orderChainInfo,
-        showOnGID,
+        type, number, createDateTime, place, timeSpan, orderText,
+        dncToSend, dspToSend, ecdToSend, otherToSend, workPoligon,
+        creator: {
+          id: req.user.userId,
+          post: req.user.post,
+          fio: getUserFIOString({ name: req.user.name, fatherName: req.user.fatheName, surname: req.user.surname }),
+        }, createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
         // если распоряжение не имеет адресатов либо не рассылается ли одного оригинала распоряжения (только
         // копии), то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
         // дата-время создания распоряжения
@@ -407,9 +382,35 @@ const {
         draftId: (delRes && delRes.deletedCount === 1) ? draftId : null,
       });
 
-    } catch (error) {
-      console.log(error);
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${workPoligon.type}, id=${workPoligon.id}, workPlaceId=${workPoligon.workPlaceId}`,
+        actionTime: createDateTime,
+        action: 'Издание распоряжения',
+        actionParams: {
+          userId: req.user.userId,
+          type, number, createDateTime, place, timeSpan, orderText,
+          dncToSend, dspToSend, ecdToSend, otherToSend,
+          workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
+          orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
+        },
+      };
+      addDY58UserActionInfo(logObject);
 
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Издание распоряжения',
+        error,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user),
+          type, number, createDateTime, place, timeSpan, orderText,
+          dncToSend, dspToSend, ecdToSend, otherToSend,
+          workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
+          orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -519,14 +520,29 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(OK).json({
-        message: 'Информация успешно сохранена',
-        order: existingOrder._doc,
-      });
+      res.status(OK).json({ message: 'Информация успешно сохранена', order: existingOrder._doc });
+
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
+        actionTime: new Date(),
+        action: 'Редактирование распоряжения',
+        actionParams: {
+          userId: req.user.userId, orderId: id, timeSpan, orderText,
+        },
+      };
+      addDY58UserActionInfo(logObject);
 
     } catch (error) {
-      console.log(error);
-
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование распоряжения',
+        error,
+        actionParams: {
+          user: userPostFIOString(req.user), orderId: id, timeSpan, orderText,
+        },
+      });
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -665,7 +681,14 @@ router.post(
       }));
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение информации о распоряжениях для отображения на ГИД',
+        error,
+        actionParams: {
+          startDate, stations,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -735,7 +758,14 @@ router.post(
       res.status(OK).json(data ? data.map((el) => el._id) : []);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение массива id распоряжений, изданных начиная с указанной даты и адресованных заданному полигону управления',
+        error,
+        actionParams: {
+          workPoligon, datetime,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1035,7 +1065,15 @@ router.post(
       });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка распоряжений для журнала ЭЦД',
+        error,
+        actionParams: {
+          datetimeStart, datetimeEnd, includeDocsCriteria,
+          sortFields, filterFields, page, docsCount,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1118,7 +1156,16 @@ router.post(
       return res.status(OK).json({ assertDateTime: order.assertDateTime });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Проверка утвержденности (утверждение) распоряжения',
+        error,
+        actionParams: {
+          userId: req.user.userId,
+          user: userPostFIOString(req.user),
+          orderId: id,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

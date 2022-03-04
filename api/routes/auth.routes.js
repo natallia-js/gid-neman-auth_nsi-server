@@ -8,7 +8,7 @@ const hasSpecialCredentials = require('../middleware/hasSpecialCredentials.middl
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
-const { getUserPostFIOString, getUserData } = require('../middleware/getUserData.middleware');
+const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 const {
   registerValidationRules,
   addRoleValidationRules,
@@ -25,7 +25,7 @@ const App = require('../models/App');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
-const { addDY58UserActionInfo, addAdminActionInfo } = require('../serverSideProcessing/processLogsActions');
+const { addDY58UserActionInfo, addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -134,7 +134,12 @@ router.put(
       res.status(OK).json({ message: 'Регистрация прошла успешно', userId: user._id });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Регистрация Суперадминистратора',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -227,7 +232,14 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех пользователей',
+        error,
+        actionParams: {
+          serviceName: req.user.service,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -274,10 +286,9 @@ const checkRoleExists = async (roleId) => {
  */
 router.post(
   '/register',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь) и
+  // проверка приложения, с которого пришел запрос
   auth,
-  // Извлекаем из БД данные о пользователе, выполняющем действие
-  getUserData,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
@@ -407,26 +418,6 @@ router.post(
       await t.commit();
       await session.commitTransaction();
 
-      // Логируем действие пользователя
-      await addAdminActionInfo({
-        user: req.user.postFIO,
-        actionTime: new Date(),
-        action: 'Регистрация пользователя',
-        actionParams: {
-          userId: user._id,
-          login,
-          name,
-          fatherName,
-          surname,
-          post,
-          service,
-          roles,
-          stations,
-          dncSectors,
-          ecdSectors,
-        },
-      });
-
       const resObj = {
         ...user._doc,
         stationWorkPoligons: stations,
@@ -436,8 +427,30 @@ router.post(
 
       res.status(OK).json({ message: 'Регистрация прошла успешно', user: resObj });
 
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Регистрация пользователя',
+        actionParams: {
+          userId: user._id,
+          login, name, fatherName, surname, post,
+          service, roles, stations, dncSectors, ecdSectors,
+        },
+      });
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Регистрация пользователя',
+        error,
+        actionParams: {
+          userId: user._id,
+          login, name, fatherName, surname,
+          post, service, roles,
+          stations, dncSectors, ecdSectors,
+        },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -522,8 +535,29 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Добавление пользователю роли',
+        actionParams: {
+          userId,
+          roleId,
+          user: userPostFIOString(candidate),
+        },
+      });
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление пользователю роли',
+        error,
+        actionParams: {
+          userId,
+          roleId,
+          user: userPostFIOString(candidate),
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -536,7 +570,7 @@ router.post(
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
  * password - пароль пользователя (обязателен),
- * appplicationAbbreviation - аббревиатура приложения (обязателен)
+ * applicationAbbreviation - аббревиатура приложения (обязателен)
  */
 router.post(
   '/login',
@@ -544,8 +578,8 @@ router.post(
   loginValidationRules(),
   validate,
   async (req, res) => {
-    // Считываем находящиеся в пользовательском запросе login, password
-    const { login, password, appplicationAbbreviation } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { login, password, applicationAbbreviation } = req.body;
 
     try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
@@ -698,6 +732,10 @@ router.post(
       const token = jwt.sign(
         {
           userId: user._id,
+          post: user.post,
+          name: user.name,
+          fatherName: user.fatherName,
+          surname: user.surname,
           service: user.service,
           roles: rolesAbbreviations,
           credentials: appsCredentials,
@@ -708,28 +746,6 @@ router.post(
         jwtSecret,
         //{ expiresIn: '1h' }
       );
-
-      // Логируем действие пользователя
-      const logObject = {
-        user: getUserPostFIOString({
-          post: user.post,
-          name: user.name,
-          fatherName: user.fatherName,
-          surname: user.surname,
-        }),
-        workPoligon: '',
-        actionTime: new Date(),
-        action: 'Вход пользователя в систему',
-        actionParams: {
-          application: appplicationAbbreviation,
-          login,
-        },
-      };
-      if (appplicationAbbreviation === DY58_APP_CODE_NAME) {
-        await addDY58UserActionInfo(logObject);
-      } else if (appplicationAbbreviation === GidNemanAuthNSIUtil_ShortTitle) {
-        await addAdminActionInfo(logObject);
-      }
 
       res.status(OK).json({
         token,
@@ -748,8 +764,34 @@ router.post(
         ecdSectorsWorkPoligons: ecdSectors,
       });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(user),
+        workPoligon: '(Пока) не определен',
+        actionTime: new Date(),
+        action: 'Вход в систему',
+        actionParams: {
+          userId: user._id,
+          application: applicationAbbreviation,
+          login,
+        },
+      };
+      if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        addDY58UserActionInfo(logObject);
+      } else if (applicationAbbreviation === GidNemanAuthNSIUtil_ShortTitle) {
+        addAdminActionInfo(logObject);
+      }
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Вход в систему',
+        error,
+        actionParams: {
+          application: applicationAbbreviation,
+          login,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -781,7 +823,13 @@ router.post(
   canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { workPoligonType, workPoligonId, workSubPoligonId, specialCredentials } = req.body;
+    const {
+      workPoligonType,
+      workPoligonId,
+      workSubPoligonId,
+      specialCredentials,
+      applicationAbbreviation,
+    } = req.body;
 
     try {
       // Ищем в БД пользователя, который прислал запрос
@@ -835,8 +883,38 @@ router.post(
 
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+        actionTime: new Date(),
+        action: 'Вход в систему без принятия дежурства',
+        actionParams: {
+          userId: req.user.userId,
+          workPoligonType,
+          workPoligonId,
+          workSubPoligonId,
+          specialCredentials,
+          application: applicationAbbreviation,
+        },
+      };
+      if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        addDY58UserActionInfo(logObject);
+      }
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Вход в систему без принятия дежурства',
+        error,
+        actionParams: {
+          workPoligonType,
+          workPoligonId,
+          workSubPoligonId,
+          specialCredentials,
+          application: applicationAbbreviation,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -866,7 +944,13 @@ router.post(
   canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { workPoligonType, workPoligonId, workSubPoligonId, specialCredentials } = req.body;
+    const {
+      workPoligonType,
+      workPoligonId,
+      workSubPoligonId,
+      specialCredentials,
+      applicationAbbreviation,
+    } = req.body;
 
     try {
       // Дежурство принимает пользователь с id = req.user.userId
@@ -937,8 +1021,38 @@ router.post(
 
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+        actionTime: lastTakeDutyTime,
+        action: 'Принятие дежурства',
+        actionParams: {
+          userId: req.user.userId,
+          workPoligonType,
+          workPoligonId,
+          workSubPoligonId,
+          specialCredentials,
+          application: applicationAbbreviation,
+        },
+      };
+      if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        addDY58UserActionInfo(logObject);
+      }
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Принятие дежурства',
+        error,
+        actionParams: {
+          workPoligonType,
+          workPoligonId,
+          workSubPoligonId,
+          specialCredentials,
+          application: applicationAbbreviation,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -955,6 +1069,9 @@ router.post(
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { applicationAbbreviation } = req.body;
+
     try {
       // Из системы выходит пользователь с id = req.user.userId,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
@@ -982,8 +1099,30 @@ router.post(
 
       res.status(OK).json({ token: newToken });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
+        actionTime: new Date(),
+        action: 'Выход из системы без сдачи дежурства',
+        actionParams: {
+          userId: req.user.userId,
+          application: applicationAbbreviation,
+        },
+      };
+      if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        addDY58UserActionInfo(logObject);
+      }
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Выход из системы без сдачи дежурства',
+        error,
+        actionParams: {
+          application: applicationAbbreviation,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1000,6 +1139,9 @@ router.post(
   // определяем возможность выполнения запрашиваемого действия
   isOnDuty,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { applicationAbbreviation } = req.body;
+
     try {
       // Из системы выходит пользователь с id = req.user.userId,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
@@ -1047,8 +1189,30 @@ router.post(
 
       res.status(OK).json({ token: newToken, lastPassDutyTime });
 
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
+        actionTime: new Date(),
+        action: 'Выход из системы со сдачей дежурства',
+        actionParams: {
+          userId: req.user.userId,
+          application: applicationAbbreviation,
+        },
+      };
+      if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        addDY58UserActionInfo(logObject);
+      }
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Выход из системы со сдачей дежурства',
+        error,
+        actionParams: {
+          application: applicationAbbreviation,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1128,8 +1292,27 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Удаление пользователя',
+        actionParams: {
+          userId,
+          user: userPostFIOString(candidate),
+        },
+      });
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление пользователя',
+        error,
+        actionParams: {
+          userId,
+          user: userPostFIOString(candidate),
+        },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -1208,8 +1391,29 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Удаление роли пользователя',
+        actionParams: {
+          userId,
+          roleId,
+          user: userPostFIOString(candidate),
+        },
+      });
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление роли пользователя',
+        error,
+        actionParams: {
+          userId,
+          roleId,
+          user: userPostFIOString(candidate),
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1258,7 +1462,7 @@ router.post(
     try {
       // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
       // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-      const { userId, login, password, service, roles } = req.body;
+      const { userId, login, password, service, roles, name, fatherName, surname, post } = req.body;
 
       if (!isMainAdmin(req) && (service !== serviceName)) {
         return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
@@ -1271,6 +1475,16 @@ router.post(
       if (!candidate) {
         return res.status(ERR).json({ message: 'Указанный пользователь не существует в базе данных' });
       }
+
+      const initialUserData = {
+        login: candidate.login,
+        service: candidate.service,
+        roles: candidate.roles,
+        name: candidate.name,
+        fatherName: candidate.fatherName,
+        surname: candidate.surname,
+        post: candidate.post,
+      };
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование информации о пользователе в службе ${candidate.service}` });
@@ -1307,8 +1521,37 @@ router.post(
 
       res.status(OK).json({ message: 'Информация успешно изменена', user: candidate });
 
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Редактирование информации о пользователе',
+        actionParams: {
+          userId,
+          user: userPostFIOString(candidate),
+          initialUserData,
+          requestData: {
+            login, service, roles, name, fatherName, surname, post,
+          },
+          changedPassword: Boolean(req.body.password),
+        },
+      });
+
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о пользователе',
+        error,
+        actionParams: {
+          userId,
+          user: userPostFIOString(candidate),
+          initialUserData,
+          requestData: {
+            login, service, roles, name, fatherName, surname, post,
+          },
+          changedPassword: Boolean(req.body.password),
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

@@ -15,5 +15,6 @@
   "delDBDataIntervalInMs": 60000,
   "workPeriodInDays": 2,
   "storeOrdersInDBInDays": 730,
+  "storeLogsInDBInDays": 365,
   "maxDaysToStoreUnconfirmedOrders": 30
 }
