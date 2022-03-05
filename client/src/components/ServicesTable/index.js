@@ -4,10 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewServiceModal from '../NewServiceModal';
-import {
-  ServerAPI,
-  SERVICE_FIELDS,
-} from '../../constants';
+import { ServerAPI, SERVICE_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import servicesTableColumns from './ServicesTableColumns';
 import getAppServiceObjFromDBServiceObj from '../../mappers/getAppServiceObjFromDBServiceObj';

@@ -96,6 +96,7 @@ app.use('/api/workOrders', require('./routes/workOrders.routes'));
 app.use('/api/orderPatternElementRefs', require('./routes/orderPatternElementRefs.routes'));
 app.use('/api/nsi/ecdStructuralDivisions', require('./routes/ecdStructuralDivisions.routes'));
 app.use('/api/orderDrafts', require('./routes/drafts.routes'));
+app.use('/api/adminsLogs', require('./routes/adminsLogs.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

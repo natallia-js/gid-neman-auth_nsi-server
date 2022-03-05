@@ -12,6 +12,9 @@ import { ECDSectorsPage } from './pages/ECDSectorsPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { PostsPage } from './pages/PostsPage';
 import { OrderPatternsPage } from './pages/OrderPatternsPage';
+import { AdminsLogsPage } from './pages/AdminsLogsPage';
+import { DY58UsersLogsPage } from './pages/DY58UsersLogsPage';
+import { ServerErrorsLogsPage } from './pages/ServerErrorsLogsPage';
 
 import { GetDataCredentials } from './constants';
 
@@ -58,6 +61,15 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
         </Route>
         <Route path="/ecdSectors" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_ECDSECTORS_ACTION) ? <ECDSectorsPage /> : <Redirect to="/help" />}
+        </Route>
+        <Route path="/adminsLogs" exact>
+          {hasUserCredential(GetDataCredentials.GET_ADMINS_LOGS_ACTION) ? <AdminsLogsPage /> : <Redirect to="/help" />}
+        </Route>
+        <Route path="/dy58UsersLogs" exact>
+          {hasUserCredential(GetDataCredentials.GET_DY58USERS_LOGS_ACTION) ? <DY58UsersLogsPage /> : <Redirect to="/help" />}
+        </Route>
+        <Route path="/serverErrorsLogs" exact>
+          {hasUserCredential(GetDataCredentials.GET_SERVER_ERRORS_LOGS_ACTION) ? <ServerErrorsLogsPage /> : <Redirect to="/help" />}
         </Route>
         <Route path="/help" exact>
           <HelpPage />

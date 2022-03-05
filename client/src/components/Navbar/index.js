@@ -7,6 +7,7 @@ import { UserOutlined } from '@ant-design/icons';
 
 const { Header } = Layout;
 const { Text } = Typography;
+const { SubMenu } = Menu;
 
 
 /**
@@ -83,8 +84,13 @@ export const Navbar = () => {
           <Menu.Item key="9"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
         }
         <Menu.Item key="10"><NavLink to="/orderPatterns">Шаблоны распоряжений</NavLink></Menu.Item>
-        <Menu.Item key="11"><NavLink to="/help">Помощь</NavLink></Menu.Item>
-        <Menu.Item key="12"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+        <SubMenu key="11" title="Логи">
+          <Menu.Item key="11:1"><NavLink to="/serverErrorsLogs">серверных ошибок</NavLink></Menu.Item>
+          <Menu.Item key="11:2"><NavLink to="/adminsLogs">действий администраторов</NavLink></Menu.Item>
+          <Menu.Item key="11:3"><NavLink to="/dy58UsersLogs">действий пользователей ДУ-58</NavLink></Menu.Item>
+        </SubMenu>
+        <Menu.Item key="12"><NavLink to="/help">Помощь</NavLink></Menu.Item>
+        <Menu.Item key="13"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
       </Menu>
     </Header>
   );

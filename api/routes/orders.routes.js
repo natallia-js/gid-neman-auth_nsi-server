@@ -823,18 +823,17 @@ router.post(
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
     }
+    // Считываем находящиеся в пользовательском запросе данные
+    const {
+      datetimeStart,
+      datetimeEnd,
+      includeDocsCriteria,
+      sortFields,
+      filterFields,
+      page,
+      docsCount,
+    } = req.body;
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const {
-        datetimeStart,
-        datetimeEnd,
-        includeDocsCriteria,
-        sortFields,
-        filterFields,
-        page,
-        docsCount,
-      } = req.body;
-
       // Только для журнала ЭЦД: изначально в выборку не включаем документы типа "уведомление/отмена запрещения".
       // Потому что данные документы не фигурируют в журнале как отдельные строки - только как дополнение строк
       // с информацией о приказе / запрещении. Если их включить в выборку, то будут проблемы с пагинацией.
