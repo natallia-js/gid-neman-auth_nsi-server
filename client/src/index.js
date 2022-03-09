@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './components/App';
 //import reportWebVitals from './reportWebVitals';
+import { ConfigProvider } from 'antd';
+import ru_RU from 'antd/lib/locale/ru_RU';
 
 /*
   StrictMode is a tool for highlighting potential problems in an application.
@@ -17,7 +19,9 @@ import App from './components/App';
 
 ReactDOM.render(
   //<React.StrictMode>
+  <ConfigProvider locale={ru_RU}>
     <App />
+  </ConfigProvider>
   //</React.StrictMode>
   ,
   document.getElementById('root')

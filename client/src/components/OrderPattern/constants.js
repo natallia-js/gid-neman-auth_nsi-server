@@ -1,6 +1,6 @@
 export const DateFormat = 'DD.MM.YYYY';
-export const TimeFormat = 'hh:mm';
-export const DateTimeFormat = 'DD.MM.YYYY hh:mm';
+export const TimeFormat = 'HH:mm';
+export const DateTimeFormat = 'DD.MM.YYYY HH:mm';
 
 export const OrderTypes = Object.freeze({
   ORDER: 'распоряжение',

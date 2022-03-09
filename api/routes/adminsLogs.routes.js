@@ -3,6 +3,8 @@ const auth = require('../middleware/auth.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const AdminsLog = require('../models/AdminsLog');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { getLogsRules } = require('../validators/logs.validator');
+const validate = require('../validators/validate');
 
 const router = Router();
 
@@ -43,14 +45,13 @@ const {
   },
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
+  // проверка параметров запроса
+  getLogsRules(),
+  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const {
-      datetimeStart,
-      datetimeEnd,
-      page,
-      docsCount,
-    } = req.body;
+    const { datetimeStart, datetimeEnd, page, docsCount } = req.body;
+
     try {
       const startDate = new Date(datetimeStart);
       const endDate = new Date(datetimeEnd);

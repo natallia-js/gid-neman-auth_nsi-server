@@ -92,7 +92,7 @@ const DNCTrainSectorsBlock = (props) => {
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    */
-   const onFinish = (values) => {
+  const onFinish = (values) => {
     handleAdd(values[TRAIN_SECTOR_FIELDS.NAME]);
   };
 
