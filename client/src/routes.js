@@ -29,7 +29,7 @@ import { GetDataCredentials } from './constants';
  * @param {Array} hasUserCredential - callback-функция, позволяющая определить, есть ли у пользователя заданное полномочие
  */
 export const useRoutes = (isAuthenticated, hasUserCredential) => {
-  if (isAuthenticated) {
+  if (isAuthenticated) {console.log('authenticated OK')
     return (
       <Switch>
         <Route path="/apps" exact>
@@ -66,7 +66,7 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
           {hasUserCredential(GetDataCredentials.GET_ADMINS_LOGS_ACTION) ? <AdminsLogsPage /> : <Redirect to="/help" />}
         </Route>
         <Route path="/dy58UsersLogs" exact>
-          {hasUserCredential(GetDataCredentials.GET_DY58USERS_LOGS_ACTION) ? <DY58UsersLogsPage /> : <Redirect to="/help" />}
+          {hasUserCredential(GetDataCredentials.GET_DY58_USERS_LOGS_ACTION) ? <DY58UsersLogsPage /> : <Redirect to="/help" />}
         </Route>
         <Route path="/serverErrorsLogs" exact>
           {hasUserCredential(GetDataCredentials.GET_SERVER_ERRORS_LOGS_ACTION) ? <ServerErrorsLogsPage /> : <Redirect to="/help" />}

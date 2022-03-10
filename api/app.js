@@ -97,6 +97,8 @@ app.use('/api/orderPatternElementRefs', require('./routes/orderPatternElementRef
 app.use('/api/nsi/ecdStructuralDivisions', require('./routes/ecdStructuralDivisions.routes'));
 app.use('/api/orderDrafts', require('./routes/drafts.routes'));
 app.use('/api/adminsLogs', require('./routes/adminsLogs.routes'));
+app.use('/api/dy58UsersLogs', require('./routes/dy58UsersLogs.routes'));
+app.use('/api/errorsLogs', require('./routes/errorsLogs.routes'));
 
 // Порт сервера
 const PORT = config.get('port') || 4000;

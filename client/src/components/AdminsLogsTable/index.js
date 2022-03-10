@@ -50,7 +50,7 @@ const AdminsLogsTable = () => {
   // Описание столбцов таблицы
   const columns = adminsLogsTableColumns();
 
-  // Временной промежуток поиска информации (по умолчанию начальная дата - начало текущего дня)
+  // Временной промежуток поиска информации
   const [searchDataTimeSpan, setSearchDataTimeSpan] = useState({ startDate: null, endDate: null });
 
 
@@ -224,7 +224,7 @@ const AdminsLogsTable = () => {
                 onChange={onChange}
                 total={totalItemsCount}
                 showQuickJumper
-                showTotal={total => `Всего записей: ${total}`}
+                showTotal={(total, range) => `Всего записей: ${total}, показаны с ${range[0]} по ${range[1]}`}
               />
             </div>
           }

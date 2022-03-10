@@ -23,7 +23,7 @@ export const GetDataCredentials = Object.freeze({
   GET_ALL_SERVICES_ACTION: 'GET_ALL_SERVICES_ACTION',
   GET_ALL_POSTS_ACTION: 'GET_ALL_POSTS_ACTION',
   GET_ADMINS_LOGS_ACTION: 'GET_ADMINS_LOGS_ACTION',
-  GET_DY58USERS_LOGS_ACTION: 'GET_DY58USERS_LOGS_ACTION',
+  GET_DY58_USERS_LOGS_ACTION: 'GET_DY58_USERS_LOGS_ACTION',
   GET_SERVER_ERRORS_LOGS_ACTION: 'GET_SERVER_ERRORS_LOGS_ACTION',
 });
 
@@ -352,6 +352,27 @@ export const ADMIN_LOGS_FIELDS = Object.freeze({
   USER: 'user',
   ACTION_TIME: 'actionTime',
   ACTION: 'action',
+  ACTION_PARAMS: 'actionParams',
+});
+
+// ----------------------------------------
+
+export const DY58USER_LOGS_FIELDS = Object.freeze({
+  KEY: 'key',
+  WORK_POLIGON: 'workPoligon',
+  USER: 'user',
+  ACTION_TIME: 'actionTime',
+  ACTION: 'action',
+  ACTION_PARAMS: 'actionParams',
+});
+
+// ----------------------------------------
+
+export const ERROR_LOGS_FIELDS = Object.freeze({
+  KEY: 'key',
+  ERROR_TIME: 'errorTime',
+  ACTION: 'action',
+  ERROR: 'error',
   ACTION_PARAMS: 'actionParams',
 });
 
