@@ -33,6 +33,7 @@ const {
   DSP_Operator,
   DNC_FULL,
   ECD_FULL,
+  REVISOR,
 
   WORK_POLIGON_TYPES,
   INCLUDE_DOCUMENTS_CRITERIA,
@@ -115,7 +116,7 @@ const {
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR],
     };
     next();
   },
@@ -193,7 +194,7 @@ const {
           post: req.user.post,
           fio: getUserFIOString({ name: req.user.name, fatherName: req.user.fatheName, surname: req.user.surname }),
         }, createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
-        // если распоряжение не имеет адресатов либо не рассылается ли одного оригинала распоряжения (только
+        // если распоряжение не имеет адресатов либо не рассылается ни одного оригинала распоряжения (только
         // копии), то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
         // дата-время создания распоряжения
         assertDateTime:
@@ -812,7 +813,7 @@ router.post(
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [ECD_FULL],
+      creds: [ECD_FULL, REVISOR],
     };
     next();
   },

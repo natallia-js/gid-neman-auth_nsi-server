@@ -22,6 +22,7 @@ const {
   DSP_Operator,
   DNC_FULL,
   ECD_FULL,
+  REVISOR,
 } = require('../constants');
 
 
@@ -77,7 +78,7 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
+      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR],
     };
     next();
   },

@@ -80,6 +80,7 @@ const DY58_SERVER_CREDENTIALS = Object.freeze({
   DSP_FULL: 'DSP_FULL',
   DSP_Operator: 'DSP_Operator',
   ECD_FULL: 'ECD_FULL',
+  REVISOR: 'REVISOR',
 });
 
 const WEBSOCKET_CONSTANTS = Object.freeze({
