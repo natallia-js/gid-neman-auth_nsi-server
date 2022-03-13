@@ -9,6 +9,7 @@ const User = require('../models/User');
 const { WORK_POLIGON_TYPES } = require('../constants');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const isOrderAsserted = require('../routes/additional/isOrderAsserted');
 
 const router = Router();
 
@@ -425,13 +426,24 @@ router.post(
           localSector.post = userPost;
           localSector.fio = userFIO;
         }
+        // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
+        if (!order.assertDateTime) {
+          order.assertDateTime = isOrderAsserted(order);
+        }
         // By default, `save()` uses the associated session
         await order.save();
       }
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: `Распоряжение подтверждено`, id, confirmDateTime, userPost, userFIO });
+      res.status(OK).json({
+        message: `Распоряжение подтверждено`,
+        id,
+        confirmDateTime,
+        userPost,
+        userFIO,
+        assertDateTime: order.assertDateTime,
+      });
 
       // Логируем действие пользователя
       const logObject = {
@@ -525,9 +537,14 @@ router.post(
         el.confirmDateTime = confirmDateTime;
       });
 
+      // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
+      if (!order.assertDateTime) {
+        order.assertDateTime = isOrderAsserted(order);
+      }
+
       await order.save();
 
-      res.status(OK).json({ message: 'Распоряжение подтверждено', orderId });
+      res.status(OK).json({ message: 'Распоряжение подтверждено', orderId, assertDateTime: order.assertDateTime });
 
       // Логируем действие пользователя
       const logObject = {
@@ -768,6 +785,10 @@ router.post(
       }
 
       if (orderConfirmed) {
+        // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
+        if (!order.assertDateTime) {
+          order.assertDateTime = isOrderAsserted(order);
+        }
         // By default, `save()` uses the associated session
         await order.save();
       }
@@ -779,6 +800,7 @@ router.post(
         orderId,
         actualGlobalConfirmWorkPoligonsInfo,
         actualLocalConfirmWorkPoligonsInfo,
+        assertDateTime: order.assertDateTime,
       });
 
       // Логируем действие пользователя

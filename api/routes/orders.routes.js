@@ -19,7 +19,7 @@ const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
-const { getUserFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -192,8 +192,13 @@ const {
         creator: {
           id: req.user.userId,
           post: req.user.post,
-          fio: getUserFIOString({ name: req.user.name, fatherName: req.user.fatheName, surname: req.user.surname }),
-        }, createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
+          fio: getUserConciseFIOString({
+            name: req.user.name,
+            fatherName: req.user.fatherName,
+            surname: req.user.surname,
+          }),
+        },
+        createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
         // если распоряжение не имеет адресатов либо не рассылается ни одного оригинала распоряжения (только
         // копии), то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
         // дата-время создания распоряжения
@@ -1072,98 +1077,6 @@ router.post(
         actionParams: {
           datetimeStart, datetimeEnd, includeDocsCriteria,
           sortFields, filterFields, page, docsCount,
-        },
-      });
-      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
-    }
-  }
-);
-
-
-/**
- * Обрабатывает запрос на проверку утвержденности распоряжения.
- * Распоряжение считается утвержденным, если все получатели его оригинала подтвердили данное распоряжение.
- * При этом дата и время утверждения = самая поздняя из всех дат утверждения распоряжения оригиналами.
- * Получатели оригинала ищутся среди ДСП, ДНЦ, ЭЦД и Иных адресатов (т.е. всех тех, кто был упомянут в
- * секции "Кому" при издании распоряжения). Если распоряжение утверждено, данный запрос ничего не делает.
- * Если еще не утверждено, то проверяет, может ли оно быть утверждено. Если да, то проставляет дату
- * утверждения и возвращает ее.
- *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- *
- * Параметры тела запроса:
- * id - id распоряжения (обязательный параметр)
- */
- router.post(
-  '/checkIfOrderIsAsserted',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
-  async (req, res) => {
-    // Считываем находящиеся в пользовательском запросе данные
-    const { id } = req.body;
-
-    try {
-      // Вначале ищем распоряжение в основной коллекции распоряжений
-      const order = await Order.findOne({ _id: id });
-      if (!order) {
-        return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
-      }
-
-      if (order.assertDateTime) {
-        return res.status(OK).json({ message: 'Указанное распоряжение уже утверждено', assertDateTime: order.assertDateTime });
-      }
-
-      let assertDateTime = null;
-      let continueSearch = true;
-
-      const searchAssertDateTimeAmongAddresses = (addresses) => {
-        if (continueSearch && addresses && addresses.length) {
-          for (let el of addresses) {
-            if (!el.sendOriginal) {
-              continue;
-            }
-            if (!el.confirmDateTime) {
-              continueSearch = false;
-              break;
-            }
-            if (!assertDateTime || assertDateTime < el.confirmDateTime) {
-              assertDateTime = el.confirmDateTime;
-            }
-          }
-        }
-      };
-
-      searchAssertDateTimeAmongAddresses(order.dncToSend);
-      searchAssertDateTimeAmongAddresses(order.dspToSend);
-      searchAssertDateTimeAmongAddresses(order.ecdToSend);
-      searchAssertDateTimeAmongAddresses(order.otherToSend);
-
-      if (continueSearch && assertDateTime) {
-        order.assertDateTime = assertDateTime;
-        await order.save();
-      }
-
-      return res.status(OK).json({ assertDateTime: order.assertDateTime });
-
-    } catch (error) {
-      addError({
-        errorTime: new Date(),
-        action: 'Проверка утвержденности (утверждение) распоряжения',
-        error,
-        actionParams: {
-          userId: req.user.userId,
-          user: userPostFIOString(req.user),
-          orderId: id,
         },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
