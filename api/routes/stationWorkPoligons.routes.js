@@ -77,6 +77,9 @@ router.get(
  *        creds - массив строк - наименований полномочий в соответствующем приложении;
  *        параметр apps используется для поиска для каждого пользователя дополнительной информации о его
  *        полномочиях (из заданного списка) в каждом из указанных приложений
+ * includeWorkPlaces - если true, то в выборку включаются все пользователи станций; если false, то
+ *                     в выборку включаются только "главные" на станциях с рабочим полигоном "станция" и
+ *                     не включаются пользователи с рабочим полигоном "рабочее место на станции"
  */
  router.post(
   '/definitData',
@@ -98,16 +101,23 @@ router.get(
   async (req, res) => {
     try {
       // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds, onlyOnline, apps } = req.body;
+      const { stationIds, onlyOnline, apps, includeWorkPlaces } = req.body;
 
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
       const roles = await matchUserRolesToAppsAndCreds(apps);
+
+      const filter = {
+        SWP_StID: stationIds,
+      };
+      if (includeWorkPlaces === false) {
+        filter.SWP_StWP_ID = null;
+      }
 
       // Ищем id пользователей и id соответствующих им рабочих полигонов (станций и рабочих мест на станциях)
       const users = await TStationWorkPoligon.findAll({
         raw: true,
         attributes: ['SWP_UserID', 'SWP_StID', 'SWP_StWP_ID'],
-        where: { SWP_StID: stationIds },
+        where: filter,
       });
 
       // По найденным id пользователей ищем полную информацию по данным лицам
