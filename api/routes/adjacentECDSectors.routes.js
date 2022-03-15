@@ -10,6 +10,7 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TECDSector } = require('../models/TECDSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех смежных участков ЭЦД',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -82,9 +88,9 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      const { sectorId } = req.body;
+    const { sectorId } = req.body;
 
+    try {
       let data = await TAdjacentECDSector.findAll({
         raw: true,
         where: {
@@ -114,7 +120,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех смежных участков ЭЦД заданного участка ЭЦД',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -148,10 +159,10 @@ router.post(
   addAdjacentECDSectorsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorID, adjSectorIDs } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorID, adjSectorIDs } = req.body;
 
+    try {
       // Проверяем, существует ли участок ЭЦД с указанным идентификатором
       let candidate = await TECDSector.findOne({ where: { ECDS_ID: sectorID } });
       if (!candidate) {
@@ -209,7 +220,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', finalAdjSectIds });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление смежных участков ЭЦД',
+        error,
+        actionParams: { sectorID, adjSectorIDs },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -217,7 +233,7 @@ router.post(
 
 
 /**
- * Обработка запроса на удаление смежного участка.
+ * Обработка запроса на удаление смежного участка ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -243,10 +259,10 @@ router.post(
   delAdjacentECDSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorID1, sectorID2 } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorID1, sectorID2 } = req.body;
 
+    try {
       // Удаляем в БД запись
       const destroyedRows = await TAdjacentECDSector.destroy({
         where: {
@@ -264,7 +280,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление смежного участка ЭЦД',
+        error,
+        actionParams: { sectorID1, sectorID2 },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -272,7 +293,7 @@ router.post(
 
 
 /**
- * Обработка запроса на изменение списка смежных участков.
+ * Обработка запроса на изменение списка смежных участков ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -307,10 +328,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorId, adjacentSectIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorId, adjacentSectIds } = req.body;
 
+    try {
       // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
       const candidate = await TECDSector.findOne({
         where: { ECDS_ID: sectorId },
@@ -385,7 +406,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка смежных участков ЭЦД',
+        error,
+        actionParams: { sectorId, adjacentSectIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

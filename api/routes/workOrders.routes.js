@@ -94,39 +94,38 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { startDate } = req.body;
 
+    // Формируем условие фильтрации для извлечения информации из коллекции рабочих распоряжений.
+    const findRecordConditions = [
+      { "recipientWorkPoligon.id": workPoligon.id },
+      { "recipientWorkPoligon.type": workPoligon.type },
+      { orderChain: { $exists: true } },
+      {
+        $or: [
+          { deliverDateTime: null },
+          { confirmDateTime: null },
+          {
+            $or: [
+              // The { item : null } query matches documents that either contain the item field
+              // whose value is null or that do not contain the item field
+              { "orderChain.chainEndDateTime": null },
+              { "orderChain.chainEndDateTime": { $gt: new Date(startDate) } },
+            ],
+          },
+        ],
+      },
+    ];
+    if (workPoligon.workPlaceId) {
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
+    } else {
+      // The { item : null } query matches documents that either contain the item field
+      // whose value is null or that do not contain the item field
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
+    }
+
+    const matchFilter = !startDate ? {} : { $and: findRecordConditions };
+
     try {
       let data;
-
-      // Формируем условие фильтрации для извлечения информации из коллекции рабочих распоряжений.
-      const findRecordConditions = [
-        { recipientWorkPoligon: { $exists: true } },
-        { "recipientWorkPoligon.id": workPoligon.id },
-        { "recipientWorkPoligon.type": workPoligon.type },
-        { orderChain: { $exists: true } },
-        {
-          $or: [
-            { deliverDateTime: null },
-            { confirmDateTime: null },
-            {
-              $or: [
-                // The { item : null } query matches documents that either contain the item field
-                // whose value is null or that do not contain the item field
-                { "orderChain.chainEndDateTime": null },
-                { "orderChain.chainEndDateTime": { $gt: new Date(startDate) } },
-              ],
-            },
-          ],
-        },
-      ];
-      if (workPoligon.workPlaceId) {
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
-      } else {
-        // The { item : null } query matches documents that either contain the item field
-        // whose value is null or that do not contain the item field
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
-      }
-
-      const matchFilter = !startDate ? {} : { $and: findRecordConditions };
       const workData = await WorkOrder.find(matchFilter);
 
       // Ищем распоряжения в основной коллекции распоряжений и сопоставляем их с распоряжениями,
@@ -147,7 +146,7 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
           return { ...item._doc };
         });
       }
-      res.status(OK).json(data || []);
+      res.status(OK).json(data);
 
     } catch (error) {
       addError({
@@ -203,22 +202,21 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений
-      const findRecordConditions = [
-        { orderId: orderIds },
-        { recipientWorkPoligon: { $exists: true } },
-        { "recipientWorkPoligon.id": workPoligon.id },
-        { "recipientWorkPoligon.type": workPoligon.type },
-      ];
-      if (workPoligon.workPlaceId) {
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
-      } else {
-        // The { item : null } query matches documents that either contain the item field
-        // whose value is null or that do not contain the item field
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
-      }
+    // Отмечаем подтверждение доставки распоряжений в коллекции рабочих распоряжений
+    const findRecordConditions = [
+      { orderId: orderIds },
+      { "recipientWorkPoligon.id": workPoligon.id },
+      { "recipientWorkPoligon.type": workPoligon.type },
+    ];
+    if (workPoligon.workPlaceId) {
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
+    } else {
+      // The { item : null } query matches documents that either contain the item field
+      // whose value is null or that do not contain the item field
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
+    }
 
+    try {
       await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }).session(session);
 
       // Отмечаем подтверждение доставки распоряжений в основной коллекции распоряжений.
@@ -333,28 +331,28 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, confirmDateTime } = req.body;
+
+    // Отмечаем подтверждение распоряжения в коллекции рабочих распоряжений, а также
+    // (при необходимости) в общей коллеции распоряжений
+
+    // Итак, вначале подтвержаем на своем рабочем полигоне
+
+    const findRecordConditions = [
+      { orderId: id },
+      { "recipientWorkPoligon.id": workPoligon.id },
+      { "recipientWorkPoligon.type": workPoligon.type },
+    ];
+    if (workPoligon.workPlaceId) {
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
+    } else {
+      // The { item : null } query matches documents that either contain the item field
+      // whose value is null or that do not contain the item field
+      findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
+    }
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, confirmDateTime } = req.body;
-
-      // Отмечаем подтверждение распоряжения в коллекции рабочих распоряжений, а также
-      // (при необходимости) в общей коллеции распоряжений
-
-      // Итак, вначале подтвержаем на своем рабочем полигоне
-
-      const findRecordConditions = [
-        { orderId: id },
-        { recipientWorkPoligon: { $exists: true } },
-        { "recipientWorkPoligon.id": workPoligon.id },
-        { "recipientWorkPoligon.type": workPoligon.type },
-      ];
-      if (workPoligon.workPlaceId) {
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
-      } else {
-        // The { item : null } query matches documents that either contain the item field
-        // whose value is null or that do not contain the item field
-        findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
-      }
       const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
       if (!workOrder) {
         await session.abortTransaction();
@@ -763,7 +761,6 @@ router.post(
         // Подтвержаем распоряжение в коллекции рабочих распоряжений
         const findRecordConditions = [
           { orderId },
-          { recipientWorkPoligon: { $exists: true } },
           { "recipientWorkPoligon.id": workPoligon.workPoligonId },
           { "recipientWorkPoligon.type": workPoligon.workPoligonType },
         ];
@@ -866,32 +863,29 @@ router.post(
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { chainId } = req.body;
+
+    const findRecordsConditions = [
+      { "recipientWorkPoligon.id": workPoligon.id },
+      { "recipientWorkPoligon.type": workPoligon.type },
+      { "orderChain.chainId": chainId },
+      // $ne selects the documents where the value of the field is not equal to the specified value.
+      // This includes documents that do not contain the field.
+      { confirmDateTime: { $exists: true } },
+      { confirmDateTime: { $ne: null } },
+    ];
+    if (workPoligon.workPlaceId) {
+      findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
+    } else {
+      // The { item : null } query matches documents that either contain the item field
+      // whose value is null or that do not contain the item field
+      findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": null });
+    }
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { chainId } = req.body;
-
-      const findRecordsConditions = [
-        { recipientWorkPoligon: { $exists: true } },
-        { "recipientWorkPoligon.id": workPoligon.id },
-        { "recipientWorkPoligon.type": workPoligon.type },
-        { orderChain: { $exists: true } },
-        { "orderChain.chainId": chainId },
-        // $ne selects the documents where the value of the field is not equal to the specified value.
-        // This includes documents that do not contain the field.
-        { confirmDateTime: { $exists: true } },
-        { confirmDateTime: { $ne: null } },
-      ];
-      if (workPoligon.workPlaceId) {
-        findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": workPoligon.workPlaceId });
-      } else {
-        // The { item : null } query matches documents that either contain the item field
-        // whose value is null or that do not contain the item field
-        findRecordsConditions.push({ "recipientWorkPoligon.workPlaceId": null });
-      }
-
       // Удаляем записи в таблице рабочих распоряжений
       await WorkOrder.deleteMany({ $and: findRecordsConditions });
-
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
@@ -950,10 +944,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { orderId, workPlaceId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { orderId, workPlaceId } = req.body;
 
+    try {
       // Ищем распоряжение в основной коллекции
       const order = await Order.findById(orderId).session(session);
       if (!order) {

@@ -8,6 +8,7 @@ const {
 } = require('../validators/stationTracks.validator');
 const validate = require('../validators/validate');
 const { TStationTrack } = require('../models/TStationTrack');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,10 +53,10 @@ router.post(
   addStationTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId, name } = req.body;
 
+    try {
       // Ищем в БД путь заданной станции, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TStationTrack.findOne({
         where: {
@@ -76,7 +77,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_ADD_MESS, stationTrack });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового пути станции',
+        error,
+        actionParams: { stationId, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -109,10 +115,10 @@ router.post(
   delStationTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
 
+    try {
       // Удаляем в БД запись
       const deletedCount = await TStationTrack.destroy({ where: { ST_ID: id } });
 
@@ -123,7 +129,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление пути станции',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -157,10 +168,10 @@ router.post(
   modStationTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД путь станции, id которого совпадает с переданным пользователем
       const candidate = await TStationTrack.findOne({ where: { ST_ID: id } });
 
@@ -195,7 +206,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_MOD_RES, stationTrack: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о пути станции',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

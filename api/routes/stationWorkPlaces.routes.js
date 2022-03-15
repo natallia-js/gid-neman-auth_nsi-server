@@ -9,6 +9,7 @@ const {
 const validate = require('../validators/validate');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -53,10 +54,10 @@ router.post(
   addStationWorkPlaceValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId, name } = req.body;
 
+    try {
       // Ищем в БД рабочее место заданной станции, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TStationWorkPlace.findOne({
         where: {
@@ -77,7 +78,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_ADD_MESS, stationWorkPlace });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового рабочего места на станции',
+        error,
+        actionParams: { stationId, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -139,7 +145,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление рабочего места на станции',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -173,10 +184,10 @@ router.post(
   modStationWorkPlaceValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД рабочее место на станции, id которого совпадает с переданным пользователем
       const candidate = await TStationWorkPlace.findOne({ where: { SWP_ID: id } });
 
@@ -211,7 +222,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_MOD_RES, stationWorkPlace: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о рабочем месте на станции',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

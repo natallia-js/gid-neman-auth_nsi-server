@@ -10,6 +10,7 @@ const User = require('../models/User');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 const matchUserRolesToAppsAndCreds = require('./additional/matchUserRolesToAppsAndCreds');
 const getUserCredsInApps = require('./additional/getUserCredsInApps');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех рабочих полигонов-участков ЭЦД',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -95,10 +101,10 @@ router.get(
   getDefinitUsersValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorIds, onlyOnline, apps } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorIds, onlyOnline, apps } = req.body;
 
+    try {
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
       const roles = await matchUserRolesToAppsAndCreds(apps);
 
@@ -141,7 +147,12 @@ router.get(
       res.status(OK).json(dataToReturn);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение информации обо всех пользователях, у которых рабочий полигон - участок ЭЦД с одним из заданных id',
+        error,
+        actionParams: { sectorIds, onlyOnline, apps },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -184,10 +195,10 @@ router.get(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, ecdSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, ecdSectorIds } = req.body;
 
+    try {
       // Ищем в БД пользователя с заданным id
       const candidate = await User.findOne({ _id: userId });
 
@@ -206,16 +217,8 @@ router.get(
       });
 
       if (ecdSectorIds && ecdSectorIds.length) {
-        // Проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем
-        /*const ecdSectors = await TECDSector.findAll({
-          where: { ECDS_ID: ecdSectorIds },
-          transaction: t,
-        });
-
-        if (!ecdSectors || ecdSectors.length !== ecdSectorIds.length) {
-          await t.rollback();
-          return res.status(ERR).json({ message: 'Не все участки ЭЦД найдены в базе' });
-        }*/
+        // Не проверяю начилие в БД всех участков ЭЦД, которые необходимо связать с заданным пользователем,
+        // т.к. модель TECDSectorWorkPoligon определяет соответствующий внешний ключ
 
         // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
         for (let id of ecdSectorIds) {
@@ -231,7 +234,12 @@ router.get(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка рабочих полигонов-участков ЭЦД',
+        error,
+        actionParams: { userId, ecdSectorIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

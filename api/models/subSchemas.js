@@ -28,7 +28,7 @@ const orderRecipientSchema = new Schema({
   confirmDateTime: { type: Date, required: false, default: null },
 });
 
-const workPoligon = new Schema({
+const workPoligonSchema = new Schema({
   // id рабочего полигона
   id: { type: Number, required: true },
   // id рабочего места полигона
@@ -50,7 +50,7 @@ const senderWorkPoligonSchema = new Schema({
 
 const lastTakePassDutyTimesSchema = new Schema({
   // рабочий полигон пользователя
-  workPoligon: { type: workPoligon, required: true },
+  workPoligon: { type: workPoligonSchema, required: true },
   // дата-время последнего принятия дежурства
   lastTakeDutyTime: { type: Date, required: false },
   // дата-время последней сдачи дежурства (если пользователь дежурство принял, но не сдал, то значение
@@ -118,7 +118,7 @@ module.exports = {
   timeSpanSchema,
   orderChainSchema,
   shortUserInfoSchema,
-  workPoligon,
+  workPoligonSchema,
   otherToSendSchema,
   fullOrderTextSchema,
   lastTakePassDutyTimesSchema,

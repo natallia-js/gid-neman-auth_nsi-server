@@ -34,6 +34,7 @@ const path = require('path');
 const privateKey = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'key.pem'), 'utf8');
 const certificate = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'cert.pem'), 'utf8');
 const rootCertificate = fs.readFileSync(path.resolve(__dirname, 'sslcert', 'rootCA.pem'), 'utf8');
+const { addError } = require('./serverSideProcessing/processLogsActions');
 
 // Создаем объект приложения express
 const app = express();
@@ -193,6 +194,12 @@ async function start() {
 
   } catch (e) {
     console.log('Server Error', e.message);
+    addError({
+      errorTime: new Date(),
+      action: 'Server Error, terminating...',
+      error: e.message,
+      actionParams: {},
+    });
     process.exit(1);
   }
 
@@ -203,7 +210,14 @@ async function start() {
       .then(() => {
         delDBDataTimerId = setTimeout(delDBData, delDataFrequency);
       })
-      .catch((err) => console.log(err));
+      .catch((error) => {
+        addError({
+          errorTime: new Date(),
+          action: 'Периодическое удаление ненужной информации о распоряжениях из БД',
+          error,
+          actionParams: {},
+        });
+      });
   }, delDataFrequency);
 }
 

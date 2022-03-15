@@ -136,7 +136,7 @@ router.put(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Регистрация Суперадминистратора',
+        action: 'Регистрация Главного администратора',
         error,
         actionParams: {},
       });
@@ -169,21 +169,21 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      const serviceName = req.user.service;
+    const serviceName = req.user.service;
+    const fieldsToExtract = {
+      _id: 1,
+      login: 1,
+      password: 1,
+      name: 1,
+      surname: 1,
+      fatherName: 1,
+      post: 1,
+      service: 1,
+      roles: 1,
+    };
+    let data;
 
-      let data;
-      const fieldsToExtract = {
-        _id: 1,
-        login: 1,
-        password: 1,
-        name: 1,
-        surname: 1,
-        fatherName: 1,
-        post: 1,
-        service: 1,
-        roles: 1,
-      };
+    try {
       if (!isMainAdmin(req)) {
         // Ищем пользователей, принадлежащих заданной службе
         data = await User.find({ service: serviceName }, fieldsToExtract);
@@ -494,11 +494,10 @@ router.post(
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, roleId } = req.body;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, roleId } = req.body;
-
       // Ищем в БД пользователя, id которого совпадает с переданным
       const candidate = await User.findOne({ _id: userId });
 
@@ -885,12 +884,12 @@ router.post(
 
       // Логируем действие пользователя
       const logObject = {
-        user: userPostFIOString(req.user),
+        user: userPostFIOString(user),
         workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
         actionTime: new Date(),
         action: 'Вход в систему без принятия дежурства',
         actionParams: {
-          userId: req.user.userId,
+          userId: user._id,
           workPoligonType,
           workPoligonId,
           workSubPoligonId,
@@ -1023,12 +1022,12 @@ router.post(
 
       // Логируем действие пользователя
       const logObject = {
-        user: userPostFIOString(req.user),
+        user: userPostFIOString(user),
         workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
         actionTime: lastTakeDutyTime,
         action: 'Принятие дежурства',
         actionParams: {
-          userId: req.user.userId,
+          userId: user._id,
           workPoligonType,
           workPoligonId,
           workSubPoligonId,
@@ -1101,12 +1100,12 @@ router.post(
 
       // Логируем действие пользователя
       const logObject = {
-        user: userPostFIOString(req.user),
+        user: userPostFIOString(user),
         workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
         actionTime: new Date(),
         action: 'Выход из системы без сдачи дежурства',
         actionParams: {
-          userId: req.user.userId,
+          userId: user._id,
           application: applicationAbbreviation,
         },
       };
@@ -1191,12 +1190,12 @@ router.post(
 
       // Логируем действие пользователя
       const logObject = {
-        user: userPostFIOString(req.user),
+        user: userPostFIOString(user),
         workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
         actionTime: new Date(),
         action: 'Выход из системы со сдачей дежурства',
         actionParams: {
-          userId: req.user.userId,
+          userId: user._id,
           application: applicationAbbreviation,
         },
       };
@@ -1249,6 +1248,8 @@ router.post(
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId } = req.body;
 
     // транзакция MS SQL
     const sequelize = req.sequelize;
@@ -1262,9 +1263,6 @@ router.post(
     session.startTransaction();
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId } = req.body;
-
       const candidate = await User.findOne({ _id: userId });
 
       if (!candidate) {
@@ -1355,11 +1353,10 @@ router.post(
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, roleId } = req.body;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, roleId } = req.body;
-
       // Ищем в БД пользователя, id которого совпадает с переданным
       const candidate = await User.findOne({ _id: userId });
 
@@ -1458,12 +1455,11 @@ router.post(
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
+    // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
+    // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
+    const { userId, login, password, service, roles, name, fatherName, surname, post } = req.body;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
-      // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-      const { userId, login, password, service, roles, name, fatherName, surname, post } = req.body;
-
       if (!isMainAdmin(req) && (service !== serviceName)) {
         return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
       }

@@ -8,6 +8,7 @@ const {
   delStructuralDivisionValidationRules,
   modStructuralDivisionValidationRules,
 } = require('../validators/ecdStructuralDivisions.validator');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -51,10 +52,10 @@ router.post(
   addStructuralDivisionValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { title, post, fio, ecdSectorId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { title, post, fio, ecdSectorId } = req.body;
 
+    try {
       // Создаем в БД запись
       const newRecord = await TECDStructuralDivision.create({
         ECDSD_Title: title,
@@ -66,7 +67,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', newRecord });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового структурного подразделения (работника) участка ЭЦД',
+        error,
+        actionParams: { title, post, fio, ecdSectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -99,16 +105,20 @@ router.post(
   delStructuralDivisionValidationRules(),
   validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
-
       await TECDStructuralDivision.destroy({ where: { ECDSD_ID: id } });
-
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление структурного подразделения (работника) участка ЭЦД',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -144,10 +154,10 @@ router.post(
   modStructuralDivisionValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, title, post, fio } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, title, post, fio } = req.body;
 
+    try {
       // Ищем в БД структруное подразделение ЭЦД, id которого совпадает с переданным пользователем
       const candidate = await TECDStructuralDivision.findOne({ where: { ECDSD_ID: id } });
 
@@ -175,7 +185,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена', modRecord: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о структурном подразделении (работнике) участка ЭЦД',
+        error,
+        actionParams: { id, title, post, fio },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

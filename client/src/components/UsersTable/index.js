@@ -134,7 +134,7 @@ const UsersTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));console.log(ecdSectors)
+      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
       setECDSectorsData(ecdSectors);
 
       // ---------------------------------
@@ -144,7 +144,7 @@ const UsersTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));console.log(stations)
+      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       setStations(stations);
 
       // ---------------------------------

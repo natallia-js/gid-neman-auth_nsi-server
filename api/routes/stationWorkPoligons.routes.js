@@ -10,6 +10,7 @@ const User = require('../models/User');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const matchUserRolesToAppsAndCreds = require('./additional/matchUserRolesToAppsAndCreds');
 const getUserCredsInApps = require('./additional/getUserCredsInApps');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех рабочих полигонов-станций',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -99,10 +105,10 @@ router.get(
   getDefinitUsersValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds, onlyOnline, apps, includeWorkPlaces } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationIds, onlyOnline, apps, includeWorkPlaces } = req.body;
 
+    try {
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
       const roles = await matchUserRolesToAppsAndCreds(apps);
 
@@ -155,7 +161,12 @@ router.get(
       res.status(OK).json(dataToReturn);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение id всех пользователей, у которых рабочий полигон - станция с одним из заданных id',
+        error,
+        actionParams: { stationIds, onlyOnline, apps, includeWorkPlaces },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -222,21 +233,8 @@ router.get(
       });
 
       if (poligons && poligons.length) {
-        // Массив уникальных id станций
-        /*const stationsIds = poligons
-          .map((poligon) => poligon.id)
-          .filter((value, index, self) => self.indexOf(value) === index);
-
-        // Проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем
-        const stationObjects = await TStation.findAll({
-          where: { St_ID: stationsIds },
-          transaction: t,
-        });
-
-        if (!stationObjects || stationObjects.length !== stationsIds.length) {
-          await t.rollback();
-          return res.status(ERR).json({ message: 'Не все станции найдены в базе' });
-        }*/
+        // Не проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем,
+        // т.к. модель TStationWorkPoligon определяет соответствующий внешний ключ
 
         // Создаем в БД рабочие полигоны-станции для заданного пользователя
         const objectsToCreateInDatabase = [];
@@ -255,7 +253,12 @@ router.get(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка рабочих полигонов-станций',
+        error,
+        actionParams: { userId, poligons },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

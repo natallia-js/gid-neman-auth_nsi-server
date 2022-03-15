@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -39,7 +40,12 @@ const {
       const data = await OrderPatternElementRef.find();
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех возможных смысловых значений элементов шаблонов распоряжений',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -77,7 +83,12 @@ const {
         };
       }));
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех возможных смысловых значений элементов шаблонов распоряжений с привязкой к типу элемента',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

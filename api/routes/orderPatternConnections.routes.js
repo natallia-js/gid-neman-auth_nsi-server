@@ -8,6 +8,7 @@ const {
 } = require('../validators/orderPatterns.validator');
 const validate = require('../validators/validate');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -56,10 +57,10 @@ const {
   addOrderChildPatternValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { basePatternId, childPatternId, patternsParamsMatchingTable } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { basePatternId, childPatternId, patternsParamsMatchingTable } = req.body;
 
+    try {
       if (basePatternId === childPatternId) {
         return res.status(ERR).json({ message: 'Базовый и дочерний шаблоны не могут совпадать' });
       }
@@ -116,7 +117,12 @@ const {
       res.status(OK).json({ message: 'Информация успешно сохранена', baseCandidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление дочернего шаблона распоряжения',
+        error,
+        actionParams: { basePatternId, childPatternId, patternsParamsMatchingTable },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -153,10 +159,10 @@ const {
   delOrderChildPatternValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { basePatternId, childPatternId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { basePatternId, childPatternId } = req.body;
 
+    try {
       // Ищем в БД базовый шаблон распоряжения
       let baseCandidate = await OrderPattern.findById(basePatternId);
       if (!baseCandidate) {
@@ -193,7 +199,12 @@ const {
       res.status(OK).json({ message: 'Информация успешно удалена', baseCandidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление связи с шаблоном распоряжения',
+        error,
+        actionParams: { basePatternId, childPatternId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

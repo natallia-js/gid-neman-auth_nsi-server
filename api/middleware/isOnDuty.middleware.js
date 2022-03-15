@@ -4,6 +4,7 @@ const {
   NOT_ON_DUTY_ERR_MESS,
 } = require('../constants');
 const User = require('../models/User');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 
 function getOnDutyStatusByDates(lastTakeDutyTime, lastPassDutyTime) {
@@ -92,7 +93,12 @@ const isOnDuty = async (req, res, next) => {
     next();
 
   } catch (e) {
-    console.log(e)
+    addError({
+      errorTime: new Date(),
+      action: 'Промежуточный обработчик проверки факта нахождения на дежурстве',
+      error,
+      actionParams: {},
+    });
     res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
   }
 }

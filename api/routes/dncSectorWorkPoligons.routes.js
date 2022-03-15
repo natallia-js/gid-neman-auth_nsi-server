@@ -10,6 +10,7 @@ const User = require('../models/User');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const matchUserRolesToAppsAndCreds = require('./additional/matchUserRolesToAppsAndCreds');
 const getUserCredsInApps = require('./additional/getUserCredsInApps');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех рабочих полигонов-участков ДНЦ',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -95,10 +101,10 @@ router.get(
   getDefinitUsersValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorIds, onlyOnline, apps } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorIds, onlyOnline, apps } = req.body;
 
+    try {
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
       const roles = await matchUserRolesToAppsAndCreds(apps);
 
@@ -141,7 +147,12 @@ router.get(
       res.status(OK).json(dataToReturn);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех пользователей, у которых рабочий полигон - участок ДНЦ с одним из заданных id',
+        error,
+        actionParams: { sectorIds, apps },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -184,10 +195,10 @@ router.get(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, dncSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, dncSectorIds } = req.body;
 
+    try {
       // Ищем в БД пользователя с заданным id
       const candidate = await User.findOne({ _id: userId });
 
@@ -206,16 +217,8 @@ router.get(
       });
 
       if (dncSectorIds && dncSectorIds.length) {
-        // Проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем
-        /*const dncSectors = await TDNCSector.findAll({
-          where: { DNCS_ID: dncSectorIds },
-          transaction: t,
-        });
-
-        if (!dncSectors || dncSectors.length !== dncSectorIds.length) {
-          await t.rollback();
-          return res.status(ERR).json({ message: 'Не все участки ДНЦ найдены в базе' });
-        }*/
+        // Не проверяю начилие в БД всех участков ДНЦ, которые необходимо связать с заданным пользователем,
+        // т.к. модель TDNCSectorWorkPoligon определяет соответствующий внешний ключ
 
         // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
         for (let id of dncSectorIds) {
@@ -231,7 +234,12 @@ router.get(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка рабочих полигонов-участков ДНЦ',
+        error,
+        actionParams: { userId, dncSectorIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

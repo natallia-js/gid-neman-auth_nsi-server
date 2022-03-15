@@ -1,5 +1,5 @@
 const { Schema, model } = require('mongoose');
-const { workPoligon } = require('./subSchemas');
+const { workPoligonSchema } = require('./subSchemas');
 
 
 // Схема записи в коллекции черновиков распоряжений
@@ -24,7 +24,7 @@ const schema = new Schema({
   // Список остальных адресатов
   otherToSend: [Object],
   // id и тип участка / рабочего полигона пользователя, создавшего черновик
-  workPoligon: { type: workPoligon, required: true },
+  workPoligon: { type: workPoligonSchema, required: true },
   // От имени кого издается распоряжение
   createdOnBehalfOf: { type: String, required: false },
   // Отображать либо не отображать на ГИД

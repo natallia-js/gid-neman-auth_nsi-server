@@ -11,6 +11,7 @@ const { TService } = require('../models/TService');
 const User = require('../models/User');
 const OrderPattern = require('../models/OrderPattern');
 const mongoose = require('mongoose');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -53,7 +54,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех служб',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -87,10 +93,10 @@ router.post(
   addServiceValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { abbrev, title } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { abbrev, title } = req.body;
 
+    try {
       // Ищем в БД службу, аббревиатура которой совпадает с переданной пользователем
       const candidate = await TService.findOne({ where: { S_Abbrev: abbrev } });
 
@@ -105,7 +111,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', service });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление новой службы',
+        error,
+        actionParams: { abbrev, title },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -149,10 +160,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
 
+    try {
       // Ищем в БД службу, id которой совпадает с переданным пользователем
       const candidate = await TService.findOne({
         where: { S_ID: id },
@@ -187,7 +198,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление службы',
+        error,
+        actionParams: { id },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -238,10 +254,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, abbrev, title } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, abbrev, title } = req.body;
 
+    try {
       // Ищем в БД службу, id которой совпадает с переданным пользователем
       const candidate = await TService.findOne({
         where: { S_ID: id },
@@ -307,7 +323,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о службе',
+        error,
+        actionParams: { id, abbrev, title },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

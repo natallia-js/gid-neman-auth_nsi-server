@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('config');
-const {
-  UNAUTHORIZED,
-  UNAUTHORIZED_ERR_MESS,
-} = require('../constants');
+const { UNAUTHORIZED, UNAUTHORIZED_ERR_MESS } = require('../constants');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const { CONFIG_JWT_SECRET_PARAM_NAME } = require('../constants');
 const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
@@ -69,8 +67,13 @@ module.exports = (req, res, next) => {
     // Переходим к следующему обработчику
     next();
 
-  } catch (e) {
-    console.log(e)
+  } catch (error) {
+    addError({
+      errorTime: new Date(),
+      action: 'Промежуточный обработчик аутентификации',
+      error,
+      actionParams: {},
+    });
     res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
   }
 }

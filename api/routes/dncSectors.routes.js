@@ -17,6 +17,7 @@ const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteDNCSector = require('../routes/deleteComplexDependencies/deleteDNCSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -77,7 +78,12 @@ router.get(
       res.status(OK).json(data ? data.map(d => d.dataValues) : []);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех участков ДНЦ',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -112,7 +118,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение простого списка всех участков ДНЦ',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -144,10 +155,10 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId } = req.body;
 
+    try {
       const dncTrainSectorsConnections = await TDNCTrainSectorStation.findAll({
         raw: true,
         attributes: ['DNCTSS_TrainSectorID', 'DNCTSS_StationID', 'DNCTSS_StationBelongsToDNCSector'],
@@ -183,7 +194,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка участков ДНЦ заданной станции',
+        error,
+        actionParams: { stationId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -217,9 +233,9 @@ router.get(
   getDefiniteDNCSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      const { sectorId } = req.body;
+    const { sectorId } = req.body;
 
+    try {
       const data = await TDNCSector.findOne({
         attributes: ['DNCS_ID', 'DNCS_Title'],
         where: { DNCS_ID: sectorId },
@@ -264,7 +280,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение конкретного участка ДНЦ',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -298,10 +319,10 @@ router.get(
   getDefiniteDNCSectorsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { dncSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { dncSectorIds } = req.body;
 
+    try {
       const data = await TDNCSector.findAll({
         raw: true,
         attributes: ['DNCS_ID', 'DNCS_Title'],
@@ -310,7 +331,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка конкретных участков ДНЦ',
+        error,
+        actionParams: { dncSectorIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -343,10 +369,10 @@ router.post(
   addDNCSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { name } = req.body;
 
+    try {
       // Ищем в БД участок ДНЦ, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TDNCSector.findOne({ where: { DNCS_Title: name } });
 
@@ -361,7 +387,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового участка ДНЦ',
+        error,
+        actionParams: { name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -419,7 +450,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление участка ДНЦ',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -453,10 +489,10 @@ router.post(
   modDNCSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
       const candidate = await TDNCSector.findOne({ where: { DNCS_ID: id } });
 
@@ -492,7 +528,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации об участке ДНЦ',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

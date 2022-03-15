@@ -2,7 +2,7 @@ const { Schema, model, Types } = require('mongoose');
 
 const {
   senderWorkPoligonSchema,
-  workPoligon,
+  workPoligonSchema,
   timeSpanSchema,
   orderChainSchema,
 } = require('./subSchemas');
@@ -13,7 +13,7 @@ const schema = new Schema({
   // id и тип участка / рабочего полигона, с которого отправлено распоряжение
   senderWorkPoligon: { type: senderWorkPoligonSchema, required: true },
   // id и тип участка / рабочего полигона, на который отправлено распоряжение
-  recipientWorkPoligon: { type: workPoligon, required: true },
+  recipientWorkPoligon: { type: workPoligonSchema, required: true },
   // true - передача оригинала распоряжения, false - передача его копии
   sendOriginal: { type: Boolean, required: true },
   // id распоряжения

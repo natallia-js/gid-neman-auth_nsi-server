@@ -18,6 +18,7 @@ const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteECDSector = require('../routes/deleteComplexDependencies/deleteECDSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -84,7 +85,12 @@ router.get(
       res.status(OK).json(data.map(d => d.dataValues));
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение полного списка всех участков ЭЦД',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -119,7 +125,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение краткого списка всех участков ЭЦД',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -151,10 +162,10 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId } = req.body;
 
+    try {
       const ecdTrainSectorsConnections = await TECDTrainSectorStation.findAll({
         raw: true,
         attributes: ['ECDTSS_TrainSectorID', 'ECDTSS_StationID', 'ECDTSS_StationBelongsToECDSector'],
@@ -190,7 +201,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех участков ЭЦД для заданной станции',
+        error,
+        actionParams: { stationId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -225,9 +241,9 @@ router.get(
   getDefiniteECDSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      const { sectorId } = req.body;
+    const { sectorId } = req.body;
 
+    try {
       const data = await TECDSector.findOne({
         attributes: ['ECDS_ID', 'ECDS_Title'],
         where: { ECDS_ID: sectorId },
@@ -277,7 +293,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение полной информации по конкретному участку ЭЦД',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -311,10 +332,10 @@ router.get(
   getDefiniteECDSectorsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { ecdSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { ecdSectorIds } = req.body;
 
+    try {
       const data = await TECDSector.findAll({
         raw: true,
         attributes: ['ECDS_ID', 'ECDS_Title'],
@@ -323,7 +344,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение краткой информации по конкретным участкам ЭЦД',
+        error,
+        actionParams: { ecdSectorIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -356,10 +382,10 @@ router.post(
   addECDSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { name } = req.body;
 
+    try {
       // Ищем в БД участок ЭЦД, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TECDSector.findOne({ where: { ECDS_Title: name } });
 
@@ -374,7 +400,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового участка ЭЦД',
+        error,
+        actionParams: { name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -432,7 +463,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление участка ЭЦД',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -466,10 +502,10 @@ router.post(
   modECDSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
       const candidate = await TECDSector.findOne({ where: { ECDS_ID: id } });
 
@@ -505,7 +541,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации по участку ЭЦД',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

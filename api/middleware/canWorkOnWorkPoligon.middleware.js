@@ -2,6 +2,7 @@ const {
   WORK_POLIGON_TYPES,
   NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS,
 } = require('../constants');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 /**
  * Промежуточный обработчик проверки того, может ли лицо, запрашивающее действие, работать на указанном
@@ -68,8 +69,13 @@ module.exports = async (req, res, next) => {
 
     next();
 
-  } catch (e) {
-    console.log(e)
+  } catch (error) {
+    addError({
+      errorTime: new Date(),
+      action: 'Промежуточный обработчик проверки возможности работать на указанном рабочем полигоне',
+      error,
+      actionParams: {},
+    });
     res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
   }
 }

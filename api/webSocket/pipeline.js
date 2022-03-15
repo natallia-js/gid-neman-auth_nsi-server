@@ -4,6 +4,7 @@ const {
   CHECK_CLIENTS_ONLINE_STATE_INTERVAL,
 } = require('../constants');
 const { markOnlineUsers } = require('./dbActions');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 
 // Each websocket client gets an individual instance of this function
@@ -33,8 +34,13 @@ function setClientsOnlineStatus(clients) {
     try {
       console.log('clientsIds',clientsIds)
       markOnlineUsers(clientsIds);
-    } catch(err) {
-      console.log(err);
+    } catch(error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Установка online-статуса пользователей в БД',
+        error,
+        actionParams: { clientsIds },
+      });
     }
   }, CHECK_CLIENTS_ONLINE_STATE_INTERVAL);
   return timerId;

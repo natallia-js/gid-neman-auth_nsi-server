@@ -13,6 +13,7 @@ const { Op } = require('sequelize');
 const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector');
 const { TDNCSector} = require('../models/TDNCSector');
 const { TECDSector} = require('../models/TECDSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -57,7 +58,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех ближайших участков ДНЦ и ЭЦД',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -87,9 +93,8 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
+    const { sectorId } = req.body;
     try {
-      const { sectorId } = req.body;
-
       let ecdSectorIds = await TNearestDNCandECDSector.findAll({
         raw: true,
         attributes: ['NDE_ECDSectorID'],
@@ -110,7 +115,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех ближайших участков ЭЦД заданного участка ДНЦ',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -140,9 +150,8 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
+    const { sectorId } = req.body;
     try {
-      const { sectorId } = req.body;
-
       let dncSectorIds = await TNearestDNCandECDSector.findAll({
         raw: true,
         attributes: ['NDE_DNCSectorID'],
@@ -163,7 +172,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех ближайших участков ДНЦ заданного участка ЭЦД',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -197,10 +211,10 @@ router.post(
   addECDToDNCValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { dncSectorId, ecdSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { dncSectorId, ecdSectorIds } = req.body;
 
+    try {
       // Проверяем, существует ли участок ДНЦ с указанным идентификатором
       let candidate = await TDNCSector.findOne({ where: { DNCS_ID: dncSectorId } });
       if (!candidate) {
@@ -233,7 +247,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', nearECDSectorsArr });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление информации о близости участков ЭЦД к данному участку ДНЦ',
+        error,
+        actionParams: { dncSectorId, ecdSectorIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -267,10 +286,10 @@ router.post(
   addDNCToECDValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { ecdSectorId, dncSectorIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { ecdSectorId, dncSectorIds } = req.body;
 
+    try {
       // Проверяем, существует ли участок ЭЦД с указанным идентификатором
       let candidate = await TECDSector.findOne({ where: { ECDS_ID: ecdSectorId } });
       if (!candidate) {
@@ -303,7 +322,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', nearDNCSectorsArr });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление информации о близости участков ДНЦ к данному участку ЭЦД',
+        error,
+        actionParams: { ecdSectorId, dncSectorIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -337,10 +361,10 @@ router.post(
   delNearestDNCOrECDValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { dncSectorID, ecdSectorID } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { dncSectorID, ecdSectorID } = req.body;
 
+    try {
       // Удаляем в БД запись
       await TNearestDNCandECDSector.destroy({
         where: {
@@ -354,7 +378,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление ближайшего участка (ДНЦ либо ЭЦД)',
+        error,
+        actionParams: { dncSectorID, ecdSectorID },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -397,10 +426,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorId, nearestECDSectIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorId, nearestECDSectIds } = req.body;
 
+    try {
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
       const candidate = await TDNCSector.findOne({
         where: { DNCS_ID: sectorId },
@@ -461,7 +490,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка ближайших участков ЭЦД для данного участка ДНЦ',
+        error,
+        actionParams: { sectorId, nearestECDSectIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -505,10 +539,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorId, nearestDNCSectIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorId, nearestDNCSectIds } = req.body;
 
+    try {
       // Ищем в БД участок ЭЦД, id которого совпадает с переданным пользователем
       const candidate = await TECDSector.findOne({ where: { ECDS_ID: sectorId } });
 
@@ -562,7 +596,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка ближайших участков ДНЦ для данного участка ЭЦД',
+        error,
+        actionParams: { sectorId, nearestDNCSectIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

@@ -2,6 +2,7 @@ const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const LastOrdersParam = require('../models/LastOrdersParam');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -47,17 +48,20 @@ router.post(
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
     }
+    const matchFilter = {
+      'workPoligon.id': workPoligon.id,
+      'workPoligon.type': workPoligon.type,
+    };
     try {
-      const matchFilter = {
-        workPoligon: { $exists: true },
-        'workPoligon.id': workPoligon.id,
-        'workPoligon.type': workPoligon.type,
-      };
       const data = await LastOrdersParam.find(matchFilter);
-
-      res.status(OK).json(data || []);
+      res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка параметров всех последних изданных распоряжений',
+        error,
+        actionParams: { workPoligon },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

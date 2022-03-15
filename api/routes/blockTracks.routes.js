@@ -8,6 +8,7 @@ const {
 } = require('../validators/blockTracks.validator');
 const validate = require('../validators/validate');
 const { TBlockTrack } = require('../models/TBlockTrack');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,10 +53,10 @@ router.post(
   addBlockTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { blockId, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { blockId, name } = req.body;
 
+    try {
       // Ищем в БД путь заданного перегона, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TBlockTrack.findOne({
         where: {
@@ -76,7 +77,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_ADD_MESS, blockTrack });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового пути перегона',
+        error,
+        actionParams: { blockId, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -109,10 +115,10 @@ router.post(
   delBlockTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
 
+    try {
       // Удаляем в БД запись
       const deletedCount = await TBlockTrack.destroy({ where: { BT_ID: id } });
 
@@ -123,7 +129,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление пути перегона',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -157,10 +168,10 @@ router.post(
   modBlockTrackValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД путь перегона, id которого совпадает с переданным пользователем
       const candidate = await TBlockTrack.findOne({ where: { BT_ID: id } });
 
@@ -195,7 +206,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_MOD_RES, blockTrack: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о пути перегона',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

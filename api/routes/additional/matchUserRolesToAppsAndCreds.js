@@ -50,12 +50,7 @@ async function matchUserRolesToAppsAndCreds(apps) {
     item.credentials = item.credentials.filter((el) => credNecessary(item.shortTitle, el.englAbbreviation));
   });
   // Ищем определенные для пользователей ГИД Неман роли, связанные с найденными приложениями
-  let roles = await Role.find({
-    $and: [
-      { apps: { $exists: true } },
-      { "apps.appId": applications.map((a) => a._id) },
-    ],
-  }, { _id: 1, apps: 1 });
+  let roles = await Role.find({ "apps.appId": applications.map((a) => a._id) }, { _id: 1, apps: 1 });
   if (!roles || !roles.length) {
     return null;
   }

@@ -13,6 +13,7 @@ const { TStation } = require('../models/TStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const deleteStation = require('../routes/deleteComplexDependencies/deleteStation');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -64,7 +65,12 @@ const {
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение полного списка всех станций (+ пути и рабочие места)',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -102,7 +108,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение полного списка всех станций (+ пути)',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -135,10 +146,10 @@ router.get(
   getDefiniteStationValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId } = req.body;
 
+    try {
       const data = await TStation.findOne({
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
         where: { St_ID: stationId },
@@ -155,7 +166,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение информации о станции (+ пути)',
+        error,
+        actionParams: { stationId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -188,10 +204,10 @@ router.post(
   getDefiniteStationsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationIds } = req.body;
 
+    try {
       const data = await TStation.findAll({
         raw: true,
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
@@ -200,7 +216,12 @@ router.post(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка станций по заданным id этих станций',
+        error,
+        actionParams: { stationIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -233,10 +254,10 @@ router.post(
   getDefiniteStationsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationIds } = req.body;
 
+    try {
       const data = await TStation.findAll({
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
         where: { St_ID: stationIds },
@@ -248,7 +269,12 @@ router.post(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка станций и их рабочих мест по заданным id станций',
+        error,
+        actionParams: { stationIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -282,10 +308,10 @@ router.post(
   addStationValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { ESRCode, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { ESRCode, name } = req.body;
 
+    try {
       // Ищем в БД станцию, ESRCode которой совпадает с переданным пользователем
       const candidate = await TStation.findOne({ where: { St_UNMC: ESRCode } });
 
@@ -300,7 +326,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', station });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление новой станции',
+        error,
+        actionParams: { ESRCode, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -358,7 +389,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление станции',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -393,10 +429,10 @@ router.post(
   modStationValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, ESRCode, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, ESRCode, name } = req.body;
 
+    try {
       // Ищем в БД станцию, id которой совпадает с переданным пользователем
       const candidate = await TStation.findOne({ where: { St_ID: id } });
 
@@ -434,7 +470,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о станции',
+        error,
+        actionParams: { id, ESRCode, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

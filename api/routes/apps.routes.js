@@ -14,6 +14,7 @@ const {
   modCredValidationRules,
 } = require('../validators/apps.validator');
 const validate = require('../validators/validate');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -56,7 +57,12 @@ router.get(
       const data = await App.find();
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех приложений',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -88,10 +94,15 @@ router.get(
   checkGeneralCredentials,
   async (_req, res) => {
     try {
-      const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: {_id: 1, englAbbreviation: 1} });
+      const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: { _id: 1, englAbbreviation: 1 } });
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех приложений и соответствующих им полномочий пользователей',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -133,10 +144,10 @@ router.post(
   addAppValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { _id, shortTitle, title, credentials } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { _id, shortTitle, title, credentials } = req.body;
 
+    try {
       // Ищем в БД приложение, shortTitle которого совпадает с переданным пользователем
       const candidate = await App.findOne({ shortTitle });
 
@@ -157,7 +168,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', app });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового приложения',
+        error,
+        actionParams: { _id, shortTitle, title, credentials },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -195,10 +211,10 @@ router.post(
   addCredValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { appId, _id, englAbbreviation, description } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { appId, _id, englAbbreviation, description } = req.body;
 
+    try {
       // Ищем в БД приложение, id которого совпадает с переданным пользователем
       const candidate = await App.findOne({ _id: appId });
 
@@ -242,7 +258,12 @@ router.post(
       }});
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового полномочия приложения',
+        error,
+        actionParams: { appId, _id, englAbbreviation, description },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -281,10 +302,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { appId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { appId } = req.body;
 
+    try {
       // Удаляем в БД запись
       const delRes = await App.deleteOne({ _id: appId }).session(session);
 
@@ -314,7 +335,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление приложения',
+        error,
+        actionParams: { appId },
+      });
 
       await session.abortTransaction();
 
@@ -360,10 +386,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { appId, credId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { appId, credId } = req.body;
 
+    try {
       // Ищем в БД нужное приложение
       const candidate = await App.findOne({ _id: appId }).session(session);
 
@@ -397,7 +423,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление полномочия приложения',
+        error,
+        actionParams: { appId, credId },
+      });
 
       await session.abortTransaction();
 
@@ -444,11 +475,11 @@ router.post(
   modAppValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
-      // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-      const { appId, shortTitle } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
+    // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
+    const { appId, shortTitle } = req.body;
 
+    try {
       // Ищем в БД приложение, id которого совпадает с переданным пользователем
       let candidate = await App.findById(appId);
 
@@ -475,7 +506,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена', app: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о приложении',
+        error,
+        actionParams: { appId, shortTitle },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -513,10 +549,10 @@ router.post(
   modCredValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { appId, credId, englAbbreviation, description } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { appId, credId, englAbbreviation, description } = req.body;
 
+    try {
       // Ищем в БД нужное приложение
       const candidate = await App.findOne({ _id: appId });
 
@@ -563,7 +599,12 @@ router.post(
       });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о полномочии приложения',
+        error,
+        actionParams: { appId, credId, englAbbreviation, description },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

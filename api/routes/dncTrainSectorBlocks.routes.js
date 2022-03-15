@@ -11,6 +11,7 @@ const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const { TBlock } = require('../models/TBlock');
 const { TDNCTrainSectorBlock } = require('../models/TDNCTrainSectorBlock');
 const { Op } = require('sequelize');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -59,10 +60,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, blockIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, blockIds } = req.body;
 
+    try {
       // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
       const trainSector = await TDNCTrainSector.findOne({
         where: { DNCTS_ID: trainSectorId },
@@ -157,7 +158,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование списка перегонов поездного участка ДНЦ',
+        error,
+        actionParams: { trainSectorId, blockIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -191,10 +197,10 @@ router.post(
   delDNCTrainSectorBlockValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, blockId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, blockId } = req.body;
 
+    try {
       await TDNCTrainSectorBlock.destroy({
         where: {
           DNCTSB_TrainSectorID: trainSectorId,
@@ -205,7 +211,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление записи из таблицы перегонов поездного участка ДНЦ',
+        error,
+        actionParams: { trainSectorId, blockId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -241,10 +252,10 @@ router.post(
   modDNCTrainSectorBlockValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, blockId, posInTrainSector, belongsToSector } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, blockId, posInTrainSector, belongsToSector } = req.body;
 
+    try {
       // Ищем в БД определенную запросом запись
       const candidate = await TDNCTrainSectorBlock.findOne({
         where: {
@@ -278,7 +289,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о перегоне поездного участка ДНЦ',
+        error,
+        actionParams: { trainSectorId, blockId, posInTrainSector, belongsToSector },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

@@ -5,7 +5,7 @@ const {
   timeSpanSchema,
   orderRecipientSchema,
   shortUserInfoSchema,
-  workPoligon,
+  senderWorkPoligonSchema,
   otherToSendSchema,
   fullOrderTextSchema,
   orderChainSchema,
@@ -36,7 +36,7 @@ const schema = new Schema({
   // Список рабочих мест на станциях, на которые направлено распоряжение
   stationWorkPlacesToSend: [orderRecipientSchema],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение
-  workPoligon: { type: workPoligon, required: true },
+  workPoligon: { type: senderWorkPoligonSchema, required: true },
   // пользователь, издавший распоряжение (post - должность пользователя на момент издания распоряжения)
   creator: { type: shortUserInfoSchema, required: true },
   // От имени кого издано распоряжение (данное поле присутствует/заполняется лишь тогда,

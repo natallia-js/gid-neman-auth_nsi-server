@@ -9,6 +9,7 @@ const {
 const validate = require('../validators/validate');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const deleteDNCTrainSector = require('../routes/deleteComplexDependencies/deleteDNCTrainSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -50,10 +51,10 @@ router.post(
   addDNCTrainSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { name, dncSectorId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { name, dncSectorId } = req.body;
 
+    try {
       // Ищем в БД поездной участок ДНЦ, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TDNCTrainSector.findOne({ where: { DNCTS_Title: name } });
 
@@ -68,7 +69,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового поездного участка ДНЦ',
+        error,
+        actionParams: { name, dncSectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -126,7 +132,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление поездного участка ДНЦ',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -160,10 +171,10 @@ router.post(
   modDNCTrainSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name } = req.body;
 
+    try {
       // Ищем в БД поездной участок ДНЦ, id которого совпадает с переданным пользователем
       const candidate = await TDNCTrainSector.findOne({ where: { DNCTS_ID: id } });
 
@@ -199,7 +210,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о поездном участке ДНЦ',
+        error,
+        actionParams: { id, name },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

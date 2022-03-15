@@ -13,6 +13,7 @@ const { TStation } = require('../models/TStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteBlock = require('../routes/deleteComplexDependencies/deleteBlock');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -60,7 +61,12 @@ const {
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение простого списка всех перегонов',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -107,7 +113,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех перегонов с соответствующими станциями и путями перегонов',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -138,10 +149,10 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { stationId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationId } = req.body;
 
+    try {
       const data = await TBlock.findAll({
         attributes: ['Bl_ID', 'Bl_Title'],
         where: {
@@ -171,7 +182,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех перегонов заданной станции',
+        error,
+        actionParams: { stationId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -206,10 +222,10 @@ router.post(
   addBlockValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { name, station1, station2 } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { name, station1, station2 } = req.body;
 
+    try {
       // Ищем в БД перегон, наименование которого совпадает с переданным пользователем
       let antiCandidate = await TBlock.findOne({ where: { Bl_Title: name } });
 
@@ -282,7 +298,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_ADD_MESS, block: dataToReturn });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового перегона',
+        error,
+        actionParams: { name, station1, station2 },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -340,7 +361,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление перегона',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -376,10 +402,10 @@ router.post(
   modBlockValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, name, station1, station2 } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, name, station1, station2 } = req.body;
 
+    try {
       // Ищем в БД перегон, id которого совпадает с переданным пользователем
       const candidate = await TBlock.findOne({ where: { Bl_ID: id } });
 
@@ -497,7 +523,12 @@ router.post(
       res.status(OK).json({ message: SUCCESS_MOD_RES, block: dataToReturn });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о перегоне',
+        error,
+        actionParams: { id, name, station1, station2 },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

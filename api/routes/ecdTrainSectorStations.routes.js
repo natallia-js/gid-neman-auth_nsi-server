@@ -11,6 +11,7 @@ const { TECDTrainSector } = require('../models/TECDTrainSector');
 const { TStation } = require('../models/TStation');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
 const { Op } = require('sequelize');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -59,10 +60,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, stationIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, stationIds } = req.body;
 
+    try {
       // Ищем в БД поездной участок ЭЦД, id которого совпадает с переданным пользователем
       const trainSector = await TECDTrainSector.findOne({
         where: { ECDTS_ID: trainSectorId },
@@ -157,7 +158,12 @@ router.post(
 
     } catch (error) {
       await t.rollback();
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование списка станций поездного участка ЭЦД',
+        error,
+        actionParams: { trainSectorId, stationIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -191,10 +197,10 @@ router.post(
   delECDTrainSectorStationValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, stationId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, stationId } = req.body;
 
+    try {
       await TECDTrainSectorStation.destroy({
         where: {
           ECDTSS_TrainSectorID: trainSectorId,
@@ -205,7 +211,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление записи из таблицы станций поездного участка ЭЦД',
+        error,
+        actionParams: { trainSectorId, stationId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -241,10 +252,10 @@ router.post(
   modECDTrainSectorStationValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { trainSectorId, stationId, posInTrainSector, belongsToSector } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { trainSectorId, stationId, posInTrainSector, belongsToSector } = req.body;
 
+    try {
       // Ищем в БД определенную запросом запись
       const candidate = await TECDTrainSectorStation.findOne({
         where: {
@@ -278,7 +289,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о станции поездного участка ЭЦД',
+        error,
+        actionParams: { trainSectorId, stationId, posInTrainSector, belongsToSector },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

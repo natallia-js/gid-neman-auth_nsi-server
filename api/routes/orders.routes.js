@@ -188,7 +188,8 @@ const {
       const order = new Order({
         _id: newOrderObjectId,
         type, number, createDateTime, place, timeSpan, orderText,
-        dncToSend, dspToSend, ecdToSend, otherToSend, workPoligon,
+        dncToSend, dspToSend, ecdToSend, otherToSend,
+        workPoligon: { ...workPoligon, title: workPoligonTitle },
         creator: {
           id: req.user.userId,
           post: req.user.post,
@@ -470,10 +471,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, timeSpan, orderText } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, timeSpan, orderText } = req.body;
 
+    try {
       const existingOrder = await Order.findById(id).session(session);
       if (!existingOrder) {
         await session.abortTransaction();
@@ -481,7 +482,6 @@ router.post(
       }
 
       const ordersInChain = await Order.countDocuments({
-        orderChain: { $exists: true },
         "orderChain.chainId": existingOrder.orderChain.chainId,
       });
       if (ordersInChain === 0) {
@@ -598,10 +598,10 @@ router.post(
       orderParamsRefsForGID = [];
     }
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { startDate, stations } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { startDate, stations } = req.body;
 
+    try {
       // Формируем список id станций по указанным кодам ЕСР
       const stationsData = await TStation.findAll({
         raw: true,
@@ -644,7 +644,6 @@ router.post(
       const ordersMatchFilter = {
         $and: [
           { showOnGID: true },
-          { place: { $exists: true } },
           { $or: possibleOrdersPlaces },
         ],
       };
@@ -738,10 +737,10 @@ router.post(
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
     }
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { datetime } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { datetime } = req.body;
 
+    try {
       const matchFilter = { createDateTime: { $gte: new Date(datetime) } };
 
       const poligonSearchFilter = { $elemMatch: { id: workPoligon.id, type: workPoligon.type } };
@@ -779,9 +778,9 @@ router.post(
 
 
 /**
- * Обрабатывает запрос на получение списка распоряжений для журнала ЭЦД.
+ * Обрабатывает запрос на получение списка распоряжений для журнала ЭЦД либо для журнала ДНЦ/ДСП.
  *
- * Данный запрос доступен любому лицу, наделенному полномочием ЭЦД.
+ * Данный запрос доступен любому лицу, наделенному полномочием ЭЦД, ДНЦ, ДСП, Оператора при ДСП либо Ревизора.
  *
  * Информация о типе и id рабочего полигона извлекается из токена пользователя.
  * Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
@@ -811,14 +810,14 @@ router.post(
  *             то запрос возвращает все найденные документы)
  */
  router.post(
-  '/ecdData',
+  '/journalData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем требуемые полномочия на запрашиваемое действие
   (req, _res, next) => {
     req.action = {
       which: HOW_CHECK_CREDS.OR,
-      creds: [ECD_FULL, REVISOR],
+      creds: [ECD_FULL, DSP_Operator, DSP_FULL, DNC_FULL, REVISOR],
     };
     next();
   },
@@ -840,16 +839,16 @@ router.post(
       docsCount,
     } = req.body;
     try {
+      const matchFilter = { $and: [] };
+
       // Только для журнала ЭЦД: изначально в выборку не включаем документы типа "уведомление/отмена запрещения".
       // Потому что данные документы не фигурируют в журнале как отдельные строки - только как дополнение строк
       // с информацией о приказе / запрещении. Если их включить в выборку, то будут проблемы с пагинацией.
       // Потому находим сначала все остальные документы, а потом - для тех, у которых есть связь с документом
       // типа "уведомление/отмена запрещения", найдем дополнительную информацию.
-      const matchFilter = {
-        $and: [
-          { type: { $ne: ORDER_PATTERN_TYPES.ECD_NOTIFICATION } },
-        ],
-      };
+      if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
+        matchFilter.$and.push({ type: { $ne: ORDER_PATTERN_TYPES.ECD_NOTIFICATION } });
+      }
 
       const startDate = new Date(datetimeStart);
       const endDate = new Date(datetimeEnd);
@@ -884,7 +883,7 @@ router.post(
         }
       }
 
-      // Фильтрация по издателю (в выборку всегда включаются документы, изданные на том рабочем месте,
+      // Фильтрация по издателю (в выборку всегда включаются документы, изданные на том рабочем полигоне,
       // с которого пришел запрос)
       const orderCreatorFilter = { "workPoligon.id": workPoligon.id, "workPoligon.type": workPoligon.type };
 
@@ -934,17 +933,19 @@ router.post(
         filterFields.forEach((filter) => {
           switch (filter.field) {
             case 'toWhom':
-              // Поиск по иным адресатам производится только в том случае, если распоряжение издано ЭЦД
-              matchFilter.$and.push({
-                "workPoligon.type": WORK_POLIGON_TYPES.ECD_SECTOR,
-                otherToSend: { $elemMatch: {
-                  $or: [
-                    { placeTitle: new RegExp(filter.value, 'i') },
-                    { post: new RegExp(filter.value, 'i') },
-                    { fio: new RegExp(filter.value, 'i') },
-                  ]
-                } },
-              });
+              if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
+                // Поиск по иным адресатам производится только в том случае, если распоряжение издано ЭЦД
+                matchFilter.$and.push({
+                  "workPoligon.type": WORK_POLIGON_TYPES.ECD_SECTOR,
+                  otherToSend: { $elemMatch: {
+                    $or: [
+                      { placeTitle: new RegExp(filter.value, 'i') },
+                      { post: new RegExp(filter.value, 'i') },
+                      { fio: new RegExp(filter.value, 'i') },
+                    ]
+                  } },
+                });
+              }
               break;
             // Поиск подчисла в числе
             case 'number':
@@ -986,34 +987,37 @@ router.post(
       }
 
       // Поиск связанных документов типа 'Уведомление ЭЦД'
-      const lookupConditions = {
-        from: 'orders',
-        let: { the_id: '$_id', the_chainId: '$orderChain.chainId'},
-        pipeline: [
-          { $match:
-            { $expr:
-              { $and:
-                [
-                  { $eq: ['$type', ORDER_PATTERN_TYPES.ECD_NOTIFICATION] },
-                  { $eq: ['$$the_chainId', '$orderChain.chainId'] },
-                ],
+      let lookupConditions = null;
+      if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
+        lookupConditions = {
+          from: 'orders',
+          let: { the_id: '$_id', the_chainId: '$orderChain.chainId'},
+          pipeline: [
+            { $match:
+              { $expr:
+                { $and:
+                  [
+                    { $eq: ['$type', ORDER_PATTERN_TYPES.ECD_NOTIFICATION] },
+                    { $eq: ['$$the_chainId', '$orderChain.chainId'] },
+                  ],
+                },
               },
             },
-          },
-          { $project:
-            {
-              _id: 0,
-              number: 1,
-              startDate: '$timeSpan.start',
+            { $project:
+              {
+                _id: 0,
+                number: 1,
+                startDate: '$timeSpan.start',
+              },
             },
-          },
-        ],
-        as: 'connectedOrder',
-      };
+          ],
+          as: 'connectedOrder',
+        };
+      }
 
       // Фильтрация по номеру уведомления (если необходима)
       let connectedDataFilterExists = false;
-      if (filterFields) {
+      if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR && filterFields) {
         const notificationNumberFilter = filterFields.find((el) => el.field === 'notificationNumber');
         if (notificationNumberFilter) {
           connectedDataFilterExists = true;
@@ -1040,13 +1044,19 @@ router.post(
 
       const aggregation = [
         { $match: matchFilter },
-        { $lookup: lookupConditions },
-        { $unwind: {
-          path: '$connectedOrder',
-          // если нет фильтрации по связанному документу, то делаем LEFT JOIN, в противном случае
-          // делаем FULL JOIN
-          preserveNullAndEmptyArrays: !connectedDataFilterExists,
-        } },
+      ];
+      if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
+        aggregation.push(
+          { $lookup: lookupConditions },
+          { $unwind: {
+            path: '$connectedOrder',
+            // если нет фильтрации по связанному документу, то делаем LEFT JOIN, в противном случае
+            // делаем FULL JOIN
+            preserveNullAndEmptyArrays: !connectedDataFilterExists,
+          } }
+        );
+      }
+      aggregation.push(
         { $sort: sortConditions },
         { $group: {
           _id: null,
@@ -1058,8 +1068,8 @@ router.post(
           // skip = page > 0 ? (page - 1) * docsCount : 0
           // limit = docsCount || 1000000
           data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
-        } },
-      ];
+        } }
+      );
 
       // Ищем данные
       const data = await Order.aggregate(aggregation);
@@ -1072,10 +1082,10 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение списка распоряжений для журнала ЭЦД',
+        action: 'Получение списка распоряжений для журнала',
         error,
         actionParams: {
-          datetimeStart, datetimeEnd, includeDocsCriteria,
+          workPoligon, datetimeStart, datetimeEnd, includeDocsCriteria,
           sortFields, filterFields, page, docsCount,
         },
       });

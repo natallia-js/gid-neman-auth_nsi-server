@@ -49,9 +49,6 @@ async function processDelDBData() {
           // { field: null } means that field is null or does not exist
           { deliverDateTime: { $ne: null } },
           { confirmDateTime: null },
-          { orderChain: { $exists: true } },
-          { "orderChain.chainEndDateTime": { $exists: true } },
-          { "orderChain.chainEndDateTime": { $ne: null } },
           { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - maxDaysToStoreUnconfirmedOrders * daysToMillisecondsMultiplier) } },
         ],
       },
@@ -63,9 +60,6 @@ async function processDelDBData() {
             { confirmDateTime: { $ne: null } },
             { $and: [ { deliverDateTime: null }, { confirmDateTime: null } ] },
           ]},
-          { orderChain: { $exists: true } },
-          { "orderChain.chainEndDateTime": { $exists: true } },
-          { "orderChain.chainEndDateTime": { $ne: null } },
           { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - workPeriodInDays * daysToMillisecondsMultiplier) } },
         ],
       },
@@ -75,12 +69,7 @@ async function processDelDBData() {
 
   // 2)
   matchFilter = {
-    $and: [
-      { orderChain: { $exists: true } },
-      { "orderChain.chainEndDateTime": { $exists: true } },
-      { "orderChain.chainEndDateTime": { $ne: null } },
-      { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) } },
-    ],
+    "orderChain.chainEndDateTime": { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) },
   };
   await Order.deleteMany(matchFilter);
 

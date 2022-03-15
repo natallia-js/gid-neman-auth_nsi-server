@@ -14,6 +14,7 @@ const {
   modRoleValidationRules,
 } = require('../validators/roles.validator');
 const validate = require('../validators/validate');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -63,7 +64,12 @@ router.get(
       }
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех ролей',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -104,7 +110,12 @@ router.get(
       }
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка аббревиатур всех ролей с их идентификаторами',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -189,10 +200,10 @@ router.post(
   addRoleValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { _id, englAbbreviation, description, subAdminCanUse, apps } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { _id, englAbbreviation, description, subAdminCanUse, apps } = req.body;
 
+    try {
       // Ищем в БД роль, englAbbreviation которой совпадает с переданной пользователем
       const candidate = await Role.findOne({ englAbbreviation });
 
@@ -220,7 +231,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', role });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление новой роли',
+        error,
+        actionParams: { _id, englAbbreviation, description, subAdminCanUse, apps },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -257,10 +273,10 @@ router.post(
   addCredValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { roleId, appId, credId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { roleId, appId, credId } = req.body;
 
+    try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
       const candidate = await Role.findOne({ _id: roleId });
 
@@ -296,7 +312,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление в роль нового полномочия в приложении',
+        error,
+        actionParams: { roleId, appId, credId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -334,10 +355,10 @@ router.post(
   changeCredsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { roleId, appId, newCredIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { roleId, appId, newCredIds } = req.body;
 
+    try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
       const candidate = await Role.findOne({ _id: roleId });
 
@@ -365,7 +386,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка полномочий в приложении',
+        error,
+        actionParams: { roleId, appId, newCredIds },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -404,10 +430,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { roleId } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { roleId } = req.body;
 
+    try {
       // Удаляем в БД запись
       const delRes = await Role.deleteOne({ _id: roleId }).session(session);
 
@@ -437,10 +463,13 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
-
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление роли',
+        error,
+        actionParams: { roleId },
+      });
       await session.abortTransaction();
-
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -485,10 +514,10 @@ router.post(
   modRoleValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { roleId, englAbbreviation, apps } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { roleId, englAbbreviation, apps } = req.body;
 
+    try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
       let candidate = await Role.findById(roleId);
 
@@ -526,7 +555,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена', role: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование роли',
+        error,
+        actionParams: { roleId, englAbbreviation, apps },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

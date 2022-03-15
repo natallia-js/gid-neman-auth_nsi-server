@@ -10,6 +10,7 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
 const { TDNCSector } = require('../models/TDNCSector');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех смежных участков ДНЦ',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -82,9 +88,9 @@ router.get(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
-    try {
-      const { sectorId } = req.body;
+    const { sectorId } = req.body;
 
+    try {
       let data = await TAdjacentDNCSector.findAll({
         raw: true,
         where: {
@@ -114,7 +120,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех смежных участков ДНЦ заданного участка ДНЦ',
+        error,
+        actionParams: { sectorId },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -148,10 +159,10 @@ router.post(
   addAdjacentDNCSectorsValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorID, adjSectorIDs } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorID, adjSectorIDs } = req.body;
 
+    try {
       // Проверяем, существует ли участок ДНЦ с указанным идентификатором
       let candidate = await TDNCSector.findOne({ where: { DNCS_ID: sectorID } });
       if (!candidate) {
@@ -209,7 +220,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', finalAdjSectIds });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление смежных участков ДНЦ',
+        error,
+        actionParams: { sectorID, adjSectorIDs },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -217,7 +233,7 @@ router.post(
 
 
 /**
- * Обработка запроса на удаление смежного участка.
+ * Обработка запроса на удаление смежного участка ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -243,10 +259,10 @@ router.post(
   delAdjacentDNCSectorValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorID1, sectorID2 } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorID1, sectorID2 } = req.body;
 
+    try {
       // Удаляем в БД запись
       const destroyedRows = await TAdjacentDNCSector.destroy({
         where: {
@@ -264,7 +280,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление смежного участка ДНЦ',
+        error,
+        actionParams: { sectorID1, sectorID2 },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -272,7 +293,7 @@ router.post(
 
 
 /**
- * Обработка запроса на изменение списка смежных участков.
+ * Обработка запроса на изменение списка смежных участков ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -307,10 +328,10 @@ router.post(
 
     const t = await sequelize.transaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { sectorId, adjacentSectIds } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sectorId, adjacentSectIds } = req.body;
 
+    try {
       // Ищем в БД участок ДНЦ, id которого совпадает с переданным пользователем
       const candidate = await TDNCSector.findOne({
         where: { DNCS_ID: sectorId },
@@ -385,7 +406,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение списка смежных участков ДНЦ',
+        error,
+        actionParams: { sectorId, adjacentSectIds },
+      });
       await t.rollback();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

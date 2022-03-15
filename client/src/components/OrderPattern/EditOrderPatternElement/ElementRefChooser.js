@@ -14,19 +14,19 @@ export const ElementRefChooser = (props) => {
     handleChangeRefCallback(value);
   };
 
-  const [currentElementPossibleRefs, setCurrentElementPossibleRefs] = useState(null);
+  const [currentElementPossibleRefs, setCurrentElementPossibleRefs] = useState([]);
 
   useEffect(() => {
     if (!orderPatternElRefs || !orderPatternElRefs.length) {
-      setCurrentElementPossibleRefs(null);
+      setCurrentElementPossibleRefs([]);
       return;
     }
     const elRefs = orderPatternElRefs.find((ref) => ref[ORDER_PATTERN_ELEMENT_REFS_FIELDS.ELEMENT_TYPE] === elementType);
     if (!elRefs) {
-      setCurrentElementPossibleRefs(null);
+      setCurrentElementPossibleRefs([]);
       return;
     }
-    setCurrentElementPossibleRefs(elRefs[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]);
+    setCurrentElementPossibleRefs(['', ...elRefs[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]]);
   }, [orderPatternElRefs, elementType]);
 
   useEffect(() => {

@@ -10,6 +10,7 @@ const validate = require('../validators/validate');
 const { TPost } = require('../models/TPost');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -52,7 +53,12 @@ router.get(
       res.status(OK).json(data);
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех должностей',
+        error,
+        actionParams: {},
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -86,10 +92,10 @@ router.post(
   addPostValidationRules(),
   validate,
   async (req, res) => {
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { abbrev, title } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { abbrev, title } = req.body;
 
+    try {
       // Ищем в БД должность, аббревиатура которой совпадает с переданной пользователем
       const candidate = await TPost.findOne({ where: { P_Abbrev: abbrev } });
 
@@ -104,7 +110,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', post });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление новой должности',
+        error,
+        actionParams: { abbrev, title },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -148,10 +159,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
 
+    try {
       // Ищем в БД должность, id которой совпадает с переданным пользователем
       const candidate = await TPost.findOne({
         where: { P_ID: id },
@@ -184,7 +195,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление должности',
+        error,
+        actionParams: { id },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -235,10 +251,10 @@ router.post(
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id, abbrev, title } = req.body;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id, abbrev, title } = req.body;
 
+    try {
       // Ищем в БД должность, id которой совпадает с переданным пользователем
       const candidate = await TPost.findOne({
         where: { P_ID: id },
@@ -298,7 +314,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование информации о должности',
+        error,
+        actionParams: { id, abbrev, title },
+      });
       await t.rollback();
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

@@ -10,6 +10,7 @@ const {
 } = require('../validators/orderPatterns.validator');
 const validate = require('../validators/validate');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 const router = Router();
 
@@ -59,12 +60,12 @@ router.post(
   // проверка полномочий пользователя на выполнение запрашиваемого действия
   checkGeneralCredentials,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId, workPoligonType, workPoligonId, getChildPatterns } = req.body;
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { userId, workPoligonType, workPoligonId, getChildPatterns } = req.body;
-
-      const serviceName = req.user.service;
-
       var dataProjection = {
         __v: false,
       };
@@ -84,7 +85,6 @@ router.post(
             },
             {
               $and: [
-                { workPoligon: { $exists: true } },
                 { "workPoligon.id": workPoligonId },
                 { "workPoligon.type": workPoligonType },
               ],
@@ -105,7 +105,12 @@ router.post(
 
       res.status(OK).json(data);
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех общих (не приватных) шаблонов распоряжений',
+        error,
+        actionParams: { userId, workPoligonType, workPoligonId, getChildPatterns },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -155,24 +160,15 @@ router.post(
   addOrderPatternValidationRules(),
   validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const {
+      _id, service, type, category, title, specialTrainCategories,
+      elements, isPersonalPattern, workPoligonId, workPoligonType,
+    } = req.body;
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const {
-        _id,
-        service,
-        type,
-        category,
-        title,
-        specialTrainCategories,
-        elements,
-        isPersonalPattern,
-        workPoligonId,
-        workPoligonType,
-      } = req.body;
-
-      // Служба, которой принадлежит лицо, запрашивающее действие
-      const serviceName = req.user.service;
-
       if (!isMainAdmin(req) && (serviceName !== service)) {
         return res.status(ERR).json({ message: `У Вас нет полномочий на добавление шаблона распоряжения в службе ${service}` });
       }
@@ -216,7 +212,15 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно сохранена', orderPattern });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового шаблона распоряжения',
+        error,
+        actionParams: {
+          _id, service, type, category, title, specialTrainCategories,
+          elements, isPersonalPattern, workPoligonId, workPoligonType,
+        },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -251,13 +255,12 @@ router.post(
   delOrderPatternValidationRules(),
   validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { id } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { id } = req.body;
-
       const candidate = await OrderPattern.findById(id);
       if (!candidate) {
         return res.status(ERR).json({ message: 'Указанный шаблон распоряжения не найден' });
@@ -273,7 +276,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление шаблона распоряжения',
+        error,
+        actionParams: { id },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -314,14 +322,13 @@ router.post(
   modOrderPatternValidationRules(),
   validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
+    // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
+    const { id, title } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
-      // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-      const { id, title } = req.body;
-
       // Ищем в БД шаблон распоряжения, id которого совпадает с переданным пользователем
       let candidate = await OrderPattern.findById(id);
 
@@ -352,7 +359,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена', orderPattern: candidate });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование данных шаблона распоряжения',
+        error,
+        actionParams: { id, title },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -388,13 +400,12 @@ router.post(
   modOrderPatternsCategoryValidationRules(),
   validate,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { service, orderType, title, newTitle } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
 
     try {
-      // Считываем находящиеся в пользовательском запросе данные
-      const { service, orderType, title, newTitle } = req.body;
-
       // Ищем шаблоны распоряжений, закрепленные за указанной службой, указанного типа и указанной категории
       const findRes = await OrderPattern.find({ service, type: orderType, category: title });
 
@@ -417,7 +428,12 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно изменена', newTitle });
 
     } catch (error) {
-      console.log(error);
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование наименования категории шаблонов распоряжений',
+        error,
+        actionParams: { service, orderType, title, newTitle },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

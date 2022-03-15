@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { UNAUTHORIZED, USER_NOT_FOUND_ERR_MESS } = require('../constants');
 const { getUserPostFIOString } = require('../routes/additional/getUserTransformedData');
+const { addError } = require('../serverSideProcessing/processLogsActions');
 
 
 /**
@@ -36,8 +37,13 @@ async function getUserData(req, res, next) {
     });
     next();
 
-  } catch (e) {
-    console.log(e)
+  } catch (error) {
+    addError({
+      errorTime: new Date(),
+      action: 'Промежуточный обработчик получения информации о пользователе из БД',
+      error,
+      actionParams: {},
+    });
     res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
   }
 }
