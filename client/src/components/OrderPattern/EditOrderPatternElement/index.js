@@ -13,6 +13,8 @@ import { ElementRefChooser } from '../EditOrderPatternElement/ElementRefChooser'
 import { EnterOutlined } from '@ant-design/icons';
 import drTrainTableColumns from '../drTrainTableColumns';
 
+const { TextArea } = Input;
+
 /**
  * Позволяет создать новый либо отредактировать существующий элемент шаблона распоряжения.
  *
@@ -185,6 +187,8 @@ export const EditOrderPatternElement = (props) => {
           style={{ width: ElementSizesCorrespondence[selectedPatternElement.size] }}
           size="small"
         />;
+      case OrderPatternElementType.TEXT_AREA:
+        return <TextArea autoSize />;
       case OrderPatternElementType.SELECT:
         return <Select
           open={false}
@@ -227,6 +231,9 @@ export const EditOrderPatternElement = (props) => {
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.INPUT}>
                 Поле ввода
+              </Radio.Button>
+              <Radio.Button value={OrderPatternElementType.TEXT_AREA}>
+                Текстовая область
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.SELECT}>
                 Выпадающий список
@@ -275,7 +282,8 @@ export const EditOrderPatternElement = (props) => {
           </Col>
         }
         {
-          (![OrderPatternElementType.TEXT, OrderPatternElementType.DR_TRAIN_TABLE, OrderPatternElementType.LINEBREAK]
+          (![OrderPatternElementType.TEXT, OrderPatternElementType.TEXT_AREA,
+            OrderPatternElementType.DR_TRAIN_TABLE, OrderPatternElementType.LINEBREAK]
             .includes(selectedPatternElement.type)) &&
           <Col flex="auto">
             <ElementRefChooser

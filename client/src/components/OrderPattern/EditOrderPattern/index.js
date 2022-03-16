@@ -85,7 +85,10 @@ export const EditOrderPattern = (props) => {
                     'not-edited-order-pattern-element-block' :
                     'edited-order-pattern-element-block'
                   }
-                  style={{ width: 'auto', margin: '0 10px 10px 0' }}
+                  style={{
+                    width: patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] !== OrderPatternElementType.TEXT_AREA ? 'auto' : '100%',
+                    margin: '0 10px 10px 0',
+                  }}
                 >
                   {
                     <Popover
@@ -123,7 +126,11 @@ export const EditOrderPattern = (props) => {
                       trigger="click"
                     >
                       <Row>
-                        <Col>
+                        <Col
+                          style={{
+                            width: patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] !== OrderPatternElementType.TEXT_AREA ? 'auto' : '100%',
+                          }}
+                        >
                           {getOrderPatternElementView(patternElement)}
                         </Col>
                       </Row>

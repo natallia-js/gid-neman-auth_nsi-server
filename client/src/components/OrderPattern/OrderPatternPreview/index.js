@@ -58,7 +58,7 @@ export const OrderPatternPreview = ({ orderPattern }) => {
               <div
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
                 style={{
-                  width: 'auto',
+                  width: patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] !== OrderPatternElementType.TEXT_AREA ? 'auto' : '100%',
                   marginRight: 5,
                   marginBottom: 2,
                   display: 'inline-block',

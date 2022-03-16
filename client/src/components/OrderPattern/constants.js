@@ -21,6 +21,7 @@ export const OrderPatternsNodeType = Object.freeze({
 export const OrderPatternElementType = Object.freeze({
   TEXT: 'text',
   INPUT: 'input',
+  TEXT_AREA: 'textArea',
   SELECT: 'select',
   DATE: 'date',
   TIME: 'time',
@@ -32,6 +33,7 @@ export const OrderPatternElementType = Object.freeze({
 export const OrderPatternElementTypeShortTitles = Object.freeze({
   TEXT: 'т.',
   INPUT: 'п.в.',
+  TEXT_AREA: 'т.о.',
   SELECT: 'в.с.',
   DATE: 'д.',
   TIME: 'в.',

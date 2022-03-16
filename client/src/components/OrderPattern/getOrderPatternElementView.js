@@ -10,6 +10,8 @@ import { EnterOutlined } from '@ant-design/icons';
 import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../constants';
 import drTrainTableColumns from './drTrainTableColumns';
 
+const { TextArea } = Input;
+
 /**
  * Возвращает внешний вид элемента шаблона распоряжения, опираясь на его тип.
  */
@@ -24,6 +26,15 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
         <Input
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+        />
+      </Tooltip>;
+    case OrderPatternElementType.TEXT_AREA:
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+      >
+        <TextArea
+          autoSize
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;

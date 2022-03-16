@@ -47,6 +47,9 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция прибытия', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Отключить, включить', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Точное место', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Порядок действий', additionalOrderPlaceInfoForGID: false },
   ],
 },
 {
