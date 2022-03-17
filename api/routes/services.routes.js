@@ -21,7 +21,6 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
 
-  GET_ALL_SERVICES_ACTION,
   MOD_SERVICE_ACTION,
 } = require('../constants');
 
@@ -29,22 +28,10 @@ const {
 /**
  * Обрабатывает запрос на получение списка всех служб.
  *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * Данный запрос доступен любому лицу.
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_SERVICES_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
   async (_req, res) => {
     try {
       const data = await TService.findAll({

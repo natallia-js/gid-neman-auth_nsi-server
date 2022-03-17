@@ -60,10 +60,8 @@ export const HelpPage = () => {
       <p className="flow-text helpData">GET_ALL_ECDSECTORS_ACTION - позволяет получить список всех участков ЭЦД</p>
       <p className="flow-text helpData">MOD_ECDSECTOR_ACTION - позволяет добавлять, удалять, изменять информацию об участках ЭЦД, о поездных участках в составе участков ЭЦД, о станциях, перегонах в составе поездных участков</p>
 
-      <p className="flow-text helpData">GET_ALL_POSTS_ACTION - позволяет получить список всех должностей</p>
       <p className="flow-text helpData">MOD_POST_ACTION - позволяет добавлять, удалять, изменять информацию о должностях</p>
 
-      <p className="flow-text helpData">GET_ALL_SERVICES_ACTION - позволяет получить список всех служб</p>
       <p className="flow-text helpData">MOD_SERVICE_ACTION - позволяет добавлять, удалять, изменять информацию о службах</p>
 
       <Title level={4}>Chapter4</Title>

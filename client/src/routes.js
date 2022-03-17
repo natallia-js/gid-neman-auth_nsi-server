@@ -39,10 +39,10 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
           {hasUserCredential(GetDataCredentials.GET_ALL_ROLES_ACTION) ? <RolesPage /> : <Redirect to="/services" />}
         </Route>
         <Route path="/services" exact>
-          {hasUserCredential(GetDataCredentials.GET_ALL_SERVICES_ACTION) ? <ServicesPage /> : <Redirect to="/posts" />}
+          <ServicesPage />
         </Route>
         <Route path="/posts" exact>
-          {hasUserCredential(GetDataCredentials.GET_ALL_POSTS_ACTION) ? <PostsPage /> : <Redirect to="/users" />}
+          <PostsPage />
         </Route>
         <Route path="/users" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_USERS_ACTION) ? <UsersPage /> : <Redirect to="/stations" />}

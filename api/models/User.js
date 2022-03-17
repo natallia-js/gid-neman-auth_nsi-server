@@ -23,8 +23,13 @@ const schema = new Schema({
   service: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId],
+  // контактные данные пользователя
+  contactData: { type: String, required: false },
   // список рабочих полигонов и времен последнего принятия и сдачи дежурства пользователем на них
   lastTakePassDutyTimes: [lastTakePassDutyTimesSchema],
+  // true - данные о пользователе созданы/подтверждены уполномоченным лицом;
+  // false - данные о пользователе еще не подтверждены уполномоченным лицом;
+  confirmed: { type: Boolean, required: true },
 });
 
 

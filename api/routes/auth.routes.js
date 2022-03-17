@@ -128,6 +128,7 @@ router.put(
         post: MAIN_ADMIN_POST,
         service: ALL_PERMISSIONS,
         roles: [adminRole._id],
+        confirmed: true,
       });
       await user.save();
 
@@ -148,6 +149,8 @@ router.put(
 
 /**
  * Обрабатывает запрос на получение списка всех пользователей.
+ * В результат включаются абсолютно все пользователи, в том числе и те, заявки на регистрацию
+ * которых пока не подтверждены.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список всех пользователей,
@@ -236,9 +239,7 @@ router.get(
         errorTime: new Date(),
         action: 'Получение списка всех пользователей',
         error,
-        actionParams: {
-          serviceName: req.user.service,
-        },
+        actionParams: { serviceName },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -256,7 +257,100 @@ const checkRoleExists = async (roleId) => {
     return null;
   }
   return await Role.findOne({ _id: roleId });
-}
+};
+
+
+/**
+ * Позволяет сохранить данные о новом пользователе в БД.
+ */
+const saveNewUserData = async (props) => {
+  // authorizedRegistration - если true, то данные о пользователе пришли из "надежного"
+  // источника, следовательно, пользователь после регистрации может работать с системой;
+  // если false, то данные о пользователе должны быть подтверждены уполномоченным лицом
+  // прежде чем пользователь сможет работать с системой
+  const {
+    _id, login, password, name, fatherName, surname, post, service, contactData,
+    roles, stations, dncSectors, ecdSectors, authorizedRegistration, session, transaction,
+  } = props;
+
+  // Ищем в БД пользователя с указанным login (ищем среди всех пользователей, в т.ч. и среди
+  // тех, заявка на регистрацию которых еще не подтвержена)
+  const candidate = await User.findOne({ login }).session(session);
+
+  // Если находим, то процесс регистрации продолжать не можем
+  if (candidate) {
+    throw new Error('Пользователь с таким логином уже существует');
+  }
+
+  if (roles) {
+    for (let role of roles) {
+      if (!await checkRoleExists(role)) {
+        throw new Error('Для пользователя определены несуществующие роли');
+      }
+    }
+  }
+
+  // Получаем хеш заданного пользователем пароля
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  // Создаем в БД нового пользователя
+  const userObj = {
+    login,
+    password: hashedPassword,
+    name,
+    fatherName,
+    surname,
+    post,
+    service: service || null,
+    roles: roles || [],
+    contactData,
+    confirmed: authorizedRegistration,
+  };
+  let user;
+  if (_id) {
+    user = new User({ _id, ...userObj });
+  } else {
+    user = new User(userObj);
+  }
+  await user.save({ session });
+
+  // Определяем, при необходимости, для созданного пользователя рабочие полигоны
+
+  if (stations && stations.length) {
+    // Создаем в БД рабочие полигоны-станции либо рабочие места в рамках станций для заданного пользователя
+    const objectsToCreateInDatabase = [];
+    for (let stationObj of stations) {
+      objectsToCreateInDatabase.push({
+        SWP_UserID: String(user._id),
+        SWP_StID: stationObj.id,
+        SWP_StWP_ID: stationObj.workPlaceId,
+      });
+    }
+    await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction });
+  }
+
+  if (dncSectors && dncSectors.length) {
+    // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
+    for (let id of dncSectors) {
+      await TDNCSectorWorkPoligon.create({
+        DNCSWP_UserID: String(user._id),
+        DNCSWP_DNCSID: id,
+      }, { transaction });
+    }
+  }
+
+  if (ecdSectors && ecdSectors.length) {
+    // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
+    for (let id of ecdSectors) {
+      await TECDSectorWorkPoligon.create({
+        ECDSWP_UserID: String(user._id),
+        ECDSWP_ECDSID: id,
+      }, { transaction });
+    }
+  }
+
+  return user;
+};
 
 
 /**
@@ -305,18 +399,8 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе регистрационные данные
     const {
-      _id,
-      login,
-      password,
-      name,
-      fatherName,
-      surname,
-      post,
-      service,
-      roles,
-      stations,
-      dncSectors,
-      ecdSectors,
+      _id, login, password, name, fatherName, surname, post,
+      service, roles, stations, dncSectors, ecdSectors,
     } = req.body;
 
     // Служба, которой принадлежит лицо, запрашивающее действие
@@ -326,96 +410,24 @@ router.post(
       return res.status(ERR).json({ message: `У Вас нет полномочий на регистрацию пользователя в службе ${service}` });
     }
 
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     // транзакция MS SQL
     const sequelize = req.sequelize;
     if (!sequelize) {
       return res.status(ERR).json({ message: 'Для выполнения операции регистрации пользователя не определен объект транзакции' });
     }
-    const t = await sequelize.transaction();
 
-    // транзакция MongoDB
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      // Ищем в БД пользователя, login которого совпадает с переданным пользователем
-      const candidate = await User.findOne({ login }).session(session);
-
-      // Если находим, то процесс регистрации продолжать не можем
-      if (candidate) {
-        await t.rollback();
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Пользователь с таким логином уже существует' });
-      }
-
-      if (roles) {
-        for (let role of roles) {
-          if (!await checkRoleExists(role)) {
-            await t.rollback();
-            await session.abortTransaction();
-            return res.status(ERR).json({ message: 'Для пользователя определены несуществующие роли' });
-          }
-        }
-      }
-
-      // Получаем хеш заданного пользователем пароля
-      const hashedPassword = await bcrypt.hash(password, 12);
-
-      // Создаем в БД нового пользователя
-      const userObj = {
-        login,
-        password: hashedPassword,
-        name,
-        fatherName,
-        surname,
-        post,
-        service: service || null,
-        roles: roles || [],
-      };
-      let user;
-      if (_id) {
-        user = new User({ _id, ...userObj });
-      } else {
-        user = new User(userObj);
-      }
-      await user.save({ session });
-
-      // Определяем, при необходимости, для созданного пользователя рабочие полигоны
-
-      if (stations && stations.length) {
-        // Создаем в БД рабочие полигоны-станции либо рабочие места в рамках станций для заданного пользователя
-        const objectsToCreateInDatabase = [];
-        for (let stationObj of stations) {
-          objectsToCreateInDatabase.push({
-            SWP_UserID: String(user._id),
-            SWP_StID: stationObj.id,
-            SWP_StWP_ID: stationObj.workPlaceId,
-          });
-        }
-        await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction: t });
-      }
-
-      if (dncSectors && dncSectors.length) {
-        // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
-        for (let id of dncSectors) {
-          await TDNCSectorWorkPoligon.create({
-            DNCSWP_UserID: String(user._id),
-            DNCSWP_DNCSID: id,
-          }, { transaction: t });
-        }
-      }
-
-      if (ecdSectors && ecdSectors.length) {
-        // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
-        for (let id of ecdSectors) {
-          await TECDSectorWorkPoligon.create({
-            ECDSWP_UserID: String(user._id),
-            ECDSWP_ECDSID: id,
-          }, { transaction: t });
-        }
-      }
-
-      await t.commit();
+    sequelize.transaction(async (t) => {
+      return await saveNewUserData({
+        _id, login, password, name, fatherName, surname, post, service, contactData: null,
+        roles, stations, dncSectors, ecdSectors, authorizedRegistration: true, session, transaction: t,
+      });
+    })
+    .then(async (user) => {
+      // transaction t is commited here
       await session.commitTransaction();
 
       const resObj = {
@@ -433,37 +445,131 @@ router.post(
         actionTime: new Date(),
         action: 'Регистрация пользователя',
         actionParams: {
-          userId: user._id,
-          login, name, fatherName, surname, post,
+          userId: user._id, login, name, fatherName, surname, post,
           service, roles, stations, dncSectors, ecdSectors,
         },
       });
-
-    } catch (error) {
+    })
+    .catch(async (error) => {
       addError({
         errorTime: new Date(),
         action: 'Регистрация пользователя',
         error,
         actionParams: {
-          userId: user._id,
-          login, name, fatherName, surname,
-          post, service, roles,
-          stations, dncSectors, ecdSectors,
+          userId: user ? user._id : undefined, login, name, fatherName, surname,
+          post, service, roles, stations, dncSectors, ecdSectors,
         },
       });
-      await t.rollback();
+      // transaction t is rollbacked here
       await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
-
-    } finally {
+    })
+    .finally(() => {
       session.endSession();
+    });
+  }
+);
+
+
+/**
+ * Обработка запроса на подачу заявки на регистрацию нового пользователя.
+ *
+ * Данный запрос доступен любому лицу.
+ *
+ * Параметры тела запроса:
+ * login - логин пользователя (обязателен),
+ * password - пароль пользователя (обязателен),
+ * name - имя пользователя (обязательно),
+ * fatherName - отчество пользователя (не обязательно),
+ * surname - фамилия пользователя (обязательна),
+ * service - наименование службы (необязательно),
+ * post - должность (обязательна),
+ * contactData - контактные данные пользователя (не обязательны),
+ * roles - массив ролей (не обязателен),
+ *         каждый элемент массива - строка с id роли,
+ * stations - массив рабочих полигонов-станций с (не обязательно) рабочими местами в рамках данных станций (не обязателен),
+ *            каждый элемент массива - объект, включающий поле с id станции и (необязательно) поле с id рабочего места в рамках данной станции (workPlaceId),
+ * dncSectors - массив рабочих полигонов-участков ДНЦ (не обязателен),
+ *              каждый элемент массива - строка с id участка ДНЦ,
+ * ecdSectors - массив рабочих полигонов-участков ЭЦД (не обязателен),
+ *              каждый элемент массива - строка с id участка ЭЦД,
+ */
+ router.post(
+  '/applyForRegistration',
+  // проверка параметров запроса
+  registerValidationRules(),
+  validate,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе регистрационные данные
+    const {
+      login, password, name, fatherName, surname, post, contactData,
+      service, roles, stations, dncSectors, ecdSectors,
+    } = req.body;
+
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    // транзакция MS SQL
+    const sequelize = req.sequelize;
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции подачи заявки на регистрацию пользователя не определен объект транзакции' });
     }
+
+    sequelize.transaction(async (t) => {
+      return await saveNewUserData({
+        _id: undefined, login, password, name, fatherName, surname, post, service, contactData,
+        roles, stations, dncSectors, ecdSectors, authorizedRegistration: false, session, transaction: t,
+      });
+    })
+    .then(async (user) => {
+      // transaction t is commited here
+      await session.commitTransaction();
+
+      const resObj = {
+        ...user._doc,
+        stationWorkPoligons: stations,
+        dncSectorsWorkPoligons: dncSectors,
+        ecdSectorsWorkPoligons: ecdSectors,
+      };
+
+      res.status(OK).json({ message: 'Заявка подана', user: resObj });
+
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: 'Неизвестный',
+        actionTime: new Date(),
+        action: 'Подача заявки на регистрацию пользователя',
+        actionParams: {
+          login, password, name, fatherName, surname, post, contactData,
+          service, roles, stations, dncSectors, ecdSectors,
+        },
+      });
+    })
+    .catch(async (error) => {
+      addError({
+        errorTime: new Date(),
+        action: 'Подача заявки на регистрацию пользователя',
+        error,
+        actionParams: {
+          login, password, name, fatherName, surname, post, contactData,
+          service, roles, stations, dncSectors, ecdSectors,
+        },
+      });
+      // transaction t is rollbacked here
+      await session.abortTransaction();
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    })
+    .finally(() => {
+      session.endSession();
+    });
   }
 );
 
 
 /**
  * Обработка запроса на добавление новой роли пользователю.
+ * Работает и с теми пользователями, заявка на регистрацию которых еще не подтверждена.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман может добавить любую роль любому пользователю,
@@ -551,11 +657,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление пользователю роли',
         error,
-        actionParams: {
-          userId,
-          roleId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { serviceName, userId, roleId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -565,6 +667,7 @@ router.post(
 
 /**
  * Обработка запроса на вход в систему.
+ * Войти в систему может лишь тот пользователь, заявка на регистрацию которого подтверждена.
  *
  * Параметры тела запроса:
  * login - логин пользователя (обязателен),
@@ -582,7 +685,7 @@ router.post(
 
     try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
-      const user = await User.findOne({ login });
+      const user = await User.findOne({ login, confirmed: true });
 
       // Если не находим, то процесс входа в систему продолжать не можем
       if (!user) {
@@ -786,10 +889,7 @@ router.post(
         errorTime: new Date(),
         action: 'Вход в систему',
         error,
-        actionParams: {
-          application: applicationAbbreviation,
-          login,
-        },
+        actionParams: { application: applicationAbbreviation, login },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -803,6 +903,7 @@ router.post(
  * сдал дежурство после этого, то после входа в систему он будет считаться находящимся на смене.
  * Если же пользователь не принимал ранее дежурство, то он просто входит в систему на указанном
  * рабочем полигоне.
+ * Только для пользователей, заявка на регистрацию которых подтверждена!
  *
  * Параметры запроса:
  *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
@@ -832,7 +933,7 @@ router.post(
 
     try {
       // Ищем в БД пользователя, который прислал запрос
-      const user = await User.findOne({ _id: req.user.userId });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
@@ -907,6 +1008,7 @@ router.post(
         action: 'Вход в систему без принятия дежурства',
         error,
         actionParams: {
+          userId: req.user.userId,
           workPoligonType,
           workPoligonId,
           workSubPoligonId,
@@ -924,6 +1026,7 @@ router.post(
  * Обработка запроса на принятие пользователем дежурства на заданном рабочем полигоне.
  * Если пользователь ранее принял дежурство на данном рабочем полигоне, но не
  * сдал дежурство после этого, то данный обработчик не даст принять дежурство повторно, не сдав предыдущее.
+ * Только для пользователей, заявка на регистрацию которых подтверждена!
  *
  * Параметры запроса:
  *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
@@ -955,7 +1058,7 @@ router.post(
       // Дежурство принимает пользователь с id = req.user.userId
 
       // Ищем в БД пользователя, который прислал запрос на принятие дежурства
-      const user = await User.findOne({ _id: req.user.userId });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
@@ -1045,6 +1148,7 @@ router.post(
         action: 'Принятие дежурства',
         error,
         actionParams: {
+          userId: req.user.userId,
           workPoligonType,
           workPoligonId,
           workSubPoligonId,
@@ -1062,6 +1166,7 @@ router.post(
  * Обработка запроса на выход из системы без сдачи дежурства.
  * Никаких изменений в БД не производится.
  * Изменения вносятся лишь в token пользователя.
+ * Только для пользователей, заявка на регистрацию которых подтверждена!
  */
  router.post(
   '/logout',
@@ -1076,7 +1181,7 @@ router.post(
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
-      const user = await User.findOne({ _id: req.user.userId });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
@@ -1104,10 +1209,7 @@ router.post(
         workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
         actionTime: new Date(),
         action: 'Выход из системы без сдачи дежурства',
-        actionParams: {
-          userId: user._id,
-          application: applicationAbbreviation,
-        },
+        actionParams: { application: applicationAbbreviation, userId: user._id },
       };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         addDY58UserActionInfo(logObject);
@@ -1118,9 +1220,7 @@ router.post(
         errorTime: new Date(),
         action: 'Выход из системы без сдачи дежурства',
         error,
-        actionParams: {
-          application: applicationAbbreviation,
-        },
+        actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -1130,6 +1230,7 @@ router.post(
 
 /**
  * Обработка запроса на выход из системы со сдачей дежурства.
+ * Только для пользователей, завка на регистрацию которых подтверждена!
  */
  router.post(
   '/logoutWithDutyPass',
@@ -1161,14 +1262,15 @@ router.post(
       );
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
-      const user = await User.findOne({ _id: req.user.userId });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
       const workPoligon = req.user.workPoligon;
       const lastTakePassDutyOnWorkPoligonInfo =
-        (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length) ? null
+        (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length)
+        ? null
         : user.lastTakePassDutyTimes.find((el) =>
           el.workPoligon.type === workPoligon.type &&
           el.workPoligon.id === workPoligon.id &&
@@ -1194,10 +1296,7 @@ router.post(
         workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
         actionTime: new Date(),
         action: 'Выход из системы со сдачей дежурства',
-        actionParams: {
-          userId: user._id,
-          application: applicationAbbreviation,
-        },
+        actionParams: { application: applicationAbbreviation, userId: user._id },
       };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         addDY58UserActionInfo(logObject);
@@ -1208,9 +1307,7 @@ router.post(
         errorTime: new Date(),
         action: 'Выход из системы со сдачей дежурства',
         error,
-        actionParams: {
-          application: applicationAbbreviation,
-        },
+        actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -1295,10 +1392,7 @@ router.post(
         user: userPostFIOString(req.user),
         actionTime: new Date(),
         action: 'Удаление пользователя',
-        actionParams: {
-          userId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { serviceName, userId, user: userPostFIOString(candidate) },
       });
 
     } catch (error) {
@@ -1306,10 +1400,7 @@ router.post(
         errorTime: new Date(),
         action: 'Удаление пользователя',
         error,
-        actionParams: {
-          userId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { serviceName, userId },
       });
       await t.rollback();
       await session.abortTransaction();
@@ -1393,11 +1484,7 @@ router.post(
         user: userPostFIOString(req.user),
         actionTime: new Date(),
         action: 'Удаление роли пользователя',
-        actionParams: {
-          userId,
-          roleId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { serviceName, userId, roleId, user: userPostFIOString(candidate) },
       });
 
     } catch (error) {
@@ -1405,11 +1492,7 @@ router.post(
         errorTime: new Date(),
         action: 'Удаление роли пользователя',
         error,
-        actionParams: {
-          userId,
-          roleId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { serviceName, userId, roleId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -1540,8 +1623,6 @@ router.post(
         error,
         actionParams: {
           userId,
-          user: userPostFIOString(candidate),
-          initialUserData,
           requestData: {
             login, service, roles, name, fatherName, surname, post,
           },

@@ -70,6 +70,7 @@ router.get(
  * участок ДНЦ с одним из заданных id. Если один пользователь зарегистрирован на нескольких участках
  * ДНЦ, то запрос вернет такого пользователя для каждой из записей об участке ДНЦ, на котором он
  * зарегистрирован.
+ * Работает только с пользователями, заявка на регистрацию которых подтверждена!
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -116,7 +117,10 @@ router.get(
 
       let data;
       if (users) {
-        const searchCondition = { _id: users.map((item) => item.DNCSWP_UserID) };
+        const searchCondition = {
+          _id: users.map((item) => item.DNCSWP_UserID),
+          confirmed: true,
+        };
         if (onlyOnline) {
           searchCondition.online = true;
         }

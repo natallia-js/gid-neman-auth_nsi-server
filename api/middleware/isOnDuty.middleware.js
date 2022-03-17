@@ -64,7 +64,7 @@ const isOnDuty = async (req, res, next) => {
     // После предыдущей проверки мы уверены в том, что значение userData.lastTakeDutyTime определено
 
     // Ищем указанного пользователя в БД
-    const user = await User.findOne({ _id: userData.userId });
+    const user = await User.findOne({ _id: userData.userId, confirmed: true });
     if (!user) {
       return res.status(UNAUTHORIZED).json({ message: USER_NOT_FOUND_ERR_MESS });
     }

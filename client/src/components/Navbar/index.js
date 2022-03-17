@@ -55,14 +55,8 @@ export const Navbar = () => {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_ROLES_ACTION) &&
           <Menu.Item key="2"><NavLink to="/roles">Роли</NavLink></Menu.Item>
         }
-        {
-          auth.hasUserCredential(GetDataCredentials.GET_ALL_SERVICES_ACTION) &&
-          <Menu.Item key="3"><NavLink to="/services">Службы</NavLink></Menu.Item>
-        }
-        {
-          auth.hasUserCredential(GetDataCredentials.GET_ALL_POSTS_ACTION) &&
-          <Menu.Item key="4"><NavLink to="/posts">Должности</NavLink></Menu.Item>
-        }
+        <Menu.Item key="3"><NavLink to="/services">Службы</NavLink></Menu.Item>
+        <Menu.Item key="4"><NavLink to="/posts">Должности</NavLink></Menu.Item>
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_USERS_ACTION) &&
           <Menu.Item key="5"><NavLink to="/users">Пользователи</NavLink></Menu.Item>

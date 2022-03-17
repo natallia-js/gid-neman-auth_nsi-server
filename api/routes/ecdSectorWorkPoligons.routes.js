@@ -70,6 +70,7 @@ router.get(
  * участок ЭЦД с одним из заданных id. Если один пользователь зарегистрирован на нескольких участках
  * ЭЦД, то запрос вернет такого пользователя для каждой из записей об участке ЭЦД, на котором он
  * зарегистрирован.
+ * Работает только с теми пользователями, заявка на регистрацию которых подтверждена!
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -116,7 +117,10 @@ router.get(
 
       let data;
       if (users && users.length) {
-        const searchCondition = { _id: users.map((item) => item.ECDSWP_UserID) };
+        const searchCondition = {
+          _id: users.map((item) => item.ECDSWP_UserID),
+          confirmed: true,
+        };
         if (onlyOnline) {
           searchCondition.online = true;
         }

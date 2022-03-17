@@ -7,6 +7,8 @@ const { addError } = require('../serverSideProcessing/processLogsActions');
 /**
  * Промежуточный обработчик получения информации о пользователе из БД на основании его id,
  * который содержится в req.user.
+ * Данный обработчик ищет информацию только среди тех пользователей, регистрация которых
+ * в системе подтверждена.
  *
  * @param {object} req - объект запроса
  * @param {object} res - объект ответа
@@ -25,7 +27,7 @@ async function getUserData(req, res, next) {
 
   try {
     // Ищем пользователя в БД
-    const user = await User.findOne({ _id: userData.userId });
+    const user = await User.findOne({ _id: userData.userId, confirmed: true });
     if (!user) {
       return res.status(UNAUTHORIZED).json({ message: USER_NOT_FOUND_ERR_MESS });
     }

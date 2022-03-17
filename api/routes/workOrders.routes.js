@@ -407,7 +407,7 @@ router.post(
       let userFIO;
       if ((sector && !sector.confirmDateTime) || (localSector && !localSector.confirmDateTime)) {
         // ищем информацию о лице, подтверждающем распоряжение
-        const user = await User.findOne({ _id: req.user.userId }).session(session);
+        const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
         if (!user) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
