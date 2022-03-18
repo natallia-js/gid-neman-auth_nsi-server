@@ -52,6 +52,7 @@ export const ServerAPI = Object.freeze({
   MOD_USER: ServerAddress + '/api/auth/mod',
   ADD_USER_ROLE: ServerAddress + '/api/auth/addRole',
   DEL_USER_ROLE: ServerAddress + '/api/auth/delRole',
+  CONFIRM_USER: ServerAddress + '/api/auth/confirm',
 
   GET_FULL_STATIONS_DATA: ServerAddress + '/api/nsi/stations/fullData',
   GET_STATIONS_DATA: ServerAddress + '/api/nsi/stations/data',
@@ -195,6 +196,8 @@ export const USER_FIELDS = Object.freeze({
   // Данное поле нужно только программе для формы ввода информации о рабочем месте на станции
   // регистрируемого пользователя
   STATION_WORK_PLACES_WORK_POLIGONS: 'stationWorkPlacesWorkPoligons',
+  CONTACT_DATA: 'contactData',
+  CONFIRMED: 'confirmed',
 });
 
 // ----------------------------------------

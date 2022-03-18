@@ -557,6 +557,19 @@ const NewUserModal = ({
           />
         </Form.Item>
 
+        <Form.Item
+          label="Контактные данные"
+          name={USER_FIELDS.CONTACT_DATA}
+          validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.CONTACT_DATA] ? ERR_VALIDATE_STATUS : null}
+          help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.CONTACT_DATA] : null}
+        >
+          <Input
+            placeholder="Введите контактные данные"
+            autoComplete="off"
+            allowClear
+          />
+        </Form.Item>
+
         <Form.Item>
           <div className="new-item-modal-btns-block">
             <Button htmlType="button" onClick={onReset} className="new-item-modal-btn" type="primary">

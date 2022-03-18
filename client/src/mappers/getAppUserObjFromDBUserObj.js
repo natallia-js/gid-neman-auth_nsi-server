@@ -17,9 +17,11 @@ const getAppUserObjFromDBUserObj = (dbUserObj) => {
       [USER_FIELDS.POST]: dbUserObj.post,
       [USER_FIELDS.SERVICE]: dbUserObj.service,
       [USER_FIELDS.ROLES]: dbUserObj.roles || [], // массив id ролей
-      [USER_FIELDS.STATION_WORK_POLIGONS]: dbUserObj.stationWorkPoligons || [], // массив id рабочих полигонов-станций
-      [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dbUserObj.dncSectorsWorkPoligons || [], // массив id рабочих полигонов-участков ДНЦ
-      [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: dbUserObj.ecdSectorsWorkPoligons || [], // массив id рабочих полигонов-участков ЭЦД
+      [USER_FIELDS.STATION_WORK_POLIGONS]: dbUserObj.stationWorkPoligons || [], // массив объектов рабочих полигонов-станций
+      [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dbUserObj.dncSectorsWorkPoligons || [], // массив объектов рабочих полигонов-участков ДНЦ
+      [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: dbUserObj.ecdSectorsWorkPoligons || [], // массив объектов рабочих полигонов-участков ЭЦД
+      [USER_FIELDS.CONTACT_DATA]: dbUserObj.contactData,
+      [USER_FIELDS.CONFIRMED]: dbUserObj.confirmed,
     }
   }
   return null;

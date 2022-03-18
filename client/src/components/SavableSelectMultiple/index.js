@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Select } from 'antd';
-import compareStrings from '../../sorters/compareStrings';
+import { Button, Select, Tag } from 'antd';
 
 import './styles.scss';
+
+const { Option } = Select;
 
 
 /**
@@ -22,14 +23,20 @@ const SavableSelectMultiple = (props) => {
   } = props;
 
   const [selectedVals, setSelectedVals] = useState([]);
+  const [optionsToDisplay, setOptionsToDisplay] = useState([]);
 
   useEffect(() => {
-    setSelectedVals(selectedItems);
+    setSelectedVals(selectedItems ? [...selectedItems] : []);
   }, [selectedItems]);
 
   function handleChange(value) {
-    setSelectedVals(value);
+    setSelectedVals([...value]);
   }
+
+  useEffect(() => {
+    // убираю из списка те пункты, которые выбрал пользователь
+    setOptionsToDisplay(options.filter((option) => !selectedVals.includes(option.value)));
+  }, [selectedVals]);
 
   function handleSaveChanges() {
     saveChangesCallback(selectedVals);
@@ -40,6 +47,19 @@ const SavableSelectMultiple = (props) => {
     (!selectedVals && selectedItems) ||
     (selectedVals.length !== selectedItems.length) ||
     selectedVals.find((val) => !selectedItems.includes(val));
+
+  function tagRender(props) {
+    const { label, closable, onClose } = props;
+    return (
+      <Tag
+        closable={closable}
+        onClose={onClose}
+        className="tag"
+      >
+        <span style={{ marginLeft: 0 }}>{label}</span>
+      </Tag>
+    );
+  }
 
   return (
     <div className="savable-select-container">
@@ -52,15 +72,24 @@ const SavableSelectMultiple = (props) => {
           style={{ width: '100%' }}
           bordered={false}
           value={selectedVals}
-          options={
-            options
-              // убираю из списка те пункты, которые выбрал пользователь
-              .filter((option) => !selectedVals.includes(option.value))
-              // оставшиеся сортирую в алфавитном порядке
-              .sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
-          }
           onChange={handleChange}
-        />
+          tagRender={tagRender}
+        >
+          {
+            optionsToDisplay.map((item) => {
+              const labelToDisplay = item.label || item.value;
+              return (
+                <Option value={item.value} key={item.value}>
+                  {
+                    !item.subitem ?
+                    <span>{labelToDisplay}</span> :
+                    <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
+                  }
+                </Option>
+              );
+            })
+          }
+        </Select>
       </div>
       <div className="btn-block">
         <Button

@@ -230,48 +230,37 @@ router.post(
 
 /**
  * Обрабатывает запрос на получение списка станций и их рабочих мест по заданным id станций.
+ * Если id станций не указаны, то возвращает список всех станций.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * stationIds - массив id станций (обязателен)
+ * stationIds - массив id станций (не обязателен)
  */
  router.post(
   '/workPlacesData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_STATIONS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
-  // проверка параметров запроса
-  getDefiniteStationsValidationRules(),
-  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { stationIds } = req.body;
 
     try {
-      const data = await TStation.findAll({
+      const filter = {
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
-        where: { St_ID: stationIds },
         include: [{
           model: TStationWorkPlace,
           attributes: ['SWP_ID', 'SWP_Name'],
         }],
-      });
+      };
+      if (stationIds) {
+        filter.where = { St_ID: stationIds };
+      }
+      const data = await TStation.findAll(filter);
       res.status(OK).json(data);
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение списка станций и их рабочих мест по заданным id станций',
+        action: 'Получение списка станций и их рабочих мест (по заданным id станций)',
         error,
         actionParams: { stationIds },
       });

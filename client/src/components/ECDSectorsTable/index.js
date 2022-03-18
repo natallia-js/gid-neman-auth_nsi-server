@@ -22,6 +22,7 @@ import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorO
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import expandIcon from '../ExpandIcon';
+import compareStrings from '../../sorters/compareStrings';
 
 const { Text, Title } = Typography;
 
@@ -99,7 +100,9 @@ const ECDSectorsTable = () => {
         Authorization: `Bearer ${auth.token}`
       });
 
-      const tableData = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+      const tableData = res
+        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
+        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
 
       // -------------------
 

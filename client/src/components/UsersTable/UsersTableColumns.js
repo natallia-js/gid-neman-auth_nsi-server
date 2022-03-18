@@ -1,10 +1,10 @@
 import { Typography, Popconfirm, Row, Col } from 'antd';
 import {
-  DNCSECTOR_FIELDS,
+  /*DNCSECTOR_FIELDS,
   ECDSECTOR_FIELDS,
   ROLE_FIELDS,
   STATION_FIELDS,
-  STATION_WORK_PLACE_FIELDS,
+  STATION_WORK_PLACE_FIELDS,*/
   USER_FIELDS,
 } from '../../constants';
 import Loader from '../Loader';
@@ -20,14 +20,15 @@ const usersTableColumns = (props) => {
     handleCancelMod,
     handleStartEditUser,
     handleDelUser,
+    handleConfirmUser,
     recsBeingProcessed,
     getColumnSearchProps,
-    roleAbbrs,
+    /*roleAbbrs,
     stations,
     dncSectorsData,
-    ecdSectorsData,
+    ecdSectorsData,*/
   } = props;
-
+/*
   const getRoleAbbr = (roleId) => {
     if (!roleAbbrs) {
       return '';
@@ -78,7 +79,7 @@ const usersTableColumns = (props) => {
     }
     return ecdSector[ECDSECTOR_FIELDS.NAME];
   };
-
+*/
   return [
     {
       title: 'Логин',
@@ -142,6 +143,16 @@ const usersTableColumns = (props) => {
       ...getColumnSearchProps(USER_FIELDS.POST),
     },
     {
+      title: 'Контактная информация',
+      dataIndex: USER_FIELDS.CONTACT_DATA,
+      key: USER_FIELDS.CONTACT_DATA,
+      width: '10%',
+      editable: true,
+      sortDirections: ['ascend', 'descend'],
+      ...getColumnSearchProps(USER_FIELDS.CONTACT_DATA),
+    },
+    /*
+    {
       title: 'Роли',
       dataIndex: USER_FIELDS.ROLES,
       key: USER_FIELDS.ROLES,
@@ -189,7 +200,7 @@ const usersTableColumns = (props) => {
           }
         return <>{displayString}</>;
       },
-    },
+    },*/
     {
       title: 'Операции',
       dataIndex: 'operation',
@@ -264,6 +275,25 @@ const usersTableColumns = (props) => {
                 </a>
               </Popconfirm>
             </Col>
+            {!record[USER_FIELDS.CONFIRMED] &&
+            <Col>
+              <Popconfirm
+                title="Подтвердить запись?"
+                onConfirm={() => handleConfirmUser(record[USER_FIELDS.KEY])}
+                okText="Да"
+                cancelText="Отмена"
+              >
+                <a
+                  href="#!"
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]))}
+                  style={{
+                    marginRight: 10,
+                  }}
+                >
+                  Подтвердить
+                </a>
+              </Popconfirm>
+            </Col>}
             {recsBeingProcessed && recsBeingProcessed.includes(record[USER_FIELDS.KEY]) &&
               <Col>
                 <Loader />

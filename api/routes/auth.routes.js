@@ -183,6 +183,8 @@ router.get(
       post: 1,
       service: 1,
       roles: 1,
+      contactData: 1,
+      confirmed: 1,
     };
     let data;
 
@@ -369,6 +371,7 @@ const saveNewUserData = async (props) => {
  * surname - фамилия пользователя (обязательна),
  * service - наименование службы (необязательно),
  * post - должность (обязательна),
+ * contactData - контактные данные пользователя (не обязательны),
  * roles - массив ролей (не обязателен),
  *         каждый элемент массива - строка с id роли,
  * stations - массив рабочих полигонов-станций с (не обязательно) рабочими местами в рамках данных станций (не обязателен),
@@ -399,7 +402,7 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе регистрационные данные
     const {
-      _id, login, password, name, fatherName, surname, post,
+      _id, login, password, name, fatherName, surname, post, contactData,
       service, roles, stations, dncSectors, ecdSectors,
     } = req.body;
 
@@ -422,7 +425,7 @@ router.post(
 
     sequelize.transaction(async (t) => {
       return await saveNewUserData({
-        _id, login, password, name, fatherName, surname, post, service, contactData: null,
+        _id, login, password, name, fatherName, surname, post, service, contactData,
         roles, stations, dncSectors, ecdSectors, authorizedRegistration: true, session, transaction: t,
       });
     })
@@ -456,7 +459,7 @@ router.post(
         action: 'Регистрация пользователя',
         error,
         actionParams: {
-          userId: user ? user._id : undefined, login, name, fatherName, surname,
+          login, name, fatherName, surname,
           post, service, roles, stations, dncSectors, ecdSectors,
         },
       });
@@ -541,7 +544,7 @@ router.post(
         actionTime: new Date(),
         action: 'Подача заявки на регистрацию пользователя',
         actionParams: {
-          login, password, name, fatherName, surname, post, contactData,
+          userId: user._id, login, password, name, fatherName, surname, post, contactData,
           service, roles, stations, dncSectors, ecdSectors,
         },
       });
@@ -1504,7 +1507,7 @@ router.post(
  * Обработка запроса на редактирование информации о пользователе.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * При этом главный администратор ГИД Неман может редактировать информацию о любои пользователе,
+ * При этом главный администратор ГИД Неман может редактировать информацию о любом пользователе,
  * иное же лицо может отредактировать информацию лишь о том пользователе, который закреплен за его службой.
  *
  * Параметры тела запроса:
@@ -1516,7 +1519,8 @@ router.post(
  * surname - фамилия пользователя (не обязательна),
  * post - наименование должности (не обязательно),
  * service - наименование службы (не обязательно),
- * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли)
+ * contactData - контактные данные (не обязательны),
+ * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли),
  */
 router.post(
   '/mod',
@@ -1540,7 +1544,9 @@ router.post(
     const serviceName = req.user.service;
     // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
     // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-    const { userId, login, password, service, roles, name, fatherName, surname, post } = req.body;
+    const {
+      userId, login, password, service, roles, name, fatherName, surname, post, contactData,
+    } = req.body;
 
     try {
       if (!isMainAdmin(req) && (service !== serviceName)) {
@@ -1563,6 +1569,8 @@ router.post(
         fatherName: candidate.fatherName,
         surname: candidate.surname,
         post: candidate.post,
+        contactData: candidate.contactData,
+        confirmed: candidate.confirmed,
       };
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
@@ -1610,7 +1618,7 @@ router.post(
           user: userPostFIOString(candidate),
           initialUserData,
           requestData: {
-            login, service, roles, name, fatherName, surname, post,
+            login, service, roles, name, fatherName, surname, post, contactData,
           },
           changedPassword: Boolean(req.body.password),
         },
@@ -1624,10 +1632,83 @@ router.post(
         actionParams: {
           userId,
           requestData: {
-            login, service, roles, name, fatherName, surname, post,
+            login, service, roles, name, fatherName, surname, post, contactData,
           },
           changedPassword: Boolean(req.body.password),
         },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на подтверждение информации о пользователе.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * При этом главный администратор ГИД Неман может подтверждать информацию о любом пользователе,
+ * иное же лицо может подтвердить информацию лишь о том пользователе, который закреплен за его службой.
+ *
+ * Параметры тела запроса:
+ * userId - идентификатор пользователя (обязателен)
+ */
+ router.post(
+  '/confirm',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_USER_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  async (req, res) => {
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.service;
+    // Считываем находящиеся в пользовательском запросе данные
+    const { userId } = req.body;
+
+    try {
+      // Ищем в БД пользователя, id которого совпадает с переданным
+      let candidate = await User.findById(userId);
+
+      // Если не находим, то процесс редактирования продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Указанный пользователь не существует в базе данных' });
+      }
+
+      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на подтверждение информации о пользователе в службе ${candidate.service}` });
+      }
+
+      if (candidate.confirmed) {
+        return res.status(ERR).json({ message: 'Информация о данном пользователе уже подтверждена' });
+      }
+
+      candidate.confirmed = true;
+      await candidate.save();
+
+      res.status(OK).json({ message: 'Информация подтверждена', user: candidate });
+
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Подтверждение информации о пользователе',
+        actionParams: { userId, user: userPostFIOString(candidate) },
+      });
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Подтверждение информации о пользователе',
+        error,
+        actionParams: { userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

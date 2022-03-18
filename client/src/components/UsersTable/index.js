@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography } from 'antd';
+import { Table, Form, Button, Typography, Select } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
 import {
@@ -25,7 +25,6 @@ import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorO
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
-import SavableSelectTwoMultiples from '../SavableSelectTwoMultiples';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
@@ -58,6 +57,8 @@ const UsersTable = () => {
 
   // Краткая информация по станциям (массив объектов)
   const [stations, setStations] = useState(null);
+
+  const [stationsDataForMultipleSelect, setStationsDataForMultipleSelect] = useState([]);
 
   // Ошибка загрузки данных о пользователях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -113,8 +114,17 @@ const UsersTable = () => {
       let res = await request(ServerAPI.GET_ALL_USERS, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      const tableData = res.map((user) => getAppUserObjFromDBUserObj(user));
+      const tableData = res
+        .map((user) => getAppUserObjFromDBUserObj(user))
+        // Неподтвержденные записи по пользователям выводим в начале списка
+        .sort((a, b) => {
+          if (!a[USER_FIELDS.CONFIRMED] && b[USER_FIELDS.CONFIRMED]) {
+            return -1;
+          } else if (a[USER_FIELDS.CONFIRMED] && !b[USER_FIELDS.CONFIRMED]) {
+            return 1;
+          }
+          return 0;
+        });
       setTableData(tableData);
 
       // ---------------------------------
@@ -123,8 +133,10 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      const dncSectors = res.map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector));
+      // Участки ДНЦ будем сортировать при отображении в списке выбора
+      const dncSectors = res
+        .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
+        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
       setDNCSectorsData(dncSectors);
 
       // ---------------------------------
@@ -133,8 +145,10 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+     // Участки ЭЦД будем сортировать при отображении в списке выбора
+      const ecdSectors = res
+        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
+        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
       setECDSectorsData(ecdSectors);
 
       // ---------------------------------
@@ -143,9 +157,28 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       setStations(stations);
+      // Станции будем сортировать при отображении в списке выбора
+      const dataForStationsMultipleSelect = [];
+      stations
+        .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
+        .forEach((station) => {
+          dataForStationsMultipleSelect.push({
+            label: station[STATION_FIELDS.NAME_AND_CODE],
+            value: `${station[STATION_FIELDS.KEY]}`,
+          });
+          if (station[STATION_FIELDS.WORK_PLACES]) {
+            station[STATION_FIELDS.WORK_PLACES].forEach((wp) => {
+              dataForStationsMultipleSelect.push({
+                label: `${wp[STATION_WORK_PLACE_FIELDS.NAME]} (${station[STATION_FIELDS.NAME]})`,
+                value: `${station[STATION_FIELDS.KEY]}_${wp[STATION_WORK_PLACE_FIELDS.KEY]}`,
+                subitem: true,
+              });
+            });
+          }
+        });
+      setStationsDataForMultipleSelect(dataForStationsMultipleSelect);
 
       // ---------------------------------
 
@@ -153,8 +186,10 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      const rolesData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
+      // Роли будем сортировать при отображении в списке выбора
+      const rolesData = res
+        .map((role) => getAppRoleObjFromDBRoleObj(role))
+        .sort((a, b) => compareStrings(a[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase(), b[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase()));
       setRoleAbbrs(rolesData);
 
       // ---------------------------------
@@ -226,29 +261,23 @@ const UsersTable = () => {
    */
   const handleAddNewUser = async (user) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о пользователе
       const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newUser = getAppUserObjFromDBUserObj(res.user);
-
       setTableData([...tableData, newUser]);
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setUserFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -260,23 +289,47 @@ const UsersTable = () => {
    */
   const handleDelUser = async (userId) => {
     setRecsBeingProcessed((value) => [...value, userId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о пользователе
       const res = await request(ServerAPI.DEL_USER, 'POST', { userId }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((user) => user[USER_FIELDS.KEY] !== userId));
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== userId));
-  }
+  };
+
+
+  /**
+   * Подтверждает информацию о пользователе в БД.
+   *
+   * @param {number} userId
+   */
+  const handleConfirmUser = async (userId) => {
+    setRecsBeingProcessed((value) => [...value, userId]);
+    try {
+      // Делаем запрос на сервер с целью подтверждения всей информации о пользователе
+      const res = await request(ServerAPI.CONFIRM_USER, 'POST', { userId }, {
+        Authorization: `Bearer ${auth.token}`
+      });
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+      const newTableData = tableData.map((user) => {
+        if (user[USER_FIELDS.KEY] === userId) {
+          return { ...user, ...res.user };
+        }
+        return user;
+      });
+      setTableData(newTableData);
+
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
+    setRecsBeingProcessed((value) => value.filter((id) => id !== userId));
+  };
 
 
   /**
@@ -326,42 +379,35 @@ const UsersTable = () => {
 
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
     }
 
     setRecsBeingProcessed((value) => [...value, userId]);
-
     try {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
       const res = await request(ServerAPI.MOD_USER, 'POST', { userId, ...rowData }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
           return { ...user, ...res.user };
         }
         return user;
       });
-
       setTableData(newTableData);
       finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setModUserFieldsErrs(errs);
       }
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== userId));
   };
 
@@ -513,12 +559,13 @@ const UsersTable = () => {
     handleCancelMod,
     handleStartEditUser,
     handleDelUser,
+    handleConfirmUser,
     recsBeingProcessed,
     getColumnSearchProps,
-    roleAbbrs,
+    /*roleAbbrs,
     stations,
     dncSectorsData,
-    ecdSectorsData,
+    ecdSectorsData,*/
   });
 
   /**
@@ -604,6 +651,21 @@ const UsersTable = () => {
       return workPlaceNameToDisplay === displayedWorkPlaceName;
     });
     return workPlace ? workPlace[STATION_WORK_PLACE_FIELDS.KEY] : null;
+  };
+
+  const getUserStationWorkPoligonsForMultipleSelect = (userObject) => {
+    if (!userObject || !userObject[USER_FIELDS.STATION_WORK_POLIGONS] ||
+      !userObject[USER_FIELDS.STATION_WORK_POLIGONS].length ||
+      !stationsDataForMultipleSelect || !stationsDataForMultipleSelect.length) {
+      return [];
+    }
+    const userStationWorkPoligonsValues = userObject[USER_FIELDS.STATION_WORK_POLIGONS].map((item) => {
+      if (!item.workPlaceId) {
+        return `${item.id}`;
+      }
+      return `${item.id}_${item.workPlaceId}`;
+    });
+    return userStationWorkPoligonsValues;
   };
 
 
@@ -717,62 +779,26 @@ const UsersTable = () => {
                 />
 
                 {/*
-                  Рабочие полигоны-станции данного пользователя
+                  Рабочие полигоны-станции/рабочие места на станциях данного пользователя
                 */}
                 <Title level={4}>Рабочие полигоны (станции)</Title>
-                <SavableSelectTwoMultiples
-                  placeholder1="Выберите станции"
-                  placeholder2="Рабочие места на выбранных станциях"
-                  options={
-                    (!stations || !stations.length) ? [] :
-                    stations.map((station) => ({
-                      value: station[STATION_FIELDS.NAME_AND_CODE],
-                      subOptions: !station[STATION_FIELDS.WORK_PLACES] ? [] :
-                        station[STATION_FIELDS.WORK_PLACES].map((place) => ({
-                          value: getDisplayedStationWorkPlaceName(station[STATION_FIELDS.NAME_AND_CODE], place[STATION_WORK_PLACE_FIELDS.NAME])
-                        }))
-                    }) )
-                  }
-                  selectedItems={
-                    (!stations || !stations.length)
-                      ? []
-                      :
-                      Object.keys(userGroupedPoligonsArray(record))
-                        .map(function(stationId) {
-                          const stationObject = getStationById(stationId);
-                          const stationWorkPlacesIds = userGroupedPoligonsArray(record)[stationId];
-                          return {
-                            value: stationObject ? stationObject[STATION_FIELDS.NAME_AND_CODE] : stationId,
-                            subOptions: (!stationWorkPlacesIds || !stationWorkPlacesIds.length) ? null :
-                              stationWorkPlacesIds.map((workPlaceId) => {
-                              return {
-                                value: getDisplayedStationWorkPlaceName(stationObject[STATION_FIELDS.NAME_AND_CODE], getStationWorkPlaceName(stationId, workPlaceId)),
-                              };
-                            }),
-                          };
-                        })
-                  }
+                <SavableSelectMultiple
+                  placeholder="Выберите станции/рабочие места на станциях"
+                  options={stationsDataForMultipleSelect}
+                  selectedItems={getUserStationWorkPoligonsForMultipleSelect(record)}
                   saveChangesCallback={(selectedVals) => {
-                    // Заменяем строковые значения из selectedVals на соответствующие идентификаторы
-                    const poligons = [];
-                    selectedVals.forEach((item) => {
-                      const stationId = getStationIdByNameCodeString(item.value);
-                      poligons.push({ id: stationId, workPlaceId: null });
-                      if (!item.subOptions || !item.subOptions.length) {
-                        return;
-                      }
-                      item.subOptions.forEach((option) => {
-                        poligons.push({ id: stationId, workPlaceId: getStationWorkPlaceIdByDisplayedName(option.value, stationId) });
-                      });
-                    });
                     handleEditUserStationWorkPoligons({
                       userId: record[USER_FIELDS.KEY],
-                      poligons,
+                      poligons: selectedVals.map((item) => {
+                        const ids = item.split('_');
+                        return {
+                          id: ids[0],
+                          workPlaceId: ids.length > 1 ? ids[1] : null,
+                        };
+                      }),
                     });
                   }}
                 />
-
-                <br />
 
                 {/*
                   Рабочие полигоны-участки ДНЦ данного пользователя

@@ -39,7 +39,6 @@ router.get(
         attributes: ['S_ID', 'S_Abbrev', 'S_Title'],
       });
       res.status(OK).json(data);
-
     } catch (error) {
       addError({
         errorTime: new Date(),

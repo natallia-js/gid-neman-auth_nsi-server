@@ -33,6 +33,30 @@ const {
 /**
  * Обрабатывает запрос на получение списка всех ролей.
  *
+ * Данный запрос доступен любому лицу.
+ */
+ router.get(
+  '/allData',
+  async (_req, res) => {
+    try {
+      const data = await Role.find({}, { _id: 1, englAbbreviation: 1, description: 1 });
+      res.status(OK).json(data);
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка всех ролей',
+        error,
+        actionParams: {},
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на получение списка всех ролей.
+ *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * При этом главный администратор ГИД Неман получит полный список всех ролей,
  * а иное лицо получит полный список тех ролей, которые ему разрешил
