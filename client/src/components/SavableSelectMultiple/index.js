@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Select, Tag } from 'antd';
+import { Button, Select } from 'antd';
+import tagRender from '../tagRender';
 
 import './styles.scss';
 
@@ -36,7 +37,7 @@ const SavableSelectMultiple = (props) => {
   useEffect(() => {
     // убираю из списка те пункты, которые выбрал пользователь
     setOptionsToDisplay(options.filter((option) => !selectedVals.includes(option.value)));
-  }, [selectedVals]);
+  }, [selectedVals, options]);
 
   function handleSaveChanges() {
     saveChangesCallback(selectedVals);
@@ -47,19 +48,6 @@ const SavableSelectMultiple = (props) => {
     (!selectedVals && selectedItems) ||
     (selectedVals.length !== selectedItems.length) ||
     selectedVals.find((val) => !selectedItems.includes(val));
-
-  function tagRender(props) {
-    const { label, closable, onClose } = props;
-    return (
-      <Tag
-        closable={closable}
-        onClose={onClose}
-        className="tag"
-      >
-        <span style={{ marginLeft: 0 }}>{label}</span>
-      </Tag>
-    );
-  }
 
   return (
     <div className="savable-select-container">

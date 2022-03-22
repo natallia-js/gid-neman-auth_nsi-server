@@ -280,13 +280,7 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
         clearAddStationTrackMessages={clearAddStationTrackMessages}
         recsBeingAdded={recsBeingAdded}
       />
-      <Button
-        type="primary"
-        style={{
-          marginBottom: 16,
-        }}
-        onClick={showAddNewStationTrackModal}
-      >
+      <Button type="primary" onClick={showAddNewStationTrackModal}>
         Добавить запись
       </Button>
 

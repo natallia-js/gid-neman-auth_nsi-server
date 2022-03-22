@@ -42,6 +42,7 @@ const EditTrainSectorStationListModal = ({
       footer={null}
       onCancel={onCancel}
       destroyOnClose={true}
+      width={600}
     >
       <Text strong>{`Поездной участок ${trainSectorName}`}</Text>
 

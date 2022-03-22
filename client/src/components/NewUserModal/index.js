@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Button, Typography, Select, Row, Col} from 'antd';
 import {
   USER_FIELDS,
   SERVICE_FIELDS,
   POST_FIELDS,
-  STATION_FIELDS,
-  STATION_WORK_PLACE_FIELDS,
-  DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
-  ROLE_FIELDS,
 } from '../../constants';
-import compareStrings from '../../sorters/compareStrings';
+import tagRender from '../tagRender';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -21,19 +16,7 @@ const ERR_VALIDATE_STATUS = 'error';
 /**
  * Компонент модального окна добавления информации о новом пользователе.
  *
- * @param {object} params - свойства компонента:
- *   isModalVisible,
- *   handleAddNewUserOk,
- *   handleAddNewUserCancel,
- *   userFieldsErrs,
- *   clearAddUserMessages,
- *   services,
- *   posts,
- *   recsBeingAdded,
- *   roleAbbrs,
- *   stations,
- *   dncSectors,
- *   ecdSectors,
+ * @param {object} params - свойства компонента
  */
 const NewUserModal = ({
   isModalVisible,
@@ -44,19 +27,58 @@ const NewUserModal = ({
   services,
   posts,
   recsBeingAdded,
-  roleAbbrs,
-  stations,
-  dncSectors,
-  ecdSectors,
+  rolesDataForMutipleSelect,
+  stationsDataForMultipleSelect,
+  dncSectorsDataForMultipleSelect,
+  ecdSectorsDataForMultipleSelect,
 }) => {
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
+  const [stationsDataToDisplay, setStationsDataToDisplay] = useState([]);
+  const [selectedStationsWithWorkPlaces, setSelectedStationsWithWorkPlaces] = useState([]);
+  useEffect(() => {
+    if (!stationsDataForMultipleSelect) {
+      setStationsDataToDisplay([]);
+    } else {
+      // убираю из списка те пункты, которые выбрал пользователь
+      setStationsDataToDisplay(stationsDataForMultipleSelect.filter((option) =>
+        !selectedStationsWithWorkPlaces.includes(option.value)));
+    }
+  }, [stationsDataForMultipleSelect, selectedStationsWithWorkPlaces]);
+
+  const [rolesDataToDisplay, setRolesDataToDisplay] = useState([]);
   const [selectedRoles, setSelectedRoles] = useState([]);
-  const [selectedStations, setSelectedStations] = useState([]);
-  const [selectedStationsWorkPlaces, setSelectedStationsWorkPlaces] = useState([]);
+  useEffect(() => {
+    if (!rolesDataForMutipleSelect) {
+      setRolesDataToDisplay([]);
+    } else {
+      // убираю из списка те пункты, которые выбрал пользователь
+      setRolesDataToDisplay(rolesDataForMutipleSelect.filter((option) => !selectedRoles.includes(option.value)));
+    }
+  }, [rolesDataForMutipleSelect, selectedRoles]);
+
+  const [dncSectorsToDisplay, setDNCSectorsToDisplay] = useState([]);
   const [selectedDNCSectors, setSelectedDNCSectors] = useState([]);
+  useEffect(() => {
+    if (!dncSectorsDataForMultipleSelect) {
+      setDNCSectorsToDisplay([]);
+    } else {
+      // убираю из списка те пункты, которые выбрал пользователь
+      setDNCSectorsToDisplay(dncSectorsDataForMultipleSelect.filter((option) => !selectedDNCSectors.includes(option.value)));
+    }
+  }, [dncSectorsDataForMultipleSelect, selectedDNCSectors]);
+
+  const [ecdSectorsToDisplay, setECDSectorsToDisplay] = useState([]);
   const [selectedECDSectors, setSelectedECDSectors] = useState([]);
+  useEffect(() => {
+    if (!ecdSectorsDataForMultipleSelect) {
+      setECDSectorsToDisplay([]);
+    } else {
+      // убираю из списка те пункты, которые выбрал пользователь
+      setECDSectorsToDisplay(ecdSectorsDataForMultipleSelect.filter((option) => !selectedECDSectors.includes(option.value)));
+    }
+  }, [ecdSectorsDataForMultipleSelect, selectedECDSectors]);
 
   const [requiredLoginErrMess, setRequiredLoginErrMess] = useState(null);
   const [requiredPasswordErrMess, setRequiredPasswordErrMess] = useState(null);
@@ -65,77 +87,31 @@ const NewUserModal = ({
   const [requiredPostErrMess, setRequiredPostErrMess] = useState(null);
 
   function handleChangeRoles(selectedItems) {
-    setSelectedRoles(selectedItems);
+    setSelectedRoles([...selectedItems]);
   }
 
-  // Формирует наименование рабочего полигона на станции, отображаемого в списке выбора
-  const getDisplayedStationWorkPlaceName = (stationNameCode, stationWorkPlaceName) => {
-    return `${stationNameCode} - ${stationWorkPlaceName}`;
-  };
-
-
-  /**
-   * Когда происходит изменение в списке выбранных станций, необходимо дополнительно
-   * проверять, была ли удалена из списка ранее выбранная станция, т.к. вслед
-   * за удалением станции должно последовать удаление рабочих перегонов станции из
-   * соотвествующего списка.
-   */
   function handleChangeStations(selectedItems) {
-    // Объект удаленной станции (будет найден, если станция была удалена из списка)
-    const deletedStationObject = stations.find((station) =>
-      selectedStations.includes(station[STATION_FIELDS.NAME_AND_CODE]) &&
-      !selectedItems.includes(station[STATION_FIELDS.NAME_AND_CODE]));
-
-    // Если обнаружено удаление станции из списка, то работаем с рабочими местами на данной станции
-    if (deletedStationObject) {
-      // Смотрим, какие из рабочих мест на станции были выбраны пользователем
-      const selectedStationWorkPlaces = deletedStationObject[STATION_FIELDS.WORK_PLACES]
-        .filter((wp) => {
-          const displayedStationWorkPoligonName = getDisplayedStationWorkPlaceName(
-            deletedStationObject[STATION_FIELDS.NAME_AND_CODE], wp[STATION_WORK_PLACE_FIELDS.NAME]);
-          return selectedStationsWorkPlaces.includes(displayedStationWorkPoligonName);
-        })
-        .map((wp) => getDisplayedStationWorkPlaceName(deletedStationObject[STATION_FIELDS.NAME_AND_CODE], wp[STATION_WORK_PLACE_FIELDS.NAME]));
-      // Если было выбрано хотя бы одно рабочее место, то необходимо удалить его из списка выбранных
-      // рабочих мест, а также (обязательно!) из значений полей формы
-      if (selectedStationWorkPlaces.length) {
-        const delStationWorkPlace = (value) => value.filter((place) => !selectedStationWorkPlaces.includes(place));
-
-        const value = form.getFieldValue(USER_FIELDS.STATION_WORK_PLACES_WORK_POLIGONS);
-        form.setFieldsValue({[USER_FIELDS.STATION_WORK_PLACES_WORK_POLIGONS]: delStationWorkPlace(value)});
-
-        setSelectedStationsWorkPlaces(delStationWorkPlace);
-      }
-    }
-
-    // Запоминаем выбранные пользователем станции
-    setSelectedStations(selectedItems);
-  }
-
-  function handleChangeStationsWorkPlaces(selectedItems) {
-    setSelectedStationsWorkPlaces(selectedItems);
+    setSelectedStationsWithWorkPlaces([...selectedItems]);
   }
 
   function handleChangeDNCSectors(selectedItems) {
-    setSelectedDNCSectors(selectedItems);
+    setSelectedDNCSectors([...selectedItems]);
   }
 
   function handleChangeECDSectors(selectedItems) {
-    setSelectedECDSectors(selectedItems);
+    setSelectedECDSectors([...selectedItems]);
   }
-
 
   /**
    * Чистим поля ввода информации о новом пользователе.
    */
   const onReset = () => {
     form.resetFields();
-    setSelectedStations([]);
-    setSelectedStationsWorkPlaces([]);
+    setSelectedRoles([]);
+    setSelectedStationsWithWorkPlaces([]);
     setSelectedDNCSectors([]);
     setSelectedECDSectors([]);
   };
-
 
   const resetAll = () => {
     // Чистим все сообщения
@@ -147,7 +123,6 @@ const NewUserModal = ({
     setRequiredPostErrMess(null);
   };
 
-
   /**
    * Обработка события подтверждения пользователем окончания ввода.
    *
@@ -155,49 +130,17 @@ const NewUserModal = ({
    */
   const onFinish = (values) => {
     resetAll();
-
-    // Смотрим, какие станции выбраны пользователем
-    const selectedStationsObjects = !values[USER_FIELDS.STATION_WORK_POLIGONS] ? [] : stations
-      .filter((station) => values[USER_FIELDS.STATION_WORK_POLIGONS].includes(station[STATION_FIELDS.NAME_AND_CODE]));
-
-    // Формируем массив рабочих полигонов пользователя в рамках станции
-    const selectedStationsWithWorkPlaces = !values[USER_FIELDS.STATION_WORK_PLACES_WORK_POLIGONS]
-      ? selectedStationsObjects.map((station) => ({ id: station[STATION_FIELDS.KEY] }))
-      : selectedStationsObjects.map((station) => {
-      if (!station[STATION_FIELDS.WORK_PLACES] || !station[STATION_FIELDS.WORK_PLACES].length) {
-        return [{ id: station[STATION_FIELDS.KEY] }];
-      }
-      const selectedWorkPlaces = station[STATION_FIELDS.WORK_PLACES].filter((wp) => {
-        const displayedStationWorkPoligonName =
-        getDisplayedStationWorkPlaceName(station[STATION_FIELDS.NAME_AND_CODE], wp[STATION_WORK_PLACE_FIELDS.NAME]);
-        return values[USER_FIELDS.STATION_WORK_PLACES_WORK_POLIGONS].includes(displayedStationWorkPoligonName);
-      });
-      if (!selectedWorkPlaces.length) {
-        return [{ id: station[STATION_FIELDS.KEY] }];
-      }
-      const workPoligons = [];
-      selectedWorkPlaces.forEach((wp) => {
-        workPoligons.push({ id: station[STATION_FIELDS.KEY], workPlaceId: wp[STATION_WORK_PLACE_FIELDS.KEY] });
-      });
-      return workPoligons;
-    }).flat(1);
-
-    // Смотрим, какие участки ДНЦ выбраны пользователем
-    const selectedDNCSectorObjects = !values[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] ? [] : dncSectors
-      .filter((sector) => values[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].includes(sector[DNCSECTOR_FIELDS.NAME]));
-
-    // Смотрим, какие участки ЭЦД выбраны пользователем
-    const selectedECDSectorObjects = !values[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] ? [] : ecdSectors
-      .filter((sector) => values[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].includes(sector[ECDSECTOR_FIELDS.NAME]));
-
     handleAddNewUserOk({
       ...values,
-      [USER_FIELDS.STATION_WORK_POLIGONS]: selectedStationsWithWorkPlaces,
-      [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: selectedDNCSectorObjects.map((sector) => sector[DNCSECTOR_FIELDS.KEY]),
-      [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: selectedECDSectorObjects.map((sector) => sector[ECDSECTOR_FIELDS.KEY]),
+      [USER_FIELDS.STATION_WORK_POLIGONS]: selectedStationsWithWorkPlaces.map((item) => {
+        const ids = item.split('_');
+        return {
+          id: ids[0],
+          workPlaceId: ids.length > 1 ? ids[1] : null,
+        };
+      }),
     });
   };
-
 
   /**
    * Обработка события отмены ввода информации.
@@ -213,13 +156,15 @@ const NewUserModal = ({
   return (
     <Modal
       title="Введите информацию о новом пользователе"
+      centered
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
+      width={700}
     >
       <Form
         layout="vertical"
-        size='small'
+        size="small"
         form={form}
         name="new-user-form"
         onFinish={onFinish}
@@ -359,8 +304,7 @@ const NewUserModal = ({
             >
               <Select placeholder="Выберите службу">
               {
-                services &&
-                services.map(service =>
+                services && services.map((service) =>
                   <Option
                     key={service[SERVICE_FIELDS.ABBREV]}
                     value={service[SERVICE_FIELDS.ABBREV]}
@@ -393,8 +337,7 @@ const NewUserModal = ({
             >
               <Select placeholder="Выберите должность">
               {
-                posts &&
-                posts.map(post =>
+                posts && posts.map((post) =>
                   <Option
                     key={post[POST_FIELDS.ABBREV]}
                     value={post[POST_FIELDS.ABBREV]}
@@ -420,19 +363,7 @@ const NewUserModal = ({
             style={{ width: '100%' }}
             bordered={false}
             value={selectedRoles}
-            options={
-              !roleAbbrs ? [] :
-              roleAbbrs.map((role) => {
-                return {
-                  label: role[ROLE_FIELDS.ENGL_ABBREVIATION],
-                  value: role[ROLE_FIELDS.KEY],
-                };
-              })
-              // убираю из списка те пункты, которые выбрал пользователь
-              .filter((option) => !selectedRoles.includes(option.label))
-              // оставшиеся сортирую в алфавитном порядке
-              .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()))
-            }
+            options={rolesDataToDisplay}
             onChange={handleChangeRoles}
           />
         </Form.Item>
@@ -445,61 +376,30 @@ const NewUserModal = ({
           <Select
             mode="multiple"
             size="default"
-            placeholder="Выберите станции"
+            placeholder="Выберите станции/рабочие места на станциях"
             showArrow
             style={{ width: '100%' }}
             bordered={false}
-            value={selectedStations}
-            options={
-              !stations ? [] :
-              stations.map((station) => {
-                return {
-                  value: station[STATION_FIELDS.NAME_AND_CODE],
-                };
-              })
-              // убираю из списка те пункты, которые выбрал пользователь
-              .filter((option) => !selectedStations.includes(option.value))
-              // оставшиеся сортирую в алфавитном порядке
-              .sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
-            }
+            value={selectedStationsWithWorkPlaces}
             onChange={handleChangeStations}
-          />
-        </Form.Item>
-
-        { selectedStations && selectedStations.length > 0 &&
-          <Form.Item
-            label="Рабочие места на выбранных станциях"
-            name={USER_FIELDS.STATION_WORK_PLACES_WORK_POLIGONS}
+            tagRender={tagRender}
           >
-            <Select
-              mode="multiple"
-              size="default"
-              placeholder="Выберите рабочие места на станциях"
-              showArrow
-              style={{ width: '100%' }}
-              bordered={false}
-              value={selectedStationsWorkPlaces}
-              options={
-                !stations ? [] :
-                stations
-                  .filter((station) => selectedStations.includes(station[STATION_FIELDS.NAME_AND_CODE]))
-                  .filter((station) => station[STATION_FIELDS.WORK_PLACES] && station[STATION_FIELDS.WORK_PLACES].length)
-                  .map((station) => station[STATION_FIELDS.WORK_PLACES].map((wp) => ({ ...wp, stationInfo: station[STATION_FIELDS.NAME_AND_CODE] })))
-                  .flat(1)
-                  .map((stationWorkPlace) => {
-                    return {
-                      value: getDisplayedStationWorkPlaceName(stationWorkPlace.stationInfo, stationWorkPlace[STATION_WORK_PLACE_FIELDS.NAME]),
-                    };
-                  })
-                  // убираю из списка те пункты, которые выбрал пользователь
-                  .filter((option) => !selectedStationsWorkPlaces.includes(option.value))
-                  // оставшиеся сортирую в алфавитном порядке
-                  .sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
-              }
-              onChange={handleChangeStationsWorkPlaces}
-            />
-          </Form.Item>
-        }
+            {
+              stationsDataToDisplay.map((item) => {
+                const labelToDisplay = item.label || item.value;
+                return (
+                  <Option value={item.value} key={item.value}>
+                    {
+                      !item.subitem ?
+                      <span>{labelToDisplay}</span> :
+                      <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
+                    }
+                  </Option>
+                );
+              })
+            }
+          </Select>
+        </Form.Item>
 
         <Form.Item
           label="Участки ДНЦ"
@@ -513,18 +413,7 @@ const NewUserModal = ({
             style={{ width: '100%' }}
             bordered={false}
             value={selectedDNCSectors}
-            options={
-              !dncSectors ? [] :
-              dncSectors.map((sector) => {
-                return {
-                  value: sector[DNCSECTOR_FIELDS.NAME],
-                };
-              })
-              // убираю из списка те пункты, которые выбрал пользователь
-              .filter((option) => !selectedDNCSectors.includes(option.value))
-              // оставшиеся сортирую в алфавитном порядке
-              .sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
-            }
+            options={dncSectorsToDisplay}
             onChange={handleChangeDNCSectors}
           />
         </Form.Item>
@@ -541,18 +430,7 @@ const NewUserModal = ({
             style={{ width: '100%' }}
             bordered={false}
             value={selectedECDSectors}
-            options={
-              !ecdSectors ? [] :
-              ecdSectors.map((sector) => {
-                return {
-                  value: sector[ECDSECTOR_FIELDS.NAME],
-                };
-              })
-              // убираю из списка те пункты, которые выбрал пользователь
-              .filter((option) => !selectedECDSectors.includes(option.value))
-              // оставшиеся сортирую в алфавитном порядке
-              .sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
-            }
+            options={ecdSectorsToDisplay}
             onChange={handleChangeECDSectors}
           />
         </Form.Item>

@@ -102,7 +102,7 @@ const AdminsLogsTable = () => {
 
   useEffect(() => {
     fetchData(searchDataTimeSpan, currentTablePage);
-  }, [searchDataTimeSpan, currentTablePage]);
+  }, [fetchData, searchDataTimeSpan, currentTablePage]);
 
 
   /**

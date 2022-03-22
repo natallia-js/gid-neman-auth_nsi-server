@@ -34,6 +34,8 @@ export const OrderCategoryChooser = ({
       case OrderCategoryType.NEW:
         onChangeValue(inputValue);
         break;
+      default:
+        break;
     }
   };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography, Select } from 'antd';
+import { Button, Collapse, Form, Input, Select, Space, Table, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
 import {
@@ -29,8 +29,11 @@ import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
+import tagRender from '../tagRender';
 
 const { Text, Title } = Typography;
+const { Option } = Select;
+const { Panel } = Collapse;
 
 
 /**
@@ -40,8 +43,11 @@ const UsersTable = () => {
   // Информация по пользователям (массив объектов)
   const [tableData, setTableData] = useState(null);
 
+  // Дополнительные фильтры по полям, не отображаемым в таблице (роли, участки ДНЦ, ЭЦД, станции)
+  const [filters, setFilters] = useState(null);
+
   // Массив объектов, каждый из которых содержит id роли и ее аббревиатуру
-  const [roleAbbrs, setRoleAbbrs] = useState(null);
+  const [rolesDataForMutipleSelect, setRolesDataForMutipleSelect] = useState(null);
 
   // Массив объектов служб
   const [services, setServices] = useState(null);
@@ -50,14 +56,12 @@ const UsersTable = () => {
   const [posts, setPosts] = useState(null);
 
   // Краткая информация по участкам ДНЦ (массив объектов)
-  const [dncSectorsData, setDNCSectorsData] = useState(null);
+  const [dncSectorsDataForMultipleSelect, setDNCSectorsDataForMultipleSelect] = useState(null);
 
   // Краткая информация по участкам ЭЦД (массив объектов)
-  const [ecdSectorsData, setECDSectorsData] = useState(null);
+  const [ecdSectorsDataForMultipleSelect, setECDSectorsDataForMultipleSelect] = useState(null);
 
-  // Краткая информация по станциям (массив объектов)
-  const [stations, setStations] = useState(null);
-
+  // Данные по станциям, которые необходимо отображать в компоненте множественного выбора
   const [stationsDataForMultipleSelect, setStationsDataForMultipleSelect] = useState([]);
 
   // Ошибка загрузки данных о пользователях
@@ -71,6 +75,9 @@ const UsersTable = () => {
 
   // Получаем доступ к контекстным данным авторизации пользователя
   const auth = useContext(AuthContext);
+
+  // Для фильтрации данных в таблице пользователей
+  const [filterForm] = Form.useForm();
 
   // Для редактирования данных таблицы пользователей
   const [form] = Form.useForm();
@@ -133,11 +140,15 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-      // Участки ДНЦ будем сортировать при отображении в списке выбора
+      // Участки ДНЦ будем сортировать при отображении в списках выбора
       const dncSectors = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
-      setDNCSectorsData(dncSectors);
+        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()))
+        .map((sector) => ({
+          label: sector[DNCSECTOR_FIELDS.NAME],
+          value: sector[DNCSECTOR_FIELDS.KEY],
+        }));
+      setDNCSectorsDataForMultipleSelect(dncSectors);
 
       // ---------------------------------
 
@@ -145,21 +156,24 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-     // Участки ЭЦД будем сортировать при отображении в списке выбора
+     // Участки ЭЦД будем сортировать при отображении в списках выбора
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
-      setECDSectorsData(ecdSectors);
+        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
+        .map((sector) => ({
+          label: sector[ECDSECTOR_FIELDS.NAME],
+          value: sector[ECDSECTOR_FIELDS.KEY],
+        }));
+      setECDSectorsDataForMultipleSelect(ecdSectors);
 
       // ---------------------------------
 
-      // Делаем запрос на сервер с целью получения информации по станциям
+      // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
       res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
       const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
-      setStations(stations);
-      // Станции будем сортировать при отображении в списке выбора
+      // Станции будем сортировать при отображении в списках выбора
       const dataForStationsMultipleSelect = [];
       stations
         .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
@@ -186,11 +200,15 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-      // Роли будем сортировать при отображении в списке выбора
+      // Роли отсортируем перед отображением в списках выбора
       const rolesData = res
         .map((role) => getAppRoleObjFromDBRoleObj(role))
-        .sort((a, b) => compareStrings(a[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase(), b[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase()));
-      setRoleAbbrs(rolesData);
+        .sort((a, b) => compareStrings(a[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase(), b[ROLE_FIELDS.ENGL_ABBREVIATION].toLowerCase()))
+        .map((role) => ({
+          label: role[ROLE_FIELDS.ENGL_ABBREVIATION],
+          value: role[ROLE_FIELDS.KEY],
+        }));
+      setRolesDataForMutipleSelect(rolesData);
 
       // ---------------------------------
 
@@ -198,11 +216,10 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       // Хочу, чтобы службы в выпадающих списках были отсортированы по алфавиту
-      const servicesData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
-      servicesData.sort((a, b) =>
-        compareStrings(a[SERVICE_FIELDS.ABBREV].toLowerCase(), b[SERVICE_FIELDS.ABBREV].toLowerCase()));
+      const servicesData = res
+        .map((service) => getAppServiceObjFromDBServiceObj(service))
+        .sort((a, b) => compareStrings(a[SERVICE_FIELDS.ABBREV].toLowerCase(), b[SERVICE_FIELDS.ABBREV].toLowerCase()));
       // Поскольку поле наименования службы не является обязательным, в начало списка служб добавляю пустой элемент
       servicesData.unshift({
         [SERVICE_FIELDS.KEY]: null,
@@ -217,20 +234,17 @@ const UsersTable = () => {
       res = await request(ServerAPI.GET_POSTS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       // Хочу, чтобы должности в выпадающих списках были отсортированы по алфавиту
-      const postsData = res.map((post) => getAppPostObjFromDBPostObj(post));
-      postsData.sort((a, b) =>
-        compareStrings(a[POST_FIELDS.ABBREV].toLowerCase(), b[POST_FIELDS.ABBREV].toLowerCase()));
+      const postsData = res
+        .map((post) => getAppPostObjFromDBPostObj(post))
+        .sort((a, b) => compareStrings(a[POST_FIELDS.ABBREV].toLowerCase(), b[POST_FIELDS.ABBREV].toLowerCase()));
       setPosts(postsData);
+
+      // ---------------------------------
 
       setLoadDataErr(null);
 
     } catch (e) {
-      setTableData(null);
-      setRoleAbbrs(null);
-      setServices(null);
-      setPosts(null);
       setLoadDataErr(e.message);
     }
 
@@ -345,6 +359,7 @@ const UsersTable = () => {
       [USER_FIELDS.SURNAME]: '',
       [USER_FIELDS.POST]: '',
       [USER_FIELDS.SERVICE]: '',
+      [USER_FIELDS.CONTACT_DATA]: '',
       ...record,
     });
     setEditingKey(record[USER_FIELDS.KEY]);
@@ -376,14 +391,12 @@ const UsersTable = () => {
    */
   const handleEditUser = async (userId) => {
     let rowData;
-
     try {
       rowData = await form.validateFields();
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
     }
-
     setRecsBeingProcessed((value) => [...value, userId]);
     try {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
@@ -424,16 +437,13 @@ const UsersTable = () => {
       const res = await request(ServerAPI.MOD_USER, 'POST', { userId, roles: rolesIds }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
           return { ...user, [USER_FIELDS.ROLES]: rolesIds };
         }
         return user;
       });
-
       setTableData(newTableData);
 
     } catch (e) {
@@ -455,16 +465,13 @@ const UsersTable = () => {
         { userId, poligons },
         { Authorization: `Bearer ${auth.token}` }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
           return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: poligons };
         }
         return user;
       });
-
       setTableData(newTableData);
 
     } catch (e) {
@@ -485,16 +492,13 @@ const UsersTable = () => {
         { userId, dncSectorIds },
         { Authorization: `Bearer ${auth.token}` }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
           return { ...user, [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dncSectorIds };
         }
         return user;
       });
-
       setTableData(newTableData);
 
     } catch (e) {
@@ -515,16 +519,13 @@ const UsersTable = () => {
         { userId, ecdSectorIds },
         { Authorization: `Bearer ${auth.token}` }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
           return { ...user, [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: ecdSectorIds };
         }
         return user;
       });
-
       setTableData(newTableData);
 
     } catch (e) {
@@ -562,10 +563,6 @@ const UsersTable = () => {
     handleConfirmUser,
     recsBeingProcessed,
     getColumnSearchProps,
-    /*roleAbbrs,
-    stations,
-    dncSectorsData,
-    ecdSectorsData,*/
   });
 
   /**
@@ -575,7 +572,6 @@ const UsersTable = () => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
@@ -585,7 +581,7 @@ const UsersTable = () => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: (col.dataIndex !== USER_FIELDS.FATHERNAME) && (col.dataIndex !== USER_FIELDS.SERVICE),
+        required: ![USER_FIELDS.FATHERNAME, USER_FIELDS.SERVICE, USER_FIELDS.CONTACT_DATA].includes(col.dataIndex),
         services: col.dataIndex === USER_FIELDS.SERVICE ? services : null,
         posts: col.dataIndex === USER_FIELDS.POST ? posts : null,
         errMessage: modUserFieldsErrs ? modUserFieldsErrs[col.dataIndex] : null,
@@ -593,79 +589,109 @@ const UsersTable = () => {
     };
   });
 
-  // Формирует наименование рабочего полигона на станции, отображаемого в списке выбора
-  const getDisplayedStationWorkPlaceName = (stationNameCode, stationWorkPlaceName) => {
-    return `${stationNameCode} - ${stationWorkPlaceName}`;
-  };
-
-  const userGroupedPoligonsArray = (record) => {
-    if (!record[USER_FIELDS.STATION_WORK_POLIGONS] || !record[USER_FIELDS.STATION_WORK_POLIGONS].length) {
-      return {};
-    }
-    return record[USER_FIELDS.STATION_WORK_POLIGONS].reduce((prevVal, currVal) => {
-      prevVal[currVal.id] = prevVal[currVal.id] || [];
-      if (currVal.workPlaceId) {
-        prevVal[currVal.id].push(currVal.workPlaceId);
-      }
-      return prevVal;
-    }, {});
-  };
-
-  const getStationById = (id) => {
-    return stations.find((station) => String(station[STATION_FIELDS.KEY]) == String(id));
-  };
-
-  const getStationWorkPlaceName = (stationId, workPlaceId) => {
-    if (!stationId || !workPlaceId) {
-      return null;
-    }
-    const station = getStationById(stationId);
-    if (!station || !station[STATION_FIELDS.WORK_PLACES] || !station[STATION_FIELDS.WORK_PLACES].length) {
-      return null;
-    }
-    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => String(wp[STATION_WORK_PLACE_FIELDS.KEY]) == String(workPlaceId));
-    if (!workPlace) {
-      return null;
-    }
-    return workPlace[STATION_WORK_PLACE_FIELDS.NAME];
-  };
-
-  const getStationIdByNameCodeString = (nameCodeString) => {
-    if (!nameCodeString || !stations || !stations.length) {
-      return null;
-    }
-    const station = stations.find((station) => station[STATION_FIELDS.NAME_AND_CODE] === nameCodeString);
-    return station ? station[STATION_FIELDS.KEY] : null;
-  };
-
-  const getStationWorkPlaceIdByDisplayedName = (displayedWorkPlaceName, stationId) => {
-    if (!displayedWorkPlaceName || !stationId || !stations || !stations.length) {
-      return null;
-    }
-    const station = stations.find((station) => station[STATION_FIELDS.KEY] === stationId);
-    if (!station) {
-      return null;
-    }
-    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => {
-      const workPlaceNameToDisplay = getDisplayedStationWorkPlaceName(station[STATION_FIELDS.NAME_AND_CODE], wp[STATION_WORK_PLACE_FIELDS.NAME]);
-      return workPlaceNameToDisplay === displayedWorkPlaceName;
-    });
-    return workPlace ? workPlace[STATION_WORK_PLACE_FIELDS.KEY] : null;
-  };
-
   const getUserStationWorkPoligonsForMultipleSelect = (userObject) => {
-    if (!userObject || !userObject[USER_FIELDS.STATION_WORK_POLIGONS] ||
-      !userObject[USER_FIELDS.STATION_WORK_POLIGONS].length ||
-      !stationsDataForMultipleSelect || !stationsDataForMultipleSelect.length) {
+    if (!userObject || !userObject[USER_FIELDS.STATION_WORK_POLIGONS]) {
       return [];
     }
-    const userStationWorkPoligonsValues = userObject[USER_FIELDS.STATION_WORK_POLIGONS].map((item) => {
+    return userObject[USER_FIELDS.STATION_WORK_POLIGONS].map((item) => {
       if (!item.workPlaceId) {
         return `${item.id}`;
       }
       return `${item.id}_${item.workPlaceId}`;
     });
-    return userStationWorkPoligonsValues;
+  };
+
+  const getTableDataToDisplay =
+    (!filters || !filters.length) ?
+    tableData :
+    tableData.filter((el) => {
+      let ok = true;
+      for (let filter of filters) {
+        switch (filter[0]) {
+          case USER_FIELDS.KEY:
+            if (el[USER_FIELDS.KEY] !== filter[1]) {
+              ok = false;
+            }
+            break;
+          case USER_FIELDS.ROLES:
+            if (!el[USER_FIELDS.ROLES] || !el[USER_FIELDS.ROLES].includes(filter[1])) {
+              ok = false;
+            }
+            break;
+          case USER_FIELDS.STATION_WORK_POLIGONS:
+            if (!el[USER_FIELDS.STATION_WORK_POLIGONS]) {
+              ok = false;
+            } else {
+              let foundStation = false;
+              for (let filterElement of filter[1]) {
+                const ids = filterElement.split('_');
+                const stationId = ids[0];
+                const stationWorkPlaceId = ids.length > 1 ? ids[1] : null;
+                if (el[USER_FIELDS.STATION_WORK_POLIGONS].find((swp) =>
+                  (String(swp.id) === stationId) &&
+                  (
+                    (!swp.workPlaceId && !stationWorkPlaceId) ||
+                    (swp.workPlaceId && stationWorkPlaceId && String(swp.workPlaceId) === stationWorkPlaceId)
+                  )
+                )) {
+                  foundStation = true;
+                  break;
+                }
+              }
+              if (!foundStation) {
+                ok = false;
+              }
+            }
+            break;
+          case USER_FIELDS.DNC_SECTOR_WORK_POLIGONS:
+            if (!el[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] || !el[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].includes(filter[1])) {
+              ok = false;
+            }
+            break;
+          case USER_FIELDS.ECD_SECTOR_WORK_POLIGONS:
+            if (!el[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] || !el[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].includes(filter[1])) {
+              ok = false;
+            }
+            break;
+          default:
+            break;
+        }
+        if (!ok) {
+          break;
+        }
+      }
+      return ok;
+    });
+
+  const onFinishSetFilters = () => {
+    const currentFilters = filterForm.getFieldsValue();
+    if (!currentFilters || !Object.keys(currentFilters).length) {
+      setFilters(null);
+    } else {
+      const newFilters = Object.keys(currentFilters)
+        .map((filterName) => [filterName, currentFilters[filterName]])
+        .filter((el) => {
+          if (el[1] === null || el[1] === undefined) {
+            return false;
+          }
+          if (Object.prototype.toString.call(el[1]) === '[object Array]' && !el[1].length) {
+            return false;
+          }
+          return true;
+        });
+      setFilters(newFilters);
+    }
+  };
+
+  const onResetFilters = () => {
+    setFilters(null);
+    filterForm.setFieldsValue({
+      [USER_FIELDS.KEY]: null,
+      [USER_FIELDS.ROLES]: null,
+      [USER_FIELDS.STATION_WORK_POLIGONS]: null,
+      [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: null,
+      [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: null,
+    });
   };
 
 
@@ -675,205 +701,231 @@ const UsersTable = () => {
 
       {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
-      <Form form={form} component={false}>
-        <NewUserModal
-          isModalVisible={isAddNewUserModalVisible}
-          handleAddNewUserOk={handleAddNewUserOk}
-          handleAddNewUserCancel={handleAddNewUserCancel}
-          userFieldsErrs={userFieldsErrs}
-          clearAddUserMessages={clearAddUserMessages}
-          services={services}
-          posts={posts}
-          recsBeingAdded={recsBeingAdded}
-          roleAbbrs={roleAbbrs}
-          stations={stations}
-          dncSectors={dncSectorsData}
-          ecdSectors={ecdSectorsData}
-        />
-
-        {/*
-          Кнопка добавления нового пользователя
-        */}
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewUserModal}
-        >
-          Добавить запись
-        </Button>
-
-        {/*
-          Таблица пользователей
-        */}
-        <Table
-          loading={!dataLoaded}
-          components={{
-            body: {
-              cell: EditableTableCell
-            },
-          }}
-          bordered
-          dataSource={tableData}
-          columns={mergedColumns}
-          rowClassName="editable-row"
-          pagination={{
-            onChange: handleCancelMod,
-          }}
-          sticky={true}
-          onRow={(record) => {
-            return {
-              onDoubleClick: () => {
-                if (!editingKey || editingKey !== record[USER_FIELDS.KEY]) {
-                  handleStartEditUser(record);
+      <>
+        <Collapse bordered={false}>
+          <Panel header="Фильтры" key="1" style={{ fontWeight: 600 }}>
+            <Form
+              form={filterForm}
+              component={false}
+              name="filter-users-form"
+              layout="inline"
+              size="small"
+            >
+              <Form.Item name={USER_FIELDS.KEY} label="ID пользователя">
+                <Input
+                  style={{ width: 300 }}
+                  autoComplete="off"
+                  allowClear
+                />
+              </Form.Item>
+              <Form.Item name={USER_FIELDS.ROLES} label="Роль пользователя">
+                <Select
+                  style={{ width: 200 }}
+                  showArrow
+                  options={!rolesDataForMutipleSelect ? [] : [{ label: '', value: null }, ...rolesDataForMutipleSelect]}
+                />
+              </Form.Item>
+              <Form.Item name={USER_FIELDS.STATION_WORK_POLIGONS} label="Станция / рабочее место на станции">
+                <Select
+                  mode="multiple"
+                  size="default"
+                  style={{ width: 400 }}
+                  showArrow
+                  tagRender={tagRender}
+                >
+                {
+                  !stationsDataForMultipleSelect ? [] :
+                  [{ label: '', value: null }, ...stationsDataForMultipleSelect].map((item) => {
+                    const labelToDisplay = item.label || item.value;
+                    return (
+                      <Option value={item.value} key={item.value}>
+                        {
+                          !item.subitem ?
+                          <span>{labelToDisplay}</span> :
+                          <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
+                        }
+                      </Option>
+                    );
+                  })
                 }
+                </Select>
+              </Form.Item>
+              <Form.Item name={USER_FIELDS.DNC_SECTOR_WORK_POLIGONS} label="Участок ДНЦ">
+                <Select
+                  style={{ width: 300 }}
+                  showArrow
+                  options={!dncSectorsDataForMultipleSelect ? [] : [{ label: '', value: null }, ...dncSectorsDataForMultipleSelect]}
+                />
+              </Form.Item>
+              <Form.Item name={USER_FIELDS.ECD_SECTOR_WORK_POLIGONS} label="Участок ЭЦД">
+                <Select
+                  style={{ width: 300 }}
+                  showArrow
+                  options={!ecdSectorsDataForMultipleSelect ? [] : [{ label: '', value: null }, ...ecdSectorsDataForMultipleSelect]}
+                />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" onClick={onFinishSetFilters}>
+                    Найти
+                  </Button>
+                  {
+                    filters && filters.length &&
+                    <Button type="primary" onClick={onResetFilters}>
+                      Сброс фильтров
+                    </Button>
+                  }
+                </Space>
+              </Form.Item>
+              <Text>
+                Примечание.
+                Фильтрация производится путем сопоставления всех указанных значений с соответствующими
+                значениями полей записей таблицы. В результирующую выборку попадают только те записи,
+                для которых совпадение 100%. Исключение - поле "Станция / рабочее место на станции":
+                поиск производится по частичному совпадению, т.е. в результирующую выборку попадут все те
+                записи, у которых хотя бы одно значение совпадает с хотя бы одним указанным значением.
+              </Text>
+            </Form>
+          </Panel>
+        </Collapse>
+
+        <Form form={form} component={false} name="edit-user-info-form">
+          <NewUserModal
+            isModalVisible={isAddNewUserModalVisible}
+            handleAddNewUserOk={handleAddNewUserOk}
+            handleAddNewUserCancel={handleAddNewUserCancel}
+            userFieldsErrs={userFieldsErrs}
+            clearAddUserMessages={clearAddUserMessages}
+            services={services}
+            posts={posts}
+            recsBeingAdded={recsBeingAdded}
+            rolesDataForMutipleSelect={rolesDataForMutipleSelect}
+            stationsDataForMultipleSelect={stationsDataForMultipleSelect}
+            dncSectorsDataForMultipleSelect={dncSectorsDataForMultipleSelect}
+            ecdSectorsDataForMultipleSelect={ecdSectorsDataForMultipleSelect}
+          />
+
+          <Button type="primary" onClick={showAddNewUserModal}>
+            Добавить запись
+          </Button>
+
+          {/*
+            Таблица пользователей
+          */}
+          <Table
+            loading={!dataLoaded}
+            components={{
+              body: {
+                cell: EditableTableCell
               },
-              onKeyUp: event => {
-                if (event.key === 'Enter') {
-                  handleEditUser(record[USER_FIELDS.KEY]);
+            }}
+            bordered
+            dataSource={getTableDataToDisplay}
+            columns={mergedColumns}
+            rowClassName="editable-row"
+            pagination={{
+              onChange: handleCancelMod,
+            }}
+            sticky={true}
+            onRow={(record) => {
+              return {
+                onDoubleClick: () => {
+                  if (!editingKey || editingKey !== record[USER_FIELDS.KEY]) {
+                    handleStartEditUser(record);
+                  }
+                },
+                onKeyUp: event => {
+                  if (event.key === 'Enter') {
+                    handleEditUser(record[USER_FIELDS.KEY]);
+                  }
                 }
-              }
-            };
-          }}
-          expandable={{
-            expandedRowRender: record => (
-              <div className="expandable-row-content">
-                <ChangePasswordBlock
-                  userId={record[USER_FIELDS.KEY]}
-                />
+              };
+            }}
+            expandable={{
+              expandedRowRender: record => (
+                <div className="expandable-row-content">
+                  <ChangePasswordBlock
+                    userId={record[USER_FIELDS.KEY]}
+                  />
 
-                {/*
-                  Роли данного пользователя
-                */}
-                <Title level={4}>Роли</Title>
-                <SavableSelectMultiple
-                  key={`roles${record[USER_FIELDS.KEY]}`}
-                  placeholder="Выберите роли"
-                  options={
-                    (!roleAbbrs || !roleAbbrs.length) ?
-                    [] :
-                    roleAbbrs.map((role) => {
-                      return {
-                        value: role[ROLE_FIELDS.ENGL_ABBREVIATION],
-                      };
-                    })
-                  }
-                  selectedItems={
-                    (!record[USER_FIELDS.ROLES] || !record[USER_FIELDS.ROLES].length ||
-                      !roleAbbrs || !roleAbbrs.length) ?
-                    [] :
-                    roleAbbrs
-                      .filter((role) => record[USER_FIELDS.ROLES].includes(role[ROLE_FIELDS.KEY]))
-                      .map(role => role[ROLE_FIELDS.ENGL_ABBREVIATION])
-                  }
-                  saveChangesCallback={(selectedVals) => {
-                    const roleIds = roleAbbrs
-                      .filter(role => selectedVals.includes(role[ROLE_FIELDS.ENGL_ABBREVIATION]))
-                      .map(role => role[ROLE_FIELDS.KEY]);
-                    handleEditUserRoles({
-                      userId: record[USER_FIELDS.KEY],
-                      rolesIds: roleIds,
-                    });
-                  }}
-                />
+                  {/*
+                    Роли данного пользователя
+                  */}
+                  <Title level={4}>Роли</Title>
+                  <SavableSelectMultiple
+                    key={`roles${record[USER_FIELDS.KEY]}`}
+                    placeholder="Выберите роли"
+                    options={rolesDataForMutipleSelect}
+                    selectedItems={record[USER_FIELDS.ROLES]}
+                    saveChangesCallback={(selectedVals) => {
+                      handleEditUserRoles({
+                        userId: record[USER_FIELDS.KEY],
+                        rolesIds: selectedVals,
+                      });
+                    }}
+                  />
 
-                {/*
-                  Рабочие полигоны-станции/рабочие места на станциях данного пользователя
-                */}
-                <Title level={4}>Рабочие полигоны (станции)</Title>
-                <SavableSelectMultiple
-                  placeholder="Выберите станции/рабочие места на станциях"
-                  options={stationsDataForMultipleSelect}
-                  selectedItems={getUserStationWorkPoligonsForMultipleSelect(record)}
-                  saveChangesCallback={(selectedVals) => {
-                    handleEditUserStationWorkPoligons({
-                      userId: record[USER_FIELDS.KEY],
-                      poligons: selectedVals.map((item) => {
-                        const ids = item.split('_');
-                        return {
-                          id: ids[0],
-                          workPlaceId: ids.length > 1 ? ids[1] : null,
-                        };
-                      }),
-                    });
-                  }}
-                />
+                  {/*
+                    Рабочие полигоны-станции/рабочие места на станциях данного пользователя
+                  */}
+                  <Title level={4}>Рабочие полигоны (станции)</Title>
+                  <SavableSelectMultiple
+                    placeholder="Выберите станции/рабочие места на станциях"
+                    options={stationsDataForMultipleSelect}
+                    selectedItems={getUserStationWorkPoligonsForMultipleSelect(record)}
+                    saveChangesCallback={(selectedVals) => {
+                      handleEditUserStationWorkPoligons({
+                        userId: record[USER_FIELDS.KEY],
+                        poligons: selectedVals.map((item) => {
+                          const ids = item.split('_');
+                          return {
+                            id: ids[0],
+                            workPlaceId: ids.length > 1 ? ids[1] : null,
+                          };
+                        }),
+                      });
+                    }}
+                  />
 
-                {/*
-                  Рабочие полигоны-участки ДНЦ данного пользователя
-                */}
-                <Title level={4}>Рабочие полигоны (участки ДНЦ)</Title>
-                <SavableSelectMultiple
-                  placeholder="Выберите участки ДНЦ"
-                  options={
-                    (!dncSectorsData || !dncSectorsData.length) ?
-                    [] :
-                    dncSectorsData.map((sector) => {
-                      return {
-                        value: sector[DNCSECTOR_FIELDS.NAME],
-                      };
-                    })
-                  }
-                  selectedItems={
-                    (!record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].length ||
-                      !dncSectorsData || !dncSectorsData.length) ?
-                    [] :
-                    dncSectorsData
-                      .filter((sector) => record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].includes(sector[DNCSECTOR_FIELDS.KEY]))
-                      .map(sector => sector[DNCSECTOR_FIELDS.NAME])
-                  }
-                  saveChangesCallback={(selectedVals) => {
-                    const dncSectorIds = dncSectorsData
-                      .filter(sector => selectedVals.includes(sector[DNCSECTOR_FIELDS.NAME]))
-                      .map(sector => sector[DNCSECTOR_FIELDS.KEY]);
-                    handleEditUserDNCSectorWorkPoligons({
-                      userId: record[USER_FIELDS.KEY],
-                      dncSectorIds,
-                    });
-                  }}
-                />
+                  {/*
+                    Рабочие полигоны-участки ДНЦ данного пользователя
+                  */}
+                  <Title level={4}>Рабочие полигоны (участки ДНЦ)</Title>
+                  <SavableSelectMultiple
+                    placeholder="Выберите участки ДНЦ"
+                    options={dncSectorsDataForMultipleSelect}
+                    selectedItems={record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]}
+                    saveChangesCallback={(selectedVals) => {
+                      handleEditUserDNCSectorWorkPoligons({
+                        userId: record[USER_FIELDS.KEY],
+                        dncSectorIds: selectedVals,
+                      });
+                    }}
+                  />
 
-                {/*
-                  Рабочие полигоны-участки ЭЦД данного пользователя
-                */}
-                <Title level={4}>Рабочие полигоны (участки ЭЦД)</Title>
-                <SavableSelectMultiple
-                  placeholder="Выберите участки ЭЦД"
-                  options={
-                    (!ecdSectorsData || !ecdSectorsData.length) ?
-                    [] :
-                    ecdSectorsData.map((sector) => {
-                      return {
-                        value: sector[ECDSECTOR_FIELDS.NAME],
-                      };
-                    })
-                  }
-                  selectedItems={
-                    (!record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].length ||
-                      !ecdSectorsData || !ecdSectorsData.length) ?
-                    [] :
-                    ecdSectorsData
-                      .filter((sector) => record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].includes(sector[ECDSECTOR_FIELDS.KEY]))
-                      .map(sector => sector[ECDSECTOR_FIELDS.NAME])
-                  }
-                  saveChangesCallback={(selectedVals) => {
-                    const ecdSectorIds = ecdSectorsData
-                      .filter(sector => selectedVals.includes(sector[ECDSECTOR_FIELDS.NAME]))
-                      .map(sector => sector[ECDSECTOR_FIELDS.KEY]);
-                    handleEditUserECDSectorWorkPoligons({
-                      userId: record[USER_FIELDS.KEY],
-                      ecdSectorIds,
-                    });
-                  }}
-                />
-              </div>
-            ),
-            rowExpandable: _record => true,
-            expandIcon: expandIcon,
-          }}
-        />
-      </Form>
+                  {/*
+                    Рабочие полигоны-участки ЭЦД данного пользователя
+                  */}
+                  <Title level={4}>Рабочие полигоны (участки ЭЦД)</Title>
+                  <SavableSelectMultiple
+                    placeholder="Выберите участки ЭЦД"
+                    options={ecdSectorsDataForMultipleSelect}
+                    selectedItems={record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]}
+                    saveChangesCallback={(selectedVals) => {
+                      handleEditUserECDSectorWorkPoligons({
+                        userId: record[USER_FIELDS.KEY],
+                        ecdSectorIds: selectedVals,
+                      });
+                    }}
+                  />
+                </div>
+              ),
+              rowExpandable: _record => true,
+              expandIcon: expandIcon,
+            }}
+          />
+        </Form>
+      </>
     }
     </>
   );

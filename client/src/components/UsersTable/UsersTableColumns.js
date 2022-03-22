@@ -1,12 +1,5 @@
 import { Typography, Popconfirm, Row, Col } from 'antd';
-import {
-  /*DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
-  ROLE_FIELDS,
-  STATION_FIELDS,
-  STATION_WORK_PLACE_FIELDS,*/
-  USER_FIELDS,
-} from '../../constants';
+import { USER_FIELDS } from '../../constants';
 import Loader from '../Loader';
 import compareStrings from '../../sorters/compareStrings';
 
@@ -23,63 +16,8 @@ const usersTableColumns = (props) => {
     handleConfirmUser,
     recsBeingProcessed,
     getColumnSearchProps,
-    /*roleAbbrs,
-    stations,
-    dncSectorsData,
-    ecdSectorsData,*/
   } = props;
-/*
-  const getRoleAbbr = (roleId) => {
-    if (!roleAbbrs) {
-      return '';
-    }
-    const role = roleAbbrs.find((r) => r[ROLE_FIELDS.KEY] === roleId);
-    if (!role) {
-      return '';
-    }
-    return role[ROLE_FIELDS.ENGL_ABBREVIATION];
-  };
 
-  const getStationWorkPlaceName = (stationId, workPlaceId) => {
-    if (!stations) {
-      return '';
-    }
-    const station = stations.find((s) => s[STATION_FIELDS.KEY] === stationId);
-    if (!station || !station[STATION_FIELDS.WORK_PLACES]) {
-      return '';
-    }
-    if (!workPlaceId) {
-      return station[STATION_FIELDS.NAME_AND_CODE];
-    }
-    const workPlace = station[STATION_FIELDS.WORK_PLACES].find((wp) => wp[STATION_WORK_PLACE_FIELDS.KEY] === workPlaceId);
-    if (!workPlace) {
-      return '';
-    }
-    return `${station[STATION_FIELDS.NAME_AND_CODE]} ${workPlace[STATION_WORK_PLACE_FIELDS.NAME]}`;
-  };
-
-  const getDNCSectorName = (sectorId) => {
-    if (!dncSectorsData) {
-      return '';
-    }
-    const dncSector = dncSectorsData.find((s) => s[DNCSECTOR_FIELDS.KEY] === sectorId);
-    if (!dncSector) {
-      return '';
-    }
-    return dncSector[DNCSECTOR_FIELDS.NAME];
-  };
-
-  const getECDSectorName = (sectorId) => {
-    if (!ecdSectorsData) {
-      return '';
-    }
-    const ecdSector = ecdSectorsData.find((s) => s[ECDSECTOR_FIELDS.KEY] === sectorId);
-    if (!ecdSector) {
-      return '';
-    }
-    return ecdSector[ECDSECTOR_FIELDS.NAME];
-  };
-*/
   return [
     {
       title: 'Логин',
@@ -151,56 +89,6 @@ const usersTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       ...getColumnSearchProps(USER_FIELDS.CONTACT_DATA),
     },
-    /*
-    {
-      title: 'Роли',
-      dataIndex: USER_FIELDS.ROLES,
-      key: USER_FIELDS.ROLES,
-      width: '10%',
-      editable: false,
-      render: (_, record) => {
-        return !record[USER_FIELDS.ROLES] || !record[USER_FIELDS.ROLES].length ? <></> :
-          <>{record[USER_FIELDS.ROLES].map((roleId) => getRoleAbbr(roleId)).join(', ')}</>;
-      },
-    },
-    {
-      title: 'Рабочие полигоны',
-      dataIndex: [USER_FIELDS.STATION_WORK_POLIGONS, USER_FIELDS.DNC_SECTOR_WORK_POLIGONS, USER_FIELDS.ECD_SECTOR_WORK_POLIGONS],
-      key: USER_FIELDS.KEY,
-      width: '10%',
-      editable: false,
-      render: (_, record) => {
-        let displayString = '';
-        const stationPoligons =
-          (!record[USER_FIELDS.STATION_WORK_POLIGONS] || !record[USER_FIELDS.STATION_WORK_POLIGONS].length ? [] :
-            record[USER_FIELDS.STATION_WORK_POLIGONS].map((st) => getStationWorkPlaceName(st.id, st.workPlaceId)))
-          .filter((st) => st && st.length > 0);
-        if (stationPoligons.length) {
-          displayString += `Станции: ${stationPoligons.map((st) => st).join(', ')}`;
-        }
-        const dncSectorPoligons =
-          (!record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].length ? [] :
-            record[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].map((id) => getDNCSectorName(id)))
-          .filter((sector) => sector && sector.length > 0);
-        if (dncSectorPoligons.length) {
-          if (displayString.length) {
-            displayString += '; ';
-          }
-          displayString += `Участки ДНЦ: ${dncSectorPoligons.map((poligon) => poligon).join(', ')}`;
-        }
-        const ecdSectorPoligons =
-          (!record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] || !record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].length ? [] :
-            record[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].map((id) => getECDSectorName(id)))
-          .filter((sector) => sector && sector.length > 0);
-          if (ecdSectorPoligons.length) {
-            if (displayString.length) {
-              displayString += '; ';
-            }
-            displayString += `Участки ЭЦД: ${ecdSectorPoligons.map((poligon) => poligon).join(', ')}`;
-          }
-        return <>{displayString}</>;
-      },
-    },*/
     {
       title: 'Операции',
       dataIndex: 'operation',

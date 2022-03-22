@@ -11,6 +11,7 @@ import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj
 import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplicationObjFromDBApplicationObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 import expandIcon from '../ExpandIcon';
+import compareStrings from '../../sorters/compareStrings';
 
 const { Text, Title } = Typography;
 
@@ -77,7 +78,6 @@ const RolesTable = () => {
       const res = await request(ServerAPI.GET_ROLES_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       const tableData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
       setTableData(tableData);
 
@@ -87,7 +87,6 @@ const RolesTable = () => {
       const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       const appsTableData = appsData.map((app) => getAppApplicationObjFromDBApplicationObj(app));
       setAppCredAbbrs(appsTableData);
 
@@ -96,8 +95,6 @@ const RolesTable = () => {
       setLoadDataErr(null);
 
     } catch (e) {
-      setTableData(null);
-      setAppCredAbbrs(null);
       setLoadDataErr(e.message);
     }
 
@@ -128,27 +125,22 @@ const RolesTable = () => {
    */
   const handleAddNewRole = async (role) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о роли
       const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, apps: [] }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData([...tableData, getAppRoleObjFromDBRoleObj(res.role)]);
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setRoleFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -160,21 +152,17 @@ const RolesTable = () => {
    */
   const handleDelRole = async (roleId) => {
     setRecsBeingProcessed((value) => [...value, roleId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о роли
       const res = await request(ServerAPI.DEL_ROLE_DATA, 'POST', { roleId }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((role) => String(role[ROLE_FIELDS.KEY]) !== String(roleId)));
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== roleId));
   }
 
@@ -219,45 +207,36 @@ const RolesTable = () => {
    */
   const handleEditRole = async (roleId) => {
     let rowData;
-
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
     }
-
     setRecsBeingProcessed((value) => [...value, roleId]);
-
     try {
       // Делаем запрос на сервер с целью редактирования информации о роли
       const res = await request(ServerAPI.MOD_ROLE_DATA, 'POST', { roleId, ...rowData }, {
         Authorization: `Bearer ${auth.token}`
       });
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((role) => {
         if (String(role[ROLE_FIELDS.KEY]) === String(res.role._id)) {
           return { ...role, ...getAppRoleObjFromDBRoleObj(res.role) };
         }
         return role;
       });
-
       setTableData(newTableData);
       finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setModRoleFieldsErrs(errs);
       }
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== roleId));
   }
 
@@ -274,16 +253,13 @@ const RolesTable = () => {
     if (!roleId || !appId || !credIds) {
       return;
     }
-
     try {
       // Отправляем запрос об изменении списка полномочий на сервер
       const res = await request(ServerAPI.MOD_ROLE_CREDS, 'POST',
         { roleId, appId, newCredIds: credIds },
         { Authorization: `Bearer ${auth.token}` }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData((roles) => roles.map((role) => {
         if (String(role[ROLE_FIELDS.KEY]) !== String(roleId)) {
           return role;
@@ -342,7 +318,6 @@ const RolesTable = () => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
@@ -375,13 +350,7 @@ const RolesTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewRoleModal}
-        >
+        <Button type="primary" onClick={showAddNewRoleModal}>
           Добавить запись
         </Button>
 
@@ -432,7 +401,7 @@ const RolesTable = () => {
                             return {
                               value: cred[APP_CRED_FIELDS.ENGL_ABBREVIATION],
                             };
-                          })
+                          }).sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
                         }
                         selectedItems={
                           (!app[APP_FIELDS.CREDENTIALS] || !app[APP_FIELDS.CREDENTIALS].length ||

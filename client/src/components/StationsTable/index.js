@@ -323,13 +323,7 @@ const StationsTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewStationModal}
-        >
+        <Button type="primary" onClick={showAddNewStationModal}>
           Добавить запись
         </Button>
 

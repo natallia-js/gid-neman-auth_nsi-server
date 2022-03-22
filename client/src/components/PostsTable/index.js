@@ -315,13 +315,7 @@ const PostsTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewPostModal}
-        >
+        <Button type="primary" onClick={showAddNewPostModal}>
           Добавить запись
         </Button>
 

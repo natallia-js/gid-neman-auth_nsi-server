@@ -427,13 +427,7 @@ const BlocksTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewBlockModal}
-        >
+        <Button type="primary" onClick={showAddNewBlockModal}>
           Добавить запись
         </Button>
 

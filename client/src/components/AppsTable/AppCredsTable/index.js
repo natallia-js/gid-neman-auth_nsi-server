@@ -281,13 +281,7 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
         clearAddAppCredMessages={clearAddAppCredMessages}
         recsBeingAdded={recsBeingAdded}
       />
-      <Button
-        type="primary"
-        style={{
-          marginBottom: 16,
-        }}
-        onClick={showAddNewAppCredModal}
-      >
+      <Button type="primary" onClick={showAddNewAppCredModal}>
         Добавить запись
       </Button>
 

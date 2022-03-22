@@ -312,13 +312,7 @@ const AppsTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewAppModal}
-        >
+        <Button type="primary" onClick={showAddNewAppModal}>
           Добавить запись
         </Button>
 

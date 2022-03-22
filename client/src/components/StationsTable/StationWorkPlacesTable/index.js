@@ -280,13 +280,7 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
         clearAddStationWorkPlaceMessages={clearAddStationWorkPlaceMessages}
         recsBeingAdded={recsBeingAdded}
       />
-      <Button
-        type="primary"
-        style={{
-          marginBottom: 16,
-        }}
-        onClick={showAddNewStationWorkPlaceModal}
-      >
+      <Button type="primary" onClick={showAddNewStationWorkPlaceModal}>
         Добавить запись
       </Button>
 

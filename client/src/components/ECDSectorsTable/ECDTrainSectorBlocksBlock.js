@@ -105,13 +105,7 @@ const ECDTrainSectorBlocksBlock = (props) => {
       </Row>
       <Row>
         <Col>
-          <Button
-            type="primary"
-            style={{
-              marginBottom: 16,
-            }}
-            onClick={showModal}
-          >
+          <Button type="primary" onClick={showModal}>
             Редактировать список
           </Button>
         </Col>

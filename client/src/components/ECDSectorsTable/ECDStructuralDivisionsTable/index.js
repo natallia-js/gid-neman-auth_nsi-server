@@ -291,13 +291,7 @@ const ECDStructuralDivisionsTable = (props) => {
         clearAddDivisionMessages={clearAddDivisionMessages}
         recsBeingAdded={recsBeingAdded}
       />
-      <Button
-        type="primary"
-        style={{
-          marginBottom: 16,
-        }}
-        onClick={showAddNewDivisionModal}
-      >
+      <Button type="primary" onClick={showAddNewDivisionModal}>
         Добавить запись
       </Button>
 

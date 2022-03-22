@@ -10,6 +10,8 @@ import {
   ECDSECTOR_FIELDS,
   ADJACENT_DNCSECTOR_FIELDS,
   NEAREST_SECTOR_FIELDS,
+  STATION_FIELDS,
+  BLOCK_FIELDS,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import AdjacentDNCSectorsBlock from './AdjacentDNCSectorsBlock';
@@ -107,7 +109,6 @@ const DNCSectorsTable = () => {
       res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ДНЦ
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -129,8 +130,9 @@ const DNCSectorsTable = () => {
       res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      const ecdSectors = res.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
+      const ecdSectors = res
+        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
+        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
       setECDSectorsData(ecdSectors);
 
       // -------------------
@@ -139,7 +141,6 @@ const DNCSectorsTable = () => {
       res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
       // Для каждой полученной записи создаем в tableData элемент массива ближайших участков ЭЦД
       // для соответствующего участка ДНЦ
       res.forEach((data) => {
@@ -152,6 +153,8 @@ const DNCSectorsTable = () => {
         }
       });
 
+      // -------------------
+
       setTableData(tableData);
 
       // -------------------
@@ -161,8 +164,10 @@ const DNCSectorsTable = () => {
       res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      setStations(res.map((station) => getAppStationObjFromDBStationObj(station)));
+      setStations(res
+        .map((station) => getAppStationObjFromDBStationObj(station))
+        .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
+      );
 
       // -------------------
 
@@ -171,8 +176,10 @@ const DNCSectorsTable = () => {
       res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET', null, {
         Authorization: `Bearer ${auth.token}`
       });
-
-      setBlocks(res.map((block) => getAppBlockObjFromDBBlockObj(block)));
+      setBlocks(res
+        .map((block) => getAppBlockObjFromDBBlockObj(block))
+        .sort((a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()))
+      );
 
       // -------------------
 
@@ -431,13 +438,7 @@ const DNCSectorsTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewDNCSectorModal}
-        >
+        <Button type="primary" onClick={showAddNewDNCSectorModal}>
           Добавить запись
         </Button>
 

@@ -312,13 +312,7 @@ const ServicesTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button
-          type="primary"
-          style={{
-            marginBottom: 16,
-          }}
-          onClick={showAddNewServiceModal}
-        >
+        <Button type="primary" onClick={showAddNewServiceModal}>
           Добавить запись
         </Button>
 

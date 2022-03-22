@@ -280,13 +280,7 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
         clearAddBlockTrackMessages={clearAddBlockTrackMessages}
         recsBeingAdded={recsBeingAdded}
       />
-      <Button
-        type="primary"
-        style={{
-          marginBottom: 16,
-        }}
-        onClick={showAddNewBlockTrackModal}
-      >
+      <Button type="primary" onClick={showAddNewBlockTrackModal}>
         Добавить запись
       </Button>
 
