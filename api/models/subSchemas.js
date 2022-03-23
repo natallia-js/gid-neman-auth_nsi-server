@@ -45,7 +45,7 @@ const senderWorkPoligonSchema = new Schema({
   // тип рабочего полигона
   type: { type: String, required: true },
   // наименование рабочего полигона
-  title: { type: String, required: true },
+  title: { type: String, required: false },
 });
 
 const lastTakePassDutyTimesSchema = new Schema({

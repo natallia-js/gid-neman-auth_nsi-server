@@ -915,21 +915,28 @@ router.post(
       matchFilter.$and.push(orderCreatorAddresseeFilter);
 
       if (filterFields) {
-        // Фильтрация по адресату
-        const orderAcceptorFilter = (value) => {
-          return { $elemMatch: {
-            // $ne selects the documents where the value of the field is not equal to the specified value.
-            // This includes documents that do not contain the field.
-            confirmDateTime: { $exists: true },
-            confirmDateTime: { $ne: null },
-            $or: [
-              { placeTitle: new RegExp(value, 'i') },
-              { post: new RegExp(value, 'i') },
-              { fio: new RegExp(value, 'i') },
-            ],
-          } };
+        // Функция, позволяющая осуществить поиск среди адресатов (поиск только по
+        // подтвержденным записям, т.к. именно такие записи возвращает в итоге запрос клиенту)
+        const orderAcceptorFilter = (value, placeId) => {
+          const resFilter = {
+            $elemMatch: {
+              // $ne selects the documents where the value of the field is not equal to the specified value.
+              // This includes documents that do not contain the field.
+              confirmDateTime: { $exists: true },
+              confirmDateTime: { $ne: null },
+              $or: [
+                { placeTitle: new RegExp(value, 'i') },
+                { post: new RegExp(value, 'i') },
+                { fio: new RegExp(value, 'i') },
+              ],
+            },
+          };
+          if (placeId) {
+            resFilter.$elemMatch.id = placeId;
+          }
+          return resFilter;
         };
-        // Фильтрация по остальным полям
+        // Фильтрация (поиск) по остальным полям
         filterFields.forEach((filter) => {
           switch (filter.field) {
             case 'toWhom':
@@ -947,7 +954,7 @@ router.post(
                 });
               }
               break;
-            // Поиск подчисла в числе
+            // Поиск подчисла в числе (для номера распоряжения)
             case 'number':
               matchFilter.$and.push({
                 $expr: {
@@ -958,21 +965,29 @@ router.post(
                 },
               });
               break;
-            // Поиск по значениям полей объектов массива
+            // Поиск по значениям полей объектов массива (для текста распоряжения)
             case 'orderContent':
               matchFilter.$and.push({
                 'orderText.orderText': { $elemMatch: { value: new RegExp(filter.value, 'i') } },
               });
               break;
             case 'orderAcceptor':
-              matchFilter.$and.push({
-                $or: [
-                  { dspToSend: orderAcceptorFilter(filter.value) },
-                  { dncToSend: orderAcceptorFilter(filter.value) },
-                  { ecdToSend: orderAcceptorFilter(filter.value) },
-                  { otherToSend: orderAcceptorFilter(filter.value) },
-                ],
-              });
+              // Если запрос поступает со станции, то поиск - только среди адресатов этой станции,
+              // в противном случае поиск по всем адресатам, кроме адресатов на станциях
+              if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
+                matchFilter.$and.push({
+                  stationWorkPlacesToSend: orderAcceptorFilter(filter.value, workPoligon.id)
+                });
+              } else {
+                matchFilter.$and.push({
+                  $or: [
+                    { dspToSend: orderAcceptorFilter(filter.value) },
+                    { dncToSend: orderAcceptorFilter(filter.value) },
+                    { ecdToSend: orderAcceptorFilter(filter.value) },
+                    { otherToSend: orderAcceptorFilter(filter.value) },
+                  ],
+                });
+              }
               break;
             case 'orderSender':
               matchFilter.$and.push({
@@ -1038,7 +1053,7 @@ router.post(
           }
         }
       } else {
-        sortConditions.createDateTime = 1;
+        sortConditions.createDateTime = -1;
       }
       sortConditions._id = 1;
 

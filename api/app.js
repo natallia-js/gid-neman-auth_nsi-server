@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const setupWebSocket = require('./webSocket/setup');
 //const http = require('http');
 const https = require('https');
@@ -38,6 +39,9 @@ const { addError } = require('./serverSideProcessing/processLogsActions');
 
 // Создаем объект приложения express
 const app = express();
+
+// compress all responses
+app.use(compression());
 
 // express.json() is a method inbuilt in express to recognize the incoming Request Object
 // as a JSON Object. This method is called as a middleware.
