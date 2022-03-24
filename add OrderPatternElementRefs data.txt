@@ -32,13 +32,17 @@ db.orderpatternelementrefs.insertMany([
 {
   elementType: "select",
   possibleRefs: [
+    { refName: 'Дежурство сдал', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дежурство принял', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующей заявки', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего уведомления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего приказа', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Отключить, включить', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон станции отправления', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Порядок действий', additionalOrderPlaceInfoForGID: false },
     { refName: 'Путь перегона', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь перегона станции отправления', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции', additionalOrderPlaceInfoForGID: true },
@@ -47,9 +51,7 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция прибытия', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Отключить, включить', additionalOrderPlaceInfoForGID: false },
     { refName: 'Точное место', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Порядок действий', additionalOrderPlaceInfoForGID: false },
   ],
 },
 {
@@ -69,11 +71,13 @@ db.orderpatternelementrefs.insertMany([
 {
   elementType: "datetime",
   possibleRefs: [
-    { refName: 'Дата-время издания действующего распоряжения', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Дата-время издания действующей заявки', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Дата-время издания действующего уведомления', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Дата-время издания действующего приказа', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время издания действующего запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующего приказа', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующего распоряжения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующего уведомления', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время издания действующей заявки', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время принятия дежурства', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Дата-время сдачи дежурства', additionalOrderPlaceInfoForGID: false },
   ],
 },
 ])
