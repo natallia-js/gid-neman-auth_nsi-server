@@ -1031,6 +1031,11 @@ router.post(
  * сдал дежурство после этого, то данный обработчик не даст принять дежурство повторно, не сдав предыдущее.
  * Только для пользователей, заявка на регистрацию которых подтверждена!
  *
+ * Дополнительно вставлен кусок кода, где: при принятии на текущем полигоне управления дежурства
+ * одим работником все остальные работники с аналогичными полномочиями, которые ранее принимали на этом
+ * же полигоне управления дежурство и не сдали его, сдают смену (т.е. для них автоматически проставляется
+ * дата-время сдачи дежурства).
+ *
  * Параметры запроса:
  *   workPoligonType, workPoligonId, workSubPoligonId - определяют рабочий полигон (либо рабочее место
  *     в рамках рабочего полигона, если указан параметр workSubPoligonId), на котором пользователь
@@ -1045,7 +1050,7 @@ router.post(
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем возможность выполнения запрашиваемого действия
-  hasSpecialCredentials, // проверка specialCredentials
+  hasSpecialCredentials, // проверка specialCredentials (наделен ли ими пользователь администратором системы)
   canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
@@ -1057,16 +1062,21 @@ router.post(
       applicationAbbreviation,
     } = req.body;
 
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Дежурство принимает пользователь с id = req.user.userId
 
       // Ищем в БД пользователя, который прислал запрос на принятие дежурства
-      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
       if (!user) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      // Смотрим, принимал ли ранее пользователь дежурство на указанном рабочем полигоне.
+      // Смотрим, принимал ли когда-либо ранее пользователь дежурство на указанном рабочем полигоне.
       // Если нет, то создаем новую запись о принятии пользователем дежурства.
       // Если да, то обновляем существующую запись (при условии, что пользователь до этого сдавал дежурство).
       if (!user.lastTakePassDutyTimes) {
@@ -1082,27 +1092,25 @@ router.post(
 
       const lastTakeDutyTime = new Date();
       let lastPassDutyTime = null;
-      const workPoligon = {
-        type: workPoligonType,
-        id: workPoligonId,
-        workPlaceId: workSubPoligonId,
-      };
+      const workPoligon = { type: workPoligonType, id: workPoligonId, workPlaceId: workSubPoligonId };
 
       if (!lastInfo) {
         user.lastTakePassDutyTimes.push({
           workPoligon,
-          lastTakeDutyTime: lastTakeDutyTime,
-          lastPassDutyTime: null,
+          lastTakeDutyTime,
+          lastPassDutyTime,
+          сredentials: specialCredentials,
         });
       } else {
         if (lastInfo.lastTakeDutyTime && (
-          !lastInfo.lastPassDutyTime ||
-          lastInfo.lastTakeDutyTime > lastInfo.lastPassDutyTime
+          !lastInfo.lastPassDutyTime || lastInfo.lastTakeDutyTime > lastInfo.lastPassDutyTime
         )) {
+          await session.abortTransaction();
           return res.status(ERR).json({ message: 'Пользователь на дежурстве' });
         }
         lastInfo.lastTakeDutyTime = lastTakeDutyTime;
         lastPassDutyTime = lastInfo.lastPassDutyTime;
+        lastInfo.credentials = specialCredentials;
       }
 
       // Включаем информацию о рабочем полигоне, временах принятия и сдачи на нем дежурства,
@@ -1123,6 +1131,45 @@ router.post(
       );
 
       await user.save();
+
+      // Все пользователи, которые ранее приняли дежурство на этом же рабочем полигоне с такими же
+      // полномочиями, что и текущий пользователь, автоматически "сдают" дежурство
+      const findRecsCond = {
+        "_id": { $ne: user._id },
+        "lastTakePassDutyTimes.workPoligon.type": workPoligonType,
+        "lastTakePassDutyTimes.workPoligon.id": workPoligonId,
+      };
+      if (workSubPoligonId) {
+        findRecsCond["lastTakePassDutyTimes.workPoligon.workPlaceId"] = workSubPoligonId;
+      } else {
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        findRecsCond["lastTakePassDutyTimes.workPoligon.workPlaceId"] = null;
+      }
+      const theSameWorkPoligonUsers = await User.find(findRecsCond).session(session);
+      if (theSameWorkPoligonUsers && theSameWorkPoligonUsers.length) {
+        for (let theSameWorkPoligonUser of theSameWorkPoligonUsers) {
+          const userWorkPoligonTakePassData = theSameWorkPoligonUser.lastTakePassDutyTimes.find((el) =>
+            // данные пользователя по текущему рабочему полигону
+            el.workPoligon.type === workPoligonType && el.workPoligon.id  === workPoligonId &&
+            (
+              (!el.workPoligon.workPlaceId && !workSubPoligonId) ||
+              (workSubPoligonId && el.workPoligon.workPlaceId === workSubPoligonId)
+            ) &&
+            // пользователь должен быть на дежурстве
+            el.lastTakeDutyTime && (!el.lastPassDutyTime || el.lastTakeDutyTime > el.lastPassDutyTime) &&
+            // пользователь должен иметь те же полномочия, что и текущий пользователь
+            (el.сredentials && specialCredentials && JSON.stringify(el.сredentials.sort()) === JSON.stringify(specialCredentials))
+          );
+          // Если пользователь найден, то "снимаем" его с дежурства
+          if (userWorkPoligonTakePassData) {
+            userWorkPoligonTakePassData.lastPassDutyTime = lastTakeDutyTime;
+            await theSameWorkPoligonUser.save();
+          }
+        }
+      }
+
+      await session.commitTransaction();
 
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
@@ -1159,7 +1206,11 @@ router.post(
           application: applicationAbbreviation,
         },
       });
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

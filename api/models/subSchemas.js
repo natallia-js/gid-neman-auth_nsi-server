@@ -51,6 +51,8 @@ const senderWorkPoligonSchema = new Schema({
 const lastTakePassDutyTimesSchema = new Schema({
   // рабочий полигон пользователя
   workPoligon: { type: workPoligonSchema, required: true },
+  // список полномочий, с которыми пользователь входит в систему
+  сredentials: [{ type: String }],
   // дата-время последнего принятия дежурства
   lastTakeDutyTime: { type: Date, required: false },
   // дата-время последней сдачи дежурства (если пользователь дежурство принял, но не сдал, то значение
