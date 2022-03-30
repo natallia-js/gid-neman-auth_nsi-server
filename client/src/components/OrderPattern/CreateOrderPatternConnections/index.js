@@ -34,6 +34,7 @@ export const CreateOrderPatternConnections = (props) => {
     existingOrderAffiliationTree,
     getNodeTitleByNodeKey,
     getPatternNodeByKey,
+    lastChangedOrdersCategoryTitle,
     lastChangedOrderPattern,
     onEditOrderPattern,
   } = props;
@@ -93,6 +94,32 @@ export const CreateOrderPatternConnections = (props) => {
   const onChangePatternType = (e) => {
     setSelectBasePattern(e.target.value);
   };
+
+
+  /**
+   * Реагируем на редактирование наименования категории шаблонов распоряжений
+   */
+  useEffect(() => {
+    if (!lastChangedOrdersCategoryTitle) {
+      return;
+    }
+    // Если у выбранных (базового и/или дочернего) шаблонов наименование категории распоряжений
+    // изменилось, то меняем и в состоянии компонента
+    if (selectedBasePattern &&
+      selectedBasePattern[ORDER_PATTERN_FIELDS.CATEGORY] === lastChangedOrdersCategoryTitle.prevTitle) {
+      setSelectedBasePattern((value) => ({
+        ...value,
+        [ORDER_PATTERN_FIELDS.CATEGORY]: lastChangedOrdersCategoryTitle.newTitle,
+      }));
+    }
+    if (selectedChildPattern &&
+      selectedChildPattern[ORDER_PATTERN_FIELDS.CATEGORY] === lastChangedOrdersCategoryTitle.prevTitle) {
+      setSelectedChildPattern((value) => ({
+        ...value,
+        [ORDER_PATTERN_FIELDS.CATEGORY]: lastChangedOrdersCategoryTitle.newTitle,
+      }));
+    }
+  }, [lastChangedOrdersCategoryTitle]);
 
 
   /**
@@ -241,6 +268,8 @@ export const CreateOrderPatternConnections = (props) => {
       }
       const selectedPattern = {
         [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
+        [ORDER_PATTERN_FIELDS.TYPE]: info.node.additionalInfo.orderType,
+        [ORDER_PATTERN_FIELDS.CATEGORY]: info.node.additionalInfo.orderCategory,
         [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
         [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
         [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: info.node.childPatterns,
@@ -266,6 +295,8 @@ export const CreateOrderPatternConnections = (props) => {
       const node = getPatternNodeByKey(option.key, existingOrderAffiliationTree);
       setSelectedChildPattern({
         [ORDER_PATTERN_FIELDS.KEY]: option.key,
+        [ORDER_PATTERN_FIELDS.TYPE]: node.additionalInfo.orderType,
+        [ORDER_PATTERN_FIELDS.CATEGORY]: node.additionalInfo.orderCategory,
         [ORDER_PATTERN_FIELDS.TITLE]: selectedValue,
         [ORDER_PATTERN_FIELDS.ELEMENTS]: node.pattern,
         [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: node.childPatterns,
@@ -489,7 +520,12 @@ export const CreateOrderPatternConnections = (props) => {
                 Базовый шаблон
               </Radio>
               {
-                selectedBasePattern && <Title level={5}>{selectedBasePattern[ORDER_PATTERN_FIELDS.TITLE]}</Title>
+                selectedBasePattern &&
+                <Title level={5}>
+                  {selectedBasePattern[ORDER_PATTERN_FIELDS.TYPE]}.&#160;
+                  {selectedBasePattern[ORDER_PATTERN_FIELDS.CATEGORY]}.&#160;
+                  {selectedBasePattern[ORDER_PATTERN_FIELDS.TITLE]}
+                </Title>
               }
               <Row>
                 <Col span={24} className="order-pattern-border order-pattern-block">

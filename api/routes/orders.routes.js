@@ -973,7 +973,7 @@ router.post(
               break;
             case 'orderAcceptor':
               // Если запрос поступает со станции, то поиск - только среди адресатов этой станции,
-              // в противном случае поиск по всем адресатам, кроме адресатов на станциях
+              // в противном случае поиск по всем адресатам, включая адресатов на станциях
               if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
                 matchFilter.$and.push({
                   stationWorkPlacesToSend: orderAcceptorFilter(filter.value, workPoligon.id)
@@ -985,6 +985,7 @@ router.post(
                     { dncToSend: orderAcceptorFilter(filter.value) },
                     { ecdToSend: orderAcceptorFilter(filter.value) },
                     { otherToSend: orderAcceptorFilter(filter.value) },
+                    { stationWorkPlacesToSend: orderAcceptorFilter(filter.value) },
                   ],
                 });
               }

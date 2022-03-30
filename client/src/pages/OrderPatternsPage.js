@@ -52,6 +52,7 @@ export const OrderPatternsPage = () => {
   const auth = useContext(AuthContext);
 
   const [lastChangedOrderPattern, setLastChangedOrderPattern] = useState(null);
+  const [lastChangedOrdersCategoryTitle, setLastChangedOrdersCategoryTitle] = useState(null);
 
 
   /**
@@ -60,7 +61,6 @@ export const OrderPatternsPage = () => {
    */
    const fetchData = useCallback(async () => {
     setDataLoaded(false);
-
     try {
       // Делаем запрос на сервер с целью получения информации по созданным шаблонам распоряжений
       let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST',
@@ -116,6 +116,44 @@ export const OrderPatternsPage = () => {
 
     const treeData = [];
 
+    const getOrderPatternLeaf = (orderPattern) => {
+      return {
+        title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
+        key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
+        pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
+        type: OrderPatternsNodeType.ORDER_PATTERN,
+        specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
+        childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
+        additionalInfo: {
+          service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
+          orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
+          orderCategory: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
+        },
+      };
+    };
+
+    const getOrderPatternCategoryLeaf = (orderPattern) => {
+      return {
+        title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
+        key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`,
+        type: OrderPatternsNodeType.ORDER_CATEGORY,
+        additionalInfo: {
+          service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
+          orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
+        },
+        children: [getOrderPatternLeaf(orderPattern)],
+      };
+    };
+
+    const getOrderPatternTypeLeaf = (orderPattern) => {
+      return {
+        title: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
+        key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}`,
+        type: OrderPatternsNodeType.ORDER_TYPE,
+        children: [getOrderPatternCategoryLeaf(orderPattern)],
+      };
+    };
+
     orderPatterns.forEach((orderPattern) => {
       const theSameServiceElement = treeData.find((service) => service.title === orderPattern[ORDER_PATTERN_FIELDS.SERVICE]);
       // Существует ли в дереве узел с наименованием службы?
@@ -124,83 +162,18 @@ export const OrderPatternsPage = () => {
           title: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
           key: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
           type: OrderPatternsNodeType.SERVICE,
-          children: [{
-            title: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-            key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}`,
-            type: OrderPatternsNodeType.ORDER_TYPE,
-            children: [{
-              title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
-              key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`,
-              type: OrderPatternsNodeType.ORDER_CATEGORY,
-              additionalInfo: {
-                service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
-                orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-              },
-              children: [{
-                title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
-                key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
-                pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-                type: OrderPatternsNodeType.ORDER_PATTERN,
-                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
-                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
-              }],
-            }],
-          }],
+          children: [getOrderPatternTypeLeaf(orderPattern)],
         });
       } else {
         const theSameTypeElement = theSameServiceElement.children.find((type) => type.title === orderPattern[ORDER_PATTERN_FIELDS.TYPE]);
         if (!theSameTypeElement) {
-          theSameServiceElement.children.push({
-            title: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-            key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}`,
-            type: OrderPatternsNodeType.ORDER_TYPE,
-            children: [{
-              title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
-              key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`,
-              type: OrderPatternsNodeType.ORDER_CATEGORY,
-              additionalInfo: {
-                service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
-                orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-              },
-              children: [{
-                title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
-                key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
-                pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-                type: OrderPatternsNodeType.ORDER_PATTERN,
-                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
-                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
-              }],
-            }],
-          });
+          theSameServiceElement.children.push(getOrderPatternTypeLeaf(orderPattern));
         } else {
           const theSameCategoryElement = theSameTypeElement.children.find((category) => category.title === orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]);
           if (!theSameCategoryElement) {
-            theSameTypeElement.children.push({
-              title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
-              key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`,
-              type: OrderPatternsNodeType.ORDER_CATEGORY,
-              additionalInfo: {
-                service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
-                orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-              },
-              children: [{
-                title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
-                key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
-                pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-                type: OrderPatternsNodeType.ORDER_PATTERN,
-                specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
-                childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
-              }],
-            });
+            theSameTypeElement.children.push(getOrderPatternCategoryLeaf(orderPattern));
           } else {
-            theSameCategoryElement.children.push({
-              title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
-              key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
-              pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-              type: OrderPatternsNodeType.ORDER_PATTERN,
-              specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
-              childPatterns: orderPattern[ORDER_PATTERN_FIELDS.CHILD_PATTERNS],
-            });
+            theSameCategoryElement.children.push(getOrderPatternLeaf(orderPattern));
           }
         }
       }
@@ -238,6 +211,7 @@ export const OrderPatternsPage = () => {
       }
       return pattern;
     }));
+    setLastChangedOrdersCategoryTitle({ prevTitle: title, newTitle });
   };
 
 
@@ -358,6 +332,7 @@ export const OrderPatternsPage = () => {
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
               getPatternNodeByKey={getPatternNodeByKey}
+              lastChangedOrdersCategoryTitle={lastChangedOrdersCategoryTitle}
               lastChangedOrderPattern={lastChangedOrderPattern}
               onEditOrderPattern={handleEditOrderPattern}
             />

@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink, useHistory } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
+import { PAGES_IDS, LOGS_IDS } from '../../context/CurrentPageContext';
 import { GetDataCredentials } from '../../constants';
 import { Layout, Menu, Popover, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
@@ -46,45 +47,49 @@ export const Navbar = () => {
   return (
     <Header>
       <Menu theme="dark" mode="horizontal" selectedKeys={[]}>
-        <Menu.Item key="0"><Popover content={userInfo} title="Информация о пользователе"><UserOutlined /></Popover></Menu.Item>
+        <Menu.Item key={PAGES_IDS.USER_INFO}>
+          <Popover content={userInfo} title="Информация о пользователе">
+            <UserOutlined />
+          </Popover>
+        </Menu.Item>
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_APPS_ACTION) &&
-          <Menu.Item key="1"><NavLink to="/apps">Приложения</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.APPLICATIONS}><NavLink to="/apps">Приложения</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_ROLES_ACTION) &&
-          <Menu.Item key="2"><NavLink to="/roles">Роли</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.ROLES}><NavLink to="/roles">Роли</NavLink></Menu.Item>
         }
-        <Menu.Item key="3"><NavLink to="/services">Службы</NavLink></Menu.Item>
-        <Menu.Item key="4"><NavLink to="/posts">Должности</NavLink></Menu.Item>
+        <Menu.Item key={PAGES_IDS.SERVICES}><NavLink to="/services">Службы</NavLink></Menu.Item>
+        <Menu.Item key={PAGES_IDS.POSTS}><NavLink to="/posts">Должности</NavLink></Menu.Item>
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_USERS_ACTION) &&
-          <Menu.Item key="5"><NavLink to="/users">Пользователи</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.USERS}><NavLink to="/users">Пользователи</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_STATIONS_ACTION) &&
-          <Menu.Item key="6"><NavLink to="/stations">Станции</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.STATIONS}><NavLink to="/stations">Станции</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_BLOCKS_ACTION) &&
-          <Menu.Item key="7"><NavLink to="/blocks">Перегоны</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.BLOCKS}><NavLink to="/blocks">Перегоны</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_DNCSECTORS_ACTION) &&
-          <Menu.Item key="8"><NavLink to="/dncSectors">Участки ДНЦ</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.DNC_SECTORS}><NavLink to="/dncSectors">Участки ДНЦ</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_ECDSECTORS_ACTION) &&
-          <Menu.Item key="9"><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
+          <Menu.Item key={PAGES_IDS.ECD_SECTORS}><NavLink to="/ecdSectors">Участки ЭЦД</NavLink></Menu.Item>
         }
-        <Menu.Item key="10"><NavLink to="/orderPatterns">Шаблоны распоряжений</NavLink></Menu.Item>
-        <SubMenu key="11" title="Логи">
-          <Menu.Item key="11:1"><NavLink to="/serverErrorsLogs">серверных ошибок</NavLink></Menu.Item>
-          <Menu.Item key="11:2"><NavLink to="/adminsLogs">действий администраторов</NavLink></Menu.Item>
-          <Menu.Item key="11:3"><NavLink to="/dy58UsersLogs">действий пользователей ДУ-58</NavLink></Menu.Item>
+        <Menu.Item key={PAGES_IDS.ORDER_PATTERNS}><NavLink to="/orderPatterns">Шаблоны распоряжений</NavLink></Menu.Item>
+        <SubMenu key={PAGES_IDS.LOGS} title="Логи">
+          <Menu.Item key={LOGS_IDS.SERVER_ERRORS}><NavLink to="/serverErrorsLogs">серверных ошибок</NavLink></Menu.Item>
+          <Menu.Item key={LOGS_IDS.ADMINS_ACTIONS}><NavLink to="/adminsLogs">действий администраторов</NavLink></Menu.Item>
+          <Menu.Item key={LOGS_IDS.USERS_ACTIONS}><NavLink to="/dy58UsersLogs">действий пользователей ДУ-58</NavLink></Menu.Item>
         </SubMenu>
-        <Menu.Item key="12"><NavLink to="/help">Помощь</NavLink></Menu.Item>
-        <Menu.Item key="13"><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+        <Menu.Item key={PAGES_IDS.HELP}><NavLink to="/help">Помощь</NavLink></Menu.Item>
+        <Menu.Item key={PAGES_IDS.EXIT}><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
       </Menu>
     </Header>
   );
