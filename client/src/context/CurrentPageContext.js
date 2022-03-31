@@ -28,4 +28,5 @@ export const LOGS_IDS = {
  */
 export const CurrentPageContext = createContext({
   pageId: null,
+  changePageId: () => {},
 });

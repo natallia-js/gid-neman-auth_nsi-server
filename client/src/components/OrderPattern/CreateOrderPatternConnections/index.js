@@ -547,7 +547,12 @@ export const CreateOrderPatternConnections = (props) => {
                 Дочерний шаблон
               </Radio>
               {
-                selectedChildPattern && <Title level={5}>{selectedChildPattern[ORDER_PATTERN_FIELDS.TITLE]}</Title>
+                selectedChildPattern &&
+                <Title level={5}>
+                  {selectedChildPattern[ORDER_PATTERN_FIELDS.TYPE]}.&#160;
+                  {selectedChildPattern[ORDER_PATTERN_FIELDS.CATEGORY]}.&#160;
+                  {selectedChildPattern[ORDER_PATTERN_FIELDS.TITLE]}
+                </Title>
               }
               <Row>
                 <Col span={24} className="order-pattern-border order-pattern-block">

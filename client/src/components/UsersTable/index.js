@@ -685,13 +685,36 @@ const UsersTable = () => {
 
   const onResetFilters = () => {
     setFilters(null);
-    filterForm.setFieldsValue({
-      [USER_FIELDS.KEY]: null,
-      [USER_FIELDS.ROLES]: null,
-      [USER_FIELDS.STATION_WORK_POLIGONS]: null,
-      [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: null,
-      [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: null,
-    });
+    filterForm.resetFields();
+  };
+
+
+  const [stationsAndWorkPoligonsOptions, setStationsAndWorkPoligonsOptions] = useState([]);
+
+  // формируем основной массив данных (опций для отображения), учитывая возможный установленный фильтр
+  useEffect(() => {
+    setStationsAndWorkPoligonsOptions(
+      !stationsDataForMultipleSelect ? [] :
+      [{ label: '< очистить список >', value: '_' }, ...stationsDataForMultipleSelect].map((item) => {
+        const labelToDisplay = item.label || item.value;
+        return (
+          <Option label={labelToDisplay} value={item.value} key={item.value}>
+            {
+              !item.subitem ?
+              <span>{labelToDisplay}</span> :
+              <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
+            }
+          </Option>
+        );
+      })
+    );
+  }, [stationsDataForMultipleSelect]);
+
+  const handleSelectStation = (optionKey) => {
+    if (optionKey === '_') {
+      filterForm.resetFields([USER_FIELDS.STATION_WORK_POLIGONS]);
+      setFilters((value) => value ? value.filter((el) => el[0] !== USER_FIELDS.STATION_WORK_POLIGONS) : null);
+    }
   };
 
 
@@ -732,22 +755,10 @@ const UsersTable = () => {
                   style={{ width: 400 }}
                   showArrow
                   tagRender={tagRender}
+                  onSelect={handleSelectStation}
+                  optionFilterProp="label"
                 >
-                {
-                  !stationsDataForMultipleSelect ? [] :
-                  [{ label: '', value: null }, ...stationsDataForMultipleSelect].map((item) => {
-                    const labelToDisplay = item.label || item.value;
-                    return (
-                      <Option value={item.value} key={item.value}>
-                        {
-                          !item.subitem ?
-                          <span>{labelToDisplay}</span> :
-                          <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
-                        }
-                      </Option>
-                    );
-                  })
-                }
+                  {stationsAndWorkPoligonsOptions}
                 </Select>
               </Form.Item>
               <Form.Item name={USER_FIELDS.DNC_SECTOR_WORK_POLIGONS} label="Участок ДНЦ">

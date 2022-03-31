@@ -11,6 +11,7 @@ import getAppOrderPatternElRefObjFromDBOrderPatternElRefObj from '../mappers/get
 import getAppOrderPatternObjFromDBOrderPatternObj from '../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
 import Loader from '../components/Loader';
 import { OrderPatternsNodeType } from '../components/OrderPattern/constants';
+import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
@@ -54,6 +55,12 @@ export const OrderPatternsPage = () => {
   const [lastChangedOrderPattern, setLastChangedOrderPattern] = useState(null);
   const [lastChangedOrdersCategoryTitle, setLastChangedOrdersCategoryTitle] = useState(null);
 
+  // Получаем доступ к контекстным данным текущей страницы
+  const currPage = useContext(CurrentPageContext);
+
+  useEffect(() => {
+    currPage.changePageId(PAGES_IDS.ORDER_PATTERNS);
+  }, [currPage]);
 
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника

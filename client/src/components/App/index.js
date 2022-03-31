@@ -3,6 +3,8 @@ import { BrowserRouter as Router } from 'react-router-dom'
 import { useRoutes } from '../../routes';
 import { useAuth } from '../../hooks/auth.hook';
 import { AuthContext } from '../../context/AuthContext';
+import { useCurrPage } from '../../hooks/currPage.hook';
+import { CurrentPageContext } from '../../context/CurrentPageContext';
 import Loader from '../Loader';
 import { Navbar } from '../Navbar';
 import { Layout } from 'antd';
@@ -36,6 +38,8 @@ export default function App() {
     hasUserCredential,
   } = useAuth();
 
+  const { pageId, changePageId } = useCurrPage();
+
   // Флаг (true/false) аутентифицированности пользователя
   const isAuthenticated = !!token && !!userRoles && !!userCredentials;
 
@@ -54,6 +58,7 @@ export default function App() {
       login, logout, isAuthenticated, token, userId, userInfo, userRoles,
       userCredentials, authError, clearAuthError, hasUserCredential,
     }}>
+    <CurrentPageContext.Provider value={{ pageId, changePageId }}>
       <Router>
         <Layout>
           {isAuthenticated && <Navbar />}
@@ -61,10 +66,11 @@ export default function App() {
             {routes}
           </Content>
           <Footer style={{ textAlign: 'center' }}>
-            Утилита администрирования аккаунтов и НСИ ГИД НЕМАН ©2021 КТЦ БелЖД
+            Утилита администрирования аккаунтов и НСИ ГИД НЕМАН ©2022 КТЦ БелЖД
           </Footer>
         </Layout>
       </Router>
+    </CurrentPageContext.Provider>
     </AuthContext.Provider>
   )
 }

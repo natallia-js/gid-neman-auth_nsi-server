@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink, useHistory } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { PAGES_IDS, LOGS_IDS } from '../../context/CurrentPageContext';
+import { PAGES_IDS, LOGS_IDS, CurrentPageContext } from '../../context/CurrentPageContext';
 import { GetDataCredentials } from '../../constants';
 import { Layout, Menu, Popover, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
@@ -17,6 +17,7 @@ const { SubMenu } = Menu;
 export const Navbar = () => {
   const history = useHistory();
   const auth = useContext(AuthContext);
+  const currPage = useContext(CurrentPageContext);
 
   /**
    * Обработка запроса пользователя на выход из системы
@@ -46,7 +47,7 @@ export const Navbar = () => {
   // Компонент блока основного меню
   return (
     <Header>
-      <Menu theme="dark" mode="horizontal" selectedKeys={[]}>
+      <Menu theme="dark" mode="horizontal" selectedKeys={[currPage.pageId]}>
         <Menu.Item key={PAGES_IDS.USER_INFO}>
           <Popover content={userInfo} title="Информация о пользователе">
             <UserOutlined />

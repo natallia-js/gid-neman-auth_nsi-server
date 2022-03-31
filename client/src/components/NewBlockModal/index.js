@@ -149,13 +149,21 @@ const NewBlockModal = ({
           validateStatus={(blockFieldsErrs && blockFieldsErrs[BLOCK_FIELDS.STATION1]) || requiredStation1ErrMess ? ERR_VALIDATE_STATUS : null}
           help={(blockFieldsErrs && blockFieldsErrs[BLOCK_FIELDS.STATION1]) || requiredStation1ErrMess}
         >
-          <Select placeholder="Выберите граничную станцию перегона">
+          <Select
+            showSearch
+            placeholder="Выберите граничную станцию перегона"
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+          >
           {
             stations &&
             stations.map(station =>
               <Option
                 key={station[STATION_FIELDS.KEY]}
                 value={station[STATION_FIELDS.KEY]}
+                label={station[STATION_FIELDS.NAME_AND_CODE]}
               >
                 {station[STATION_FIELDS.NAME_AND_CODE]}
               </Option>
@@ -182,13 +190,21 @@ const NewBlockModal = ({
           validateStatus={(blockFieldsErrs && blockFieldsErrs[BLOCK_FIELDS.STATION2]) || requiredStation2ErrMess ? ERR_VALIDATE_STATUS : null}
           help={(blockFieldsErrs && blockFieldsErrs[BLOCK_FIELDS.STATION2]) || requiredStation2ErrMess}
         >
-          <Select placeholder="Выберите граничную станцию перегона">
+          <Select
+            showSearch
+            placeholder="Выберите граничную станцию перегона"
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+          >
           {
             stations &&
             stations.map(station =>
               <Option
                 key={station[STATION_FIELDS.KEY]}
                 value={station[STATION_FIELDS.KEY]}
+                label={station[STATION_FIELDS.NAME_AND_CODE]}
               >
                 {station[STATION_FIELDS.NAME_AND_CODE]}
               </Option>

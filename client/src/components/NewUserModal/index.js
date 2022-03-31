@@ -365,6 +365,7 @@ const NewUserModal = ({
             value={selectedRoles}
             options={rolesDataToDisplay}
             onChange={handleChangeRoles}
+            optionFilterProp="label"
           />
         </Form.Item>
 
@@ -383,12 +384,13 @@ const NewUserModal = ({
             value={selectedStationsWithWorkPlaces}
             onChange={handleChangeStations}
             tagRender={tagRender}
+            optionFilterProp="label"
           >
             {
               stationsDataToDisplay.map((item) => {
                 const labelToDisplay = item.label || item.value;
                 return (
-                  <Option value={item.value} key={item.value}>
+                  <Option label={labelToDisplay} value={item.value} key={item.value}>
                     {
                       !item.subitem ?
                       <span>{labelToDisplay}</span> :
@@ -415,6 +417,7 @@ const NewUserModal = ({
             value={selectedDNCSectors}
             options={dncSectorsToDisplay}
             onChange={handleChangeDNCSectors}
+            optionFilterProp="label"
           />
         </Form.Item>
 
@@ -432,6 +435,7 @@ const NewUserModal = ({
             value={selectedECDSectors}
             options={ecdSectorsToDisplay}
             onChange={handleChangeECDSectors}
+            optionFilterProp="label"
           />
         </Form.Item>
 

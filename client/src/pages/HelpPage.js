@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Typography } from 'antd';
+import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
 
 import './HelpPage.css';
 
@@ -9,6 +10,13 @@ const { Title } = Typography;
  * Возвращает компонент, представляющий собой страницу руководства пользователя.
  */
 export const HelpPage = () => {
+  // Получаем доступ к контекстным данным текущей страницы
+  const currPage = useContext(CurrentPageContext);
+
+  useEffect(() => {
+    currPage.changePageId(PAGES_IDS.HELP);
+  }, [currPage]);
+
   return (
     <div className="HelpBlock">
       <Title level={2} className="center top-margin-05">Руководство пользователя</Title>
