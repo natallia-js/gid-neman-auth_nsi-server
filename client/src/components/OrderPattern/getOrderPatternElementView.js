@@ -22,6 +22,7 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
     case OrderPatternElementType.INPUT:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <Input
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
@@ -32,6 +33,7 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
     case OrderPatternElementType.TEXT_AREA:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <TextArea
           autoSize
@@ -41,42 +43,50 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
     case OrderPatternElementType.SELECT:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <Select
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          open={false}
         />
       </Tooltip>;
     case OrderPatternElementType.DATE:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <DatePicker
           format={DateFormat}
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          open={false}
         />
       </Tooltip>;
     case OrderPatternElementType.TIME:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <TimePicker
           format={TimeFormat}
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          open={false}
         />
       </Tooltip>;
     case OrderPatternElementType.DATETIME:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
       >
         <DatePicker
           showTime
           format={DateTimeFormat}
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          open={false}
         />
       </Tooltip>;
     case OrderPatternElementType.DR_TRAIN_TABLE:

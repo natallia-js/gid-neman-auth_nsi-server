@@ -8,11 +8,29 @@ import getOrderPatternElementView from '../getOrderPatternElementView';
 import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../../constants';
 
 
+const orderPatternElementsPossibleConnectionsByTypes = [
+  { baseElementType: OrderPatternElementType.INPUT, childElementType: OrderPatternElementType.INPUT },
+  { baseElementType: OrderPatternElementType.TEXT_AREA, childElementType: OrderPatternElementType.TEXT_AREA },
+  { baseElementType: OrderPatternElementType.SELECT, childElementType: OrderPatternElementType.SELECT },
+  { baseElementType: OrderPatternElementType.SELECT, childElementType: OrderPatternElementType.INPUT },
+  { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.DATE },
+  { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.DATETIME },
+  { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.INPUT },
+  { baseElementType: OrderPatternElementType.TIME, childElementType: OrderPatternElementType.TIME },
+  { baseElementType: OrderPatternElementType.DATETIME, childElementType: OrderPatternElementType.DATETIME },
+  { baseElementType: OrderPatternElementType.DATETIME, childElementType: OrderPatternElementType.DATE },
+  { baseElementType: OrderPatternElementType.DATETIME, childElementType: OrderPatternElementType.INPUT },
+  { baseElementType: OrderPatternElementType.DR_TRAIN_TABLE, childElementType: OrderPatternElementType.DR_TRAIN_TABLE },
+];
+
+
 export const OrderPatternSetConnectionsPreview = (props) => {
   const {
     orderPattern,
     selectPatternElementCallback,
     basePattern = true,
+    basePatternElementType = null,
+    childPatternElementType = null,
     allowChoosePatternElement = false,
     nullSelectedElement = false,
     elementIdsToGetNotation = null,
@@ -108,6 +126,15 @@ export const OrderPatternSetConnectionsPreview = (props) => {
   }, [elementIdsToGetNotation]);
 
 
+  const elementsCanBeConnected = (basePatternElType, childPatternElType) => {
+    if (!basePatternElType || !childPatternElType) {
+      return true;
+    }
+    return Boolean(orderPatternElementsPossibleConnectionsByTypes.find((el) =>
+      el.baseElementType === basePatternElType && el.childElementType === childPatternElType));
+  };
+
+
   return (
     <>
       {
@@ -126,10 +153,21 @@ export const OrderPatternSetConnectionsPreview = (props) => {
               :
               <Popover
                 key={patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY]}
+                placement="top"
                 content={
                   <div>
                     <p>
-                      { !allowChoosePatternElement ? 'Выбор элемента недоступен' :
+                      {
+                        (!allowChoosePatternElement ||
+                          (
+                            basePattern &&
+                            !elementsCanBeConnected(patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE], childPatternElementType)
+                          ) ||
+                          (
+                            !basePattern &&
+                            !elementsCanBeConnected(basePatternElementType, patternElement[ORDER_PATTERN_ELEMENT_FIELDS.TYPE])
+                          )
+                        ) ? 'Выбор элемента недоступен' :
                         <a
                           href="#!"
                           onClick={() =>

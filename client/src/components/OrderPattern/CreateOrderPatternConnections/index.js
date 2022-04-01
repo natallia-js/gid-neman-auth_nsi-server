@@ -314,6 +314,13 @@ export const CreateOrderPatternConnections = (props) => {
   };
 
 
+  const handleCancelCorrespondingElements = () => {
+    setNullSelectedElements(true);
+    setSelectedBasePatternElement(null);
+    setSelectedChildPatternElement(null);
+  };
+
+
   const handleSelectCorrespondingElements = () => {
     if (correspPatternElementsArray.find((conn) =>
       conn.baseParamId === selectedBasePatternElement.element[ORDER_PATTERN_ELEMENT_FIELDS.KEY] &&
@@ -332,9 +339,7 @@ export const CreateOrderPatternConnections = (props) => {
         },
       ];
     });
-    setNullSelectedElements((value) => !value);
-    setSelectedBasePatternElement(null);
-    setSelectedChildPatternElement(null);
+    handleCancelCorrespondingElements();
   };
 
 
@@ -506,11 +511,22 @@ export const CreateOrderPatternConnections = (props) => {
                 type="primary"
                 size="small"
                 style={{
+                  marginRight: 8,
                   marginBottom: 16,
                 }}
                 onClick={handleSelectCorrespondingElements}
               >
                 Подтвердить сделанный выбор
+              </Button>
+              <Button
+                type="primary"
+                size="small"
+                style={{
+                  marginBottom: 16,
+                }}
+                onClick={handleCancelCorrespondingElements}
+              >
+                Отменить сделанный выбор
               </Button>
             </div>
           }
@@ -535,6 +551,8 @@ export const CreateOrderPatternConnections = (props) => {
                     orderPattern={selectedBasePattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
                     selectPatternElementCallback={(element, notation) => handleSelectPatternElement(element, notation, true)}
                     basePattern={true}
+                    basePatternElementType={null}
+                    childPatternElementType={selectedChildPatternElement ? selectedChildPatternElement.element[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] : null}
                     allowChoosePatternElement={selectedBasePattern && selectedChildPattern}
                     nullSelectedElement={nullSelectedElements}
                     elementIdsToGetNotation={baseElementIdsToGetNotation}
@@ -562,6 +580,8 @@ export const CreateOrderPatternConnections = (props) => {
                     orderPattern={selectedChildPattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
                     selectPatternElementCallback={(element, notation) => handleSelectPatternElement(element, notation, false)}
                     basePattern={false}
+                    basePatternElementType={selectedBasePatternElement ? selectedBasePatternElement.element[ORDER_PATTERN_ELEMENT_FIELDS.TYPE] : null}
+                    childPatternElementType={null}
                     allowChoosePatternElement={selectedBasePattern && selectedChildPattern && selectedBasePatternElement}
                     nullSelectedElement={nullSelectedElements}
                     elementIdsToGetNotation={childElementIdsToGetNotation}

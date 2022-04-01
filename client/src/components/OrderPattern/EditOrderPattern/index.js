@@ -92,6 +92,7 @@ export const EditOrderPattern = (props) => {
                 >
                   {
                     <Popover
+                      placement="top"
                       content={
                         <div>
                           <p>
