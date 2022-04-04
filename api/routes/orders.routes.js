@@ -1003,16 +1003,18 @@ router.post(
       }
 
       // Поиск связанных документов типа 'Уведомление ЭЦД'
+      // (только для журнала ЭЦД!)
       let lookupConditions = null;
       if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
         lookupConditions = {
           from: 'orders',
-          let: { the_id: '$_id', the_chainId: '$orderChain.chainId'},
+          let: { the_id: '$_id', the_chainId: '$orderChain.chainId', the_orderType: '$type'},
           pipeline: [
             { $match:
               { $expr:
                 { $and:
                   [
+                    { $in: ['$$the_orderType', [ORDER_PATTERN_TYPES.ECD_ORDER, ORDER_PATTERN_TYPES.ECD_PROHIBITION]] },
                     { $eq: ['$type', ORDER_PATTERN_TYPES.ECD_NOTIFICATION] },
                     { $eq: ['$$the_chainId', '$orderChain.chainId'] },
                   ],
@@ -1031,7 +1033,7 @@ router.post(
         };
       }
 
-      // Фильтрация по номеру уведомления (если необходима)
+      // Фильтрация по номеру уведомления ЭЦД (если необходима)
       let connectedDataFilterExists = false;
       if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR && filterFields) {
         const notificationNumberFilter = filterFields.find((el) => el.field === 'notificationNumber');
