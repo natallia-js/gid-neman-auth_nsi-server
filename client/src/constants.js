@@ -207,6 +207,8 @@ export const STATION_FIELDS = Object.freeze({
   ESR_CODE: 'ESRCode',
   NAME: 'name',
   NAME_AND_CODE: 'nameCode',
+  PENSI_ID: 'pensiId',
+  PENSI_UNMC: 'pensiUNMC',
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
   TRACKS: 'TStationTracks',

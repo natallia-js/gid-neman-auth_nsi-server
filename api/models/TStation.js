@@ -26,6 +26,16 @@ function createStationModel(sequelize) {
       type: DataTypes.STRING(32),
       allowNull: false,
     },
+    // id станции в ПЭНСИ
+    St_PENSI_ID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    // ЕСР-код станции в ПЭНСИ
+    St_PENSI_UNMC: {
+      type: DataTypes.STRING(6),
+      allowNull: true,
+    },
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance

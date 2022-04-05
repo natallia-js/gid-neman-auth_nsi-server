@@ -52,7 +52,7 @@ const {
   async (_req, res) => {
     try {
       const data = await TStation.findAll({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        attributes: ['St_ID', 'St_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
         include: [{
           model: TStationTrack,
           attributes: ['ST_ID', 'ST_Name'],

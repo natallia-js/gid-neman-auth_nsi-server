@@ -22,7 +22,7 @@ const stationsTableColumns = (props) => {
       title: 'Код ЕСР',
       dataIndex: STATION_FIELDS.ESR_CODE,
       key: STATION_FIELDS.ESR_CODE,
-      width: '30%',
+      width: '15%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => +a[STATION_FIELDS.ESR_CODE] - +b[STATION_FIELDS.ESR_CODE],
@@ -33,11 +33,36 @@ const stationsTableColumns = (props) => {
       title: 'Название',
       dataIndex: STATION_FIELDS.NAME,
       key: STATION_FIELDS.NAME,
-      width: '30%',
+      width: '15%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()),
       ...getColumnSearchProps(STATION_FIELDS.NAME),
+    },
+    {
+      title: 'ПЭНСИ ID',
+      dataIndex: STATION_FIELDS.PENSI_ID,
+      key: STATION_FIELDS.PENSI_ID,
+      width: '15%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a && b) return -1;
+        if (a && !b) return 1;
+        if (a && b) return +a[STATION_FIELDS.PENSI_ID] - +b[STATION_FIELDS.PENSI_ID];
+        return 0;
+      },
+      ...getColumnSearchProps(STATION_FIELDS.PENSI_ID),
+    },
+    {
+      title: 'ПЭНСИ код ЕСР',
+      dataIndex: STATION_FIELDS.PENSI_UNMC,
+      key: STATION_FIELDS.PENSI_UNMC,
+      width: '15%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => compareStrings(a[STATION_FIELDS.PENSI_UNMC].toLowerCase(), b[STATION_FIELDS.PENSI_UNMC].toLowerCase()),
+      ...getColumnSearchProps(STATION_FIELDS.PENSI_UNMC),
     },
     {
       title: 'Операции',
