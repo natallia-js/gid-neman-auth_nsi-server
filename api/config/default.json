@@ -16,5 +16,9 @@
   "workPeriodInDays": 2,
   "storeOrdersInDBInDays": 730,
   "storeLogsInDBInDays": 365,
-  "maxDaysToStoreUnconfirmedOrders": 30
+  "maxDaysToStoreUnconfirmedOrders": 30,
+  "PENSI": {
+    "serverAddress": "10.200.2.29:80",
+    "responseEncoding": "windows-1251"
+  }
 }

@@ -17,9 +17,19 @@ function createDNCSectorModel(sequelize) {
     },
     // наименование участка ДНЦ
     DNCS_Title: {
-      type: DataTypes.STRING(32),
+      type: DataTypes.STRING(64),
       allowNull: false,
       unique: UNIQUE_DNCSECTOR_TITLE_CONSTRAINT_NAME,
+    },
+    // комментарий
+    DNCS_DESCRIPTION: {
+      type: DataTypes.STRING(640),
+      allowNull: true,
+    },
+    // id участка ДНЦ в ПЭНСИ
+    DNCS_PENSI_ID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   }, {
     // Other model options go here

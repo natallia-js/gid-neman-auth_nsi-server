@@ -56,7 +56,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TDNCSector.findAll({
-        attributes: ['DNCS_ID', 'DNCS_Title'],
+        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID'],
         include: [
           {
             model: TDNCTrainSector,
@@ -521,6 +521,114 @@ router.post(
         action: 'Редактирование информации об участке ДНЦ',
         error,
         actionParams: { id, name },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на синхронизацию списка всех участков ДНЦ со списком участков ДНЦ ПЭНСИ.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/syncWithPENSI',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_DNCSECTOR_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции синхронизации не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
+    let dncSectorsDataHTTPRequest = '';
+
+    try {
+      const fetch = require('node-fetch');
+      const config = require('config');
+
+      const checkStatus = require('../http/checkStatus');
+      const PENSIServerAddress = config.get('PENSI.serverAddress');
+      const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
+
+      // Из ПЭНСИ получаем следующую информацию по участкам ДНЦ: id (будет передан вне зависимости от его
+      // присутствия в запросе), наименование участка, комментарий к записи.
+      // Данные запрашиваем без учета истории их изменения. Т.е. придут только актуальные данные (history=0).
+      dncSectorsDataHTTPRequest =
+        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.DISPATCH_REGION&cols=DISP_REG_NAME,DISP_REG_NOTE&history=0`;
+
+      // Вначале пытаюсь получить данные от ПЭНСИ
+      let response = await fetch(dncSectorsDataHTTPRequest, { method: 'GET', body: null, headers: {} });
+      checkStatus(response);
+
+      // Затем декодирую полученные данные
+      let buffer = await response.arrayBuffer();
+      const decoder = new TextDecoder(responseEncoding);
+      const dncSectorsPENSIString = decoder.decode(buffer); // строка со всеми данными по участкам ДНЦ от ПЭНСИ
+
+      // После этого извлекаю данные по участкам ДНЦ из своей БД
+      const localDNCSectorsData = await TDNCSector.findAll({
+        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID'],
+      });
+
+      // Имея все данные, сравниваю их и вношу необходимые изменения в свою БД
+
+      // Формирую массив подстрок исходной строки данных от ПЭНСИ
+      const allRows = dncSectorsPENSIString.split(/\r?\n|\r/);
+      // Теперь данные от ПЭНСИ положу в массив для удобства работы с ними
+      const pensiDNCSectorsArray = [];
+      for (let singleRow = 1; singleRow < allRows.length; singleRow += 1) {
+        const rowCells = allRows[singleRow].split(';');
+        if (rowCells.length < 3) {
+          continue;
+        }
+        pensiDNCSectorsArray.push({
+          sectorId: +rowCells[0], // строку с id участка - в числовое значение
+          sectorName: rowCells[1].replace(/"/g,''), // из строки '"Наименование"' делаем 'Наименование'
+          sectorNote: rowCells[2].replace(/"/g,''), // из строки '"Комментарий"' делаем 'Комментарий'
+        });
+      }
+
+      // Для каждой своей записи нахожу соответствующую из ПЭНСИ и сравниваю значения их полей.
+      // Если не совпадают - меняю.
+      let correspLocalRecord;
+      for (let pensiRecord of pensiDNCSectorsArray) {
+        correspLocalRecord = localDNCSectorsData.find((el) => el.DNCS_Title === pensiRecord.sectorName);
+        if (correspLocalRecord) {
+          correspLocalRecord.DNCS_PENSI_ID = pensiRecord.sectorId;
+          correspLocalRecord.DNCS_DESCRIPTION = pensiRecord.sectorNote;
+          correspLocalRecord.save();
+        }
+      }
+
+      await t.commit();
+
+      // Добавить данные в логи
+
+      res.status(OK).json({ message: 'Информация успешно синхронизирована', syncResults: [] });
+
+    } catch (error) {
+      await t.rollback();
+      addError({
+        errorTime: new Date(),
+        action: 'Синхронизация таблицы участков ДНЦ с ПЭНСИ',
+        error,
+        actionParams: { dncSectorsDataHTTPRequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
