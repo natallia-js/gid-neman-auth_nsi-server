@@ -6,6 +6,8 @@ const { TStationTrack } = require('../../models/TStationTrack');
 const { TStationWorkPlace } = require('../../models/TStationWorkPlace');
 const { TStationWorkPoligon } = require('../../models/TStationWorkPoligon');
 const { TStation } = require('../../models/TStation');
+const { Op } = require('sequelize');
+
 
 /**
  * Удаляет станцию с заданным id из БД со всей связанной с нею информацией.

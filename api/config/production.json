@@ -19,6 +19,9 @@
   "maxDaysToStoreUnconfirmedOrders": 30,
   "PENSI": {
     "serverAddress": "10.200.2.29:80",
-    "responseEncoding": "windows-1251"
+    "responseEncoding": "windows-1251",
+    "roadCode": 13,
+    "additionalStationsCodes": [102746100,102958501,105863702,274193601,102843601,274193501,140849604,105531501,
+      105531001,102745600,102827501,105869402,102649900,102971602,105850102,105799503,102959803,140113102]
   }
 }

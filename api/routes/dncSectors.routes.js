@@ -561,6 +561,7 @@ router.post(
     try {
       const fetch = require('node-fetch');
       const config = require('config');
+      const csvToArray = require('../additional/csvToArray');
 
       const checkStatus = require('../http/checkStatus');
       const PENSIServerAddress = config.get('PENSI.serverAddress');
@@ -584,6 +585,7 @@ router.post(
       // После этого извлекаю данные по участкам ДНЦ из своей БД
       const localDNCSectorsData = await TDNCSector.findAll({
         attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID'],
+        transaction: t,
       });
 
       // Имея все данные, сравниваю их и вношу необходимые изменения в свою БД
@@ -593,7 +595,10 @@ router.post(
       // Теперь данные от ПЭНСИ положу в массив для удобства работы с ними
       const pensiDNCSectorsArray = [];
       for (let singleRow = 1; singleRow < allRows.length; singleRow += 1) {
-        const rowCells = allRows[singleRow].split(';');
+        // Поскольку строка в csv-формате в качестве разделителя имеет ';', а в описании диспетчерских участков
+        // встречается этот символ, то код: const rowCells = allRows[singleRow].split(';'); - нельзя использовать
+        // для разбиения строки на подстроки, используем специальный код:
+        const rowCells = csvToArray(allRows[singleRow]);
         if (rowCells.length < 3) {
           continue;
         }
@@ -604,23 +609,71 @@ router.post(
         });
       }
 
-      // Для каждой своей записи нахожу соответствующую из ПЭНСИ и сравниваю значения их полей.
-      // Если не совпадают - меняю.
+      let syncResults = []; // для возврата запросившему операцию синхронизации (массив строк с результатами)
+
+      // Для каждой записи из ПЭНСИ нахожу соответствующую свою и сравниваю значения их полей.
+      // Если не совпадают - меняю. Если совпадения нет - создаю у себя новую запись.
       let correspLocalRecord;
+      let modifiedRecs = [];
+      let addedRecs = [];
       for (let pensiRecord of pensiDNCSectorsArray) {
-        correspLocalRecord = localDNCSectorsData.find((el) => el.DNCS_Title === pensiRecord.sectorName);
+        correspLocalRecord = localDNCSectorsData.find((el) => el.DNCS_PENSI_ID === pensiRecord.sectorId);
         if (correspLocalRecord) {
-          correspLocalRecord.DNCS_PENSI_ID = pensiRecord.sectorId;
-          correspLocalRecord.DNCS_DESCRIPTION = pensiRecord.sectorNote;
-          correspLocalRecord.save();
+          let needsToBeSaved = false;
+          let changedData = '';
+          if (correspLocalRecord.DNCS_Title !== pensiRecord.sectorName) {
+            changedData += `${pensiRecord.sectorName} (ранее ${correspLocalRecord.DNCS_Title});`;
+            correspLocalRecord.DNCS_Title = pensiRecord.sectorName;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.DNCS_DESCRIPTION !== pensiRecord.sectorNote) {
+            changedData += `${pensiRecord.sectorNote} (ранее ${correspLocalRecord.DNCS_DESCRIPTION});`;
+            correspLocalRecord.DNCS_DESCRIPTION = pensiRecord.sectorNote;
+            needsToBeSaved = true;
+          }
+          if (needsToBeSaved) {
+            modifiedRecs.push(changedData);
+            correspLocalRecord.save();
+          }
+        } else {
+          await TDNCSector.create({
+            DNCS_Title: pensiRecord.sectorName,
+            DNCS_DESCRIPTION: pensiRecord.sectorNote,
+            DNCS_PENSI_ID: pensiRecord.sectorId,
+          }, { transaction: t });
+          addedRecs.push(pensiRecord.sectorName);
         }
+      }
+      if (modifiedRecs.length > 0) {
+        syncResults.push('Отредактирована информация по участкам ДНЦ:', ...modifiedRecs);
+      }
+      if (addedRecs.length > 0) {
+        syncResults.push('Добавлены участки ДНЦ:', ...addedRecs);
+      }
+      // Осталось отметить те участки ДНЦ в локальной БД, которых не было обнаружено в ПЭНСИ
+      const onlyLocalSectors = localDNCSectorsData.filter((el) =>
+        !pensiDNCSectorsArray.find((item) => el.DNCS_PENSI_ID === item.sectorId));
+      if (onlyLocalSectors.length) {
+        syncResults.push('Участки ДНЦ, информация по которым не получена от ПЭНСИ:');
+        syncResults.push(onlyLocalSectors.map((sector) => sector.DNCS_Title));
       }
 
       await t.commit();
 
-      // Добавить данные в логи
+      syncResults = syncResults.length ? ['Информация успешно синхронизирована', ...syncResults] :
+          ['Информация синхронизирована'];
+      res.status(OK).json({
+        message: syncResults.length > 1 ? 'Информация успешно синхронизирована' : 'Информация синхронизирована',
+        syncResults,
+      });
 
-      res.status(OK).json({ message: 'Информация успешно синхронизирована', syncResults: [] });
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Синхронизация таблицы участков ДНЦ с ПЭНСИ',
+        actionParams: { syncResults },
+      });
 
     } catch (error) {
       await t.rollback();

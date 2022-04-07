@@ -13,7 +13,8 @@ const { TStation } = require('../models/TStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const deleteStation = require('../routes/deleteComplexDependencies/deleteStation');
-const { addError } = require('../serverSideProcessing/processLogsActions');
+const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+
 
 const router = Router();
 
@@ -508,12 +509,15 @@ router.post(
       const checkStatus = require('../http/checkStatus');
       const PENSIServerAddress = config.get('PENSI.serverAddress');
       const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
+      const roadCode = config.get('PENSI.roadCode');
+      const additionalStationsCodes = config.get('PENSI.additionalStationsCodes');
 
       // Из ПЭНСИ получаем для Бел.ж.д. (код дороги = 13) следующую информацию по станциям: id (будет передан
       // вне зависимости от его присутствия в запросе), ЕСР-код станции, наименование станции.
       // Данные запрашиваем без учета истории их изменения. Т.е. придут только актуальные данные (history=0).
       stationsDataHTTPRequest =
-        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.STA&cols=STA_NO,STA_NAME&history=0&filter=ROAD_NO=13`;
+        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.STA&cols=STA_NO,STA_NAME&history=0` +
+        `&filter=ROAD_NO=${roadCode}+OR+ST%23UN+IN+(${additionalStationsCodes.join(',')})`;
 
       // Вначале пытаюсь получить данные от ПЭНСИ
       let response = await fetch(stationsDataHTTPRequest, { method: 'GET', body: null, headers: {} });
@@ -527,6 +531,7 @@ router.post(
       // После этого извлекаю данные по станциям из своей БД
       const localStationsData = await TStation.findAll({
         attributes: ['St_ID', 'St_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
+        transaction: t,
       });
 
       // Имея все данные, сравниваю их и вношу необходимые изменения в свою БД
@@ -547,23 +552,72 @@ router.post(
         });
       }
 
-      // Для каждой своей записи нахожу соответствующую из ПЭНСИ и сравниваю значения их полей.
-      // Если не совпадают - меняю.
+      let syncResults = []; // для возврата запросившему операцию синхронизации (массив строк с результатами)
+
+      // Для каждой записи из ПЭНСИ нахожу соответствующую свою и сравниваю значения их полей.
+      // Если не совпадают - меняю. Если совпадения нет - создаю у себя новую запись.
       let correspLocalRecord;
+      let modifiedRecs = [];
+      let addedRecs = [];
       for (let pensiRecord of pensiStationsArray) {
-        correspLocalRecord = localStationsData.find((el) => el.St_Title === pensiRecord.stationName);
+        correspLocalRecord = localStationsData.find((el) => el.St_PENSI_ID === pensiRecord.stationId);
         if (correspLocalRecord) {
-          correspLocalRecord.St_PENSI_ID = pensiRecord.stationId;
-          correspLocalRecord.St_PENSI_UNMC = pensiRecord.stationCode;
-          correspLocalRecord.save();
+          let needsToBeSaved = false;
+          let changedData = '';
+          if (correspLocalRecord.St_Title !== pensiRecord.stationName) {
+            changedData += `${pensiRecord.stationName} (ранее ${correspLocalRecord.St_Title});`;
+            correspLocalRecord.St_Title = pensiRecord.stationName;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.St_PENSI_UNMC !== pensiRecord.stationCode) {
+            changedData += `${pensiRecord.stationCode} (ранее ${correspLocalRecord.St_PENSI_UNMC});`;
+            correspLocalRecord.St_PENSI_UNMC = pensiRecord.stationCode;
+            needsToBeSaved = true;
+          }
+          if (needsToBeSaved) {
+            modifiedRecs.push(changedData);
+            correspLocalRecord.save();
+          }
+        } else {
+          await TStation.create({
+            St_UNMC: pensiRecord.stationCode,
+            St_Title: pensiRecord.stationName,
+            St_PENSI_ID: pensiRecord.stationId,
+            St_PENSI_UNMC: pensiRecord.stationCode,
+          }, { transaction: t });
+          addedRecs.push(`${pensiRecord.stationName} (${pensiRecord.stationCode})`);
         }
+      }
+      if (modifiedRecs.length > 0) {
+        syncResults.push('Отредактирована информация по станциям:', ...modifiedRecs);
+      }
+      if (addedRecs.length > 0) {
+        syncResults.push('Добавлены станции:', ...addedRecs);
+      }
+      // Осталось отметить те станции в локальной БД, которых не было обнаружено в ПЭНСИ
+      const onlyLocalStations = localStationsData.filter((el) =>
+        !pensiStationsArray.find((item) => el.St_PENSI_ID === item.stationId));
+      if (onlyLocalStations.length) {
+        syncResults.push('Станции, информация по которым не получена от ПЭНСИ:');
+        syncResults.push(onlyLocalStations.map((station) => `${station.St_Title} (${station.St_UNMC});`));
       }
 
       await t.commit();
 
-      // Добавить данные в логи
+      syncResults = syncResults.length ? ['Информация успешно синхронизирована', ...syncResults] :
+        ['Информация синхронизирована'];
+      res.status(OK).json({
+        message: syncResults.length > 1 ? 'Информация успешно синхронизирована' : 'Информация синхронизирована',
+        syncResults,
+      });
 
-      res.status(OK).json({ message: 'Информация успешно синхронизирована', syncResults: [] });
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Синхронизация таблицы станций с ПЭНСИ',
+        actionParams: { syncResults },
+      });
 
     } catch (error) {
       await t.rollback();
