@@ -65,6 +65,7 @@ export const ServerAPI = Object.freeze({
   MOD_STATION_DATA: ServerAddress + '/api/nsi/stations/mod',
   MOD_STATION_TRACK_DATA: ServerAddress + '/api/nsi/stationTracks/mod',
   MOD_STATION_WORK_PLACE_DATA: ServerAddress + '/api/nsi/stationWorkPlaces/mod',
+  SYNC_STATIONS_WITH_PENSI: ServerAddress + '/api/nsi/stations/syncWithPENSI',
 
   GET_SERVICES_DATA: ServerAddress + '/api/nsi/services/data',
   ADD_SERVICE_DATA: ServerAddress + '/api/nsi/services/add',
@@ -84,12 +85,14 @@ export const ServerAPI = Object.freeze({
   DEL_BLOCK_TRACK_DATA: ServerAddress + '/api/nsi/blockTracks/del',
   MOD_BLOCK_DATA: ServerAddress + '/api/nsi/blocks/mod',
   MOD_BLOCK_TRACK_DATA: ServerAddress + '/api/nsi/blockTracks/mod',
+  SYNC_BLOCKS_WITH_PENSI: ServerAddress + '/api/nsi/blocks/syncWithPENSI',
 
   GET_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/data',
   GET_DNCSECTORS_SHORT_DATA: ServerAddress + '/api/nsi/dncSectors/shortData',
   ADD_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/add',
   DEL_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/del',
   MOD_DNCSECTORS_DATA: ServerAddress + '/api/nsi/dncSectors/mod',
+  SYNC_DNCSECTORS_WITH_PENSI: ServerAddress + '/api/nsi/dncSectors/syncWithPENSI',
 
   GET_ECDSECTORS_DATA: ServerAddress + '/api/nsi/ecdSectors/data',
   GET_ECDSECTORS_SHORT_DATA: ServerAddress + '/api/nsi/ecdSectors/shortData',
@@ -248,6 +251,8 @@ export const BLOCK_FIELDS = Object.freeze({
   NAME: 'name',
   STATION1: 'station1',
   STATION2: 'station2',
+  PENSI_ID: 'pensiId',
+  PENSI_DNCSectorCode: 'pensiDNCSectorCode',
   POS_IN_TRAIN_SECTOR: 'posInTrainSector',
   BELONGS_TO_SECTOR: 'belongsToSector',
   TRACKS: 'TBlockTracks',
@@ -263,6 +268,9 @@ export const BLOCK_TRACK_FIELDS = Object.freeze({
 export const DNCSECTOR_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'name',
+  NOTE: 'note',
+  PENSI_ID: 'pensiId',
+  PENSI_Code: 'pensiCode',
   ADJACENT_DNCSECTORS: 'adjacentSectors',
   NEAREST_ECDSECTORS: 'nearestECDSectors',
   TRAIN_SECTORS: 'trainSectors',

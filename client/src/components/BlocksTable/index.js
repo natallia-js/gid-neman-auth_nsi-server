@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography } from 'antd';
+import { Table, Form, Button, Row, Col, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewBlockModal from '../NewBlockModal';
 import { ServerAPI, BLOCK_FIELDS, STATION_FIELDS } from '../../constants';
@@ -69,6 +69,9 @@ const BlocksTable = () => {
   const { getColumnSearchProps } = useColumnSearchProps();
 
   const [initialEditedRecordValues, setInitialEditedRecordValues] = useState(null);
+
+  // Результаты синхронизации с ПЭНСИ
+  const [syncDataResults, setSyncDataResults] = useState(null);
 
 
   /**
@@ -330,6 +333,28 @@ const BlocksTable = () => {
 
   // ---------------------------------------------------------------
 
+  /**
+   * Синхронизация с ПЭНСИ
+   */
+  const handleSyncWithPENSI = async () => {
+    setDataLoaded(false);
+    try {
+      let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+      setSyncDataResults(res.syncResults);
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+      setSyncDataResults([e.message]);
+    }
+    setDataLoaded(true);
+
+    // Обновляем информацию по перегонам
+    fetchData();
+  };
+
+  // ---------------------------------------------------------------
 
   // Описание столбцов таблицы перегонов
   const columns = blocksTableColumns({
@@ -350,7 +375,6 @@ const BlocksTable = () => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
@@ -427,9 +451,18 @@ const BlocksTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button type="primary" onClick={showAddNewBlockModal}>
-          Добавить запись
-        </Button>
+        <Row>
+          <Col span={12}>
+            <Button type="primary" onClick={showAddNewBlockModal}>
+              Добавить запись
+            </Button>
+          </Col>
+          <Col span={12} style={{ textAlign: 'right' }}>
+            <Button type="primary" onClick={handleSyncWithPENSI}>
+              Синхронизировать с ПЭНСИ
+            </Button>
+          </Col>
+        </Row>
 
         <Table
           loading={!dataLoaded}
@@ -475,6 +508,15 @@ const BlocksTable = () => {
             expandIcon: expandIcon,
           }}
         />
+        {
+          syncDataResults &&
+          <Row style={{ margin: '0 2rem' }}>
+            <Col span={24}>Результаты синхронизации данных с ПЭНСИ:</Col>
+            {syncDataResults.map((res, index) => (
+              <Col span={24} key={index}>{res}</Col>
+            ))}
+          </Row>
+        }
       </Form>
     }
     </>

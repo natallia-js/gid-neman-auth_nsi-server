@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
-import { Table, Form, Button, Typography } from 'antd';
+import { Table, Form, Button, Row, Col, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewStationModal from '../NewStationModal';
-import {
-  ServerAPI,
-  STATION_FIELDS,
-} from '../../constants';
+import { ServerAPI, STATION_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import stationsTableColumns from './StationsTableColumns';
 import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
@@ -66,6 +63,9 @@ const StationsTable = () => {
 
   // Для сортировки данных в столбцах таблицы
   const { getColumnSearchProps } = useColumnSearchProps();
+
+  // Результаты синхронизации с ПЭНСИ
+  const [syncDataResults, setSyncDataResults] = useState(null);
 
 
   /**
@@ -257,7 +257,7 @@ const StationsTable = () => {
   // --------------------------------------------------------------
   // Для работы с диалоговым окном ввода информации о новой станции
 
-  const showAddNewStationModal = () => {
+  const handleShowAddNewStationModal = () => {
     setIsAddNewStationModalVisible(true);
   };
 
@@ -270,7 +270,27 @@ const StationsTable = () => {
   };
 
   // --------------------------------------------------------------
+  // Синхронизация с ПЭНСИ
 
+  const handleSyncWithPENSI = async () => {
+    setDataLoaded(false);
+    try {
+      let res = await request(ServerAPI.SYNC_STATIONS_WITH_PENSI, 'GET', null, {
+        Authorization: `Bearer ${auth.token}`
+      });
+      message(MESSAGE_TYPES.SUCCESS, res.message);
+      setSyncDataResults(res.syncResults);
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+      setSyncDataResults([e.message]);
+    }
+    setDataLoaded(true);
+
+    // Обновляем информацию по станциям
+    fetchData();
+  };
+
+  // --------------------------------------------------------------
 
   // Описание столбцов таблицы станций
   const columns = stationsTableColumns({
@@ -291,7 +311,6 @@ const StationsTable = () => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
@@ -323,9 +342,18 @@ const StationsTable = () => {
           recsBeingAdded={recsBeingAdded}
         />
 
-        <Button type="primary" onClick={showAddNewStationModal}>
-          Добавить запись
-        </Button>
+        <Row>
+          <Col span={12}>
+            <Button type="primary" onClick={handleShowAddNewStationModal}>
+              Добавить запись
+            </Button>
+          </Col>
+          <Col span={12} style={{ textAlign: 'right' }}>
+            <Button type="primary" onClick={handleSyncWithPENSI}>
+              Синхронизировать с ПЭНСИ
+            </Button>
+          </Col>
+        </Row>
 
         <Table
           loading={!dataLoaded}
@@ -377,8 +405,17 @@ const StationsTable = () => {
             expandIcon: expandIcon,
           }}
         />
+        {
+          syncDataResults &&
+          <Row style={{ margin: '0 2rem' }}>
+            <Col span={24}>Результаты синхронизации данных с ПЭНСИ:</Col>
+            {syncDataResults.map((res, index) => (
+              <Col span={24} key={index}>{res}</Col>
+            ))}
+          </Row>
+        }
       </Form>
-    }
+      }
     </>
   );
 };

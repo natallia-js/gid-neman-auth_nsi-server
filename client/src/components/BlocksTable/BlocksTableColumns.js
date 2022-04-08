@@ -33,15 +33,43 @@ const blocksTableColumns = (props) => {
       title: 'Станция 1',
       dataIndex: [BLOCK_FIELDS.STATION1, STATION_FIELDS.NAME_AND_CODE],
       key: STATION_FIELDS.NAME_AND_CODE,
-      width: '20%',
+      width: '15%',
       editable: true,
     },
     {
       title: 'Станция 2',
       dataIndex: [BLOCK_FIELDS.STATION2, STATION_FIELDS.NAME_AND_CODE],
       key: STATION_FIELDS.NAME_AND_CODE,
-      width: '20%',
+      width: '15%',
       editable: true,
+    },
+    {
+      title: 'ПЭНСИ ID',
+      dataIndex: BLOCK_FIELDS.PENSI_ID,
+      key: BLOCK_FIELDS.PENSI_ID,
+      width: '10%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a && b) return -1;
+        if (a && !b) return 1;
+        if (a && b) return +a[BLOCK_FIELDS.PENSI_ID] - +b[BLOCK_FIELDS.PENSI_ID];
+        return 0;
+      },
+    },
+    {
+      title: 'ПЭНСИ код участка ДНЦ',
+      dataIndex: BLOCK_FIELDS.PENSI_DNCSectorCode,
+      key: BLOCK_FIELDS.PENSI_DNCSectorCode,
+      width: '10%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a && b) return -1;
+        if (a && !b) return 1;
+        if (a && b) return +a[BLOCK_FIELDS.PENSI_DNCSectorCode] - +b[BLOCK_FIELDS.PENSI_DNCSectorCode];
+        return 0;
+      },
     },
     {
       title: 'Операции',

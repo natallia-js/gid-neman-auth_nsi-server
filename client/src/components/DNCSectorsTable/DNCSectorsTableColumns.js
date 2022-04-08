@@ -21,11 +21,46 @@ const dncSectorsTableColumns = (props) => {
       title: 'Наименование',
       dataIndex: DNCSECTOR_FIELDS.NAME,
       key: DNCSECTOR_FIELDS.NAME,
-      width: '40%',
+      width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()),
       className: 'main-col',
+    },
+    {
+      title: 'Комментарий',
+      dataIndex: DNCSECTOR_FIELDS.NOTE,
+      key: DNCSECTOR_FIELDS.NOTE,
+      width: '30%',
+      editable: false,
+    },
+    {
+      title: 'ПЭНСИ ID',
+      dataIndex: DNCSECTOR_FIELDS.PENSI_ID,
+      key: DNCSECTOR_FIELDS.PENSI_ID,
+      width: '10%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a && b) return -1;
+        if (a && !b) return 1;
+        if (a && b) return +a[DNCSECTOR_FIELDS.PENSI_ID] - +b[DNCSECTOR_FIELDS.PENSI_ID];
+        return 0;
+      },
+    },
+    {
+      title: 'ПЭНСИ код',
+      dataIndex: DNCSECTOR_FIELDS.PENSI_Code,
+      key: DNCSECTOR_FIELDS.PENSI_Code,
+      width: '10%',
+      editable: false,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a && b) return -1;
+        if (a && !b) return 1;
+        if (a && b) return +a[DNCSECTOR_FIELDS.PENSI_Code] - +b[DNCSECTOR_FIELDS.PENSI_Code];
+        return 0;
+      },
     },
     {
       title: 'Операции',

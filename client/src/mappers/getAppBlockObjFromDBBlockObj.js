@@ -14,6 +14,8 @@ const getAppBlockObjFromDBBlockObj = (dbBlockObj, getTrainSectorInfo = false) =>
   const appBlockObj = {
     [BLOCK_FIELDS.KEY]: dbBlockObj.Bl_ID,
     [BLOCK_FIELDS.NAME]: dbBlockObj.Bl_Title,
+    [BLOCK_FIELDS.PENSI_ID]: dbBlockObj.Bl_PENSI_ID,
+    [BLOCK_FIELDS.PENSI_DNCSectorCode]: dbBlockObj.Bl_PENSI_DNCSectorCode,
     [BLOCK_FIELDS.TRACKS]: !dbBlockObj.TBlockTracks ? [] : dbBlockObj.TBlockTracks.map((track) => getAppBlockTrackObjFromDBBlockTrackObj(track)),
   };
   if (dbBlockObj.Bl_StationID1) {
