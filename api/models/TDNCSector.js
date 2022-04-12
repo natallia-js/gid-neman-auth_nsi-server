@@ -26,6 +26,11 @@ function createDNCSectorModel(sequelize) {
       type: DataTypes.STRING(640),
       allowNull: true,
     },
+    // номер участка ДНЦ в ПЭНСИ
+    DNCS_PENSI_Code: {
+      type: DataTypes.SMALLINT,
+      allowNull: true,
+    },
     // id участка ДНЦ в ПЭНСИ
     DNCS_PENSI_ID: {
       type: DataTypes.INTEGER,

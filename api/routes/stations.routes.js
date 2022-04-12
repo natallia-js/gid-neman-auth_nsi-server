@@ -14,7 +14,7 @@ const { TStationTrack } = require('../models/TStationTrack');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const deleteStation = require('../routes/deleteComplexDependencies/deleteStation');
 const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
-
+const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -557,13 +557,13 @@ router.post(
       // Для каждой записи из ПЭНСИ нахожу соответствующую свою и сравниваю значения их полей.
       // Если не совпадают - меняю. Если совпадения нет - создаю у себя новую запись.
       let correspLocalRecord;
-      let modifiedRecs = [];
-      let addedRecs = [];
+      const modifiedRecs = [];
+      const addedRecs = [];
       for (let pensiRecord of pensiStationsArray) {
         correspLocalRecord = localStationsData.find((el) => el.St_PENSI_ID === pensiRecord.stationId);
         if (correspLocalRecord) {
           let needsToBeSaved = false;
-          let changedData = '';
+          let changedData = `${correspLocalRecord.St_Title}: `;
           if (correspLocalRecord.St_Title !== pensiRecord.stationName) {
             changedData += `${pensiRecord.stationName} (ранее ${correspLocalRecord.St_Title});`;
             correspLocalRecord.St_Title = pensiRecord.stationName;
@@ -599,7 +599,7 @@ router.post(
         !pensiStationsArray.find((item) => el.St_PENSI_ID === item.stationId));
       if (onlyLocalStations.length) {
         syncResults.push('Станции, информация по которым не получена от ПЭНСИ:');
-        syncResults.push(onlyLocalStations.map((station) => `${station.St_Title} (${station.St_UNMC});`));
+        syncResults.push(onlyLocalStations.map((station) => `${station.St_Title} (${station.St_UNMC})`).join('; '));
       }
 
       await t.commit();

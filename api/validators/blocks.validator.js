@@ -33,6 +33,11 @@ const modBlockValidationRules = () => {
       .trim()
       .isLength({ min: 1, max: 64 })
       .withMessage('Длина наименования перегона минимум 1 символ, максимум 64 символа'),
+    check('pensiDNCSectorCode')
+      .if(body('pensiDNCSectorCode').exists())
+      .trim()
+      .isInt({ min: 0 })
+      .withMessage('Код участка ДНЦ должен быть числом'),
   ];
 };
 

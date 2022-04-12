@@ -17,7 +17,8 @@ const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteDNCSector = require('../routes/deleteComplexDependencies/deleteDNCSector');
-const { addError } = require('../serverSideProcessing/processLogsActions');
+const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TDNCSector.findAll({
-        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID'],
+        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID', 'DNCS_PENSI_Code'],
         include: [
           {
             model: TDNCTrainSector,
@@ -568,10 +569,10 @@ router.post(
       const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
 
       // Из ПЭНСИ получаем следующую информацию по участкам ДНЦ: id (будет передан вне зависимости от его
-      // присутствия в запросе), наименование участка, комментарий к записи.
+      // присутствия в запросе), наименование участка, комментарий к записи, код участка ДНЦ.
       // Данные запрашиваем без учета истории их изменения. Т.е. придут только актуальные данные (history=0).
       dncSectorsDataHTTPRequest =
-        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.DISPATCH_REGION&cols=DISP_REG_NAME,DISP_REG_NOTE&history=0`;
+        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.DISPATCH_REGION&cols=DISP_REG_NAME,DISP_REG_NOTE,DISP_REG_NO&history=0`;
 
       // Вначале пытаюсь получить данные от ПЭНСИ
       let response = await fetch(dncSectorsDataHTTPRequest, { method: 'GET', body: null, headers: {} });
@@ -584,7 +585,7 @@ router.post(
 
       // После этого извлекаю данные по участкам ДНЦ из своей БД
       const localDNCSectorsData = await TDNCSector.findAll({
-        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID'],
+        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID', 'DNCS_PENSI_Code'],
         transaction: t,
       });
 
@@ -599,13 +600,14 @@ router.post(
         // встречается этот символ, то код: const rowCells = allRows[singleRow].split(';'); - нельзя использовать
         // для разбиения строки на подстроки, используем специальный код:
         const rowCells = csvToArray(allRows[singleRow]);
-        if (rowCells.length < 3) {
+        if (rowCells.length < 4) {
           continue;
         }
         pensiDNCSectorsArray.push({
           sectorId: +rowCells[0], // строку с id участка - в числовое значение
           sectorName: rowCells[1].replace(/"/g,''), // из строки '"Наименование"' делаем 'Наименование'
           sectorNote: rowCells[2].replace(/"/g,''), // из строки '"Комментарий"' делаем 'Комментарий'
+          sectorCode: +rowCells[3], // строку с кодом участка - в числовое значение
         });
       }
 
@@ -614,13 +616,13 @@ router.post(
       // Для каждой записи из ПЭНСИ нахожу соответствующую свою и сравниваю значения их полей.
       // Если не совпадают - меняю. Если совпадения нет - создаю у себя новую запись.
       let correspLocalRecord;
-      let modifiedRecs = [];
-      let addedRecs = [];
+      const modifiedRecs = [];
+      const addedRecs = [];
       for (let pensiRecord of pensiDNCSectorsArray) {
         correspLocalRecord = localDNCSectorsData.find((el) => el.DNCS_PENSI_ID === pensiRecord.sectorId);
         if (correspLocalRecord) {
           let needsToBeSaved = false;
-          let changedData = '';
+          let changedData = `${correspLocalRecord.DNCS_Title}: `;
           if (correspLocalRecord.DNCS_Title !== pensiRecord.sectorName) {
             changedData += `${pensiRecord.sectorName} (ранее ${correspLocalRecord.DNCS_Title});`;
             correspLocalRecord.DNCS_Title = pensiRecord.sectorName;
@@ -629,6 +631,11 @@ router.post(
           if (correspLocalRecord.DNCS_DESCRIPTION !== pensiRecord.sectorNote) {
             changedData += `${pensiRecord.sectorNote} (ранее ${correspLocalRecord.DNCS_DESCRIPTION});`;
             correspLocalRecord.DNCS_DESCRIPTION = pensiRecord.sectorNote;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.DNCS_PENSI_Code !== pensiRecord.sectorCode) {
+            changedData += `${pensiRecord.sectorCode} (ранее ${correspLocalRecord.DNCS_PENSI_Code});`;
+            correspLocalRecord.DNCS_PENSI_Code = pensiRecord.sectorCode;
             needsToBeSaved = true;
           }
           if (needsToBeSaved) {
@@ -640,6 +647,7 @@ router.post(
             DNCS_Title: pensiRecord.sectorName,
             DNCS_DESCRIPTION: pensiRecord.sectorNote,
             DNCS_PENSI_ID: pensiRecord.sectorId,
+            DNCS_PENSI_Code: pensiRecord.sectorCode,
           }, { transaction: t });
           addedRecs.push(pensiRecord.sectorName);
         }
@@ -655,7 +663,7 @@ router.post(
         !pensiDNCSectorsArray.find((item) => el.DNCS_PENSI_ID === item.sectorId));
       if (onlyLocalSectors.length) {
         syncResults.push('Участки ДНЦ, информация по которым не получена от ПЭНСИ:');
-        syncResults.push(onlyLocalSectors.map((sector) => sector.DNCS_Title));
+        syncResults.push(onlyLocalSectors.map((sector) => sector.DNCS_Title).join('; '));
       }
 
       await t.commit();

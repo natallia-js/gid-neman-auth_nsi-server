@@ -13,7 +13,7 @@
     "timezoneFormat": "YYYY-MM-DD HH:mm:ss.SSS"
   },
   "delDBDataIntervalInMs": 60000,
-  "workPeriodInDays": 2,
+  "workPeriodInDays": 1,
   "storeOrdersInDBInDays": 730,
   "storeLogsInDBInDays": 365,
   "maxDaysToStoreUnconfirmedOrders": 30,
@@ -22,6 +22,6 @@
     "responseEncoding": "windows-1251",
     "roadCode": 13,
     "additionalStationsCodes": [102746100,102958501,105863702,274193601,102843601,274193501,140849604,105531501,
-      105531001,102745600,102827501,105869402,102649900,102971602,105850102,105799503,102959803,140113102]
+      105531001,102745600,102827501,105869402,102649900,102971602,105850102,105799503,102959803,140113102,437126300]
   }
 }

@@ -32,7 +32,6 @@ function setClientsOnlineStatus(clients) {
       }
     }
     try {
-      console.log('clientsIds',clientsIds)
       markOnlineUsers(clientsIds);
     } catch(error) {
       addError({

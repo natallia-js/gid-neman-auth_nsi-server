@@ -13,7 +13,8 @@ const { TStation } = require('../models/TStation');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteBlock = require('../routes/deleteComplexDependencies/deleteBlock');
-const { addError } = require('../serverSideProcessing/processLogsActions');
+const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 
 const router = Router();
 
@@ -56,7 +57,7 @@ const {
     try {
       const data = await TBlock.findAll({
         raw: true,
-        attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+        attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2', 'Bl_PENSI_DNCSectorCode'],
       });
       res.status(OK).json(data);
 
@@ -96,7 +97,7 @@ router.get(
   async (_req, res) => {
     try {
       const data = await TBlock.findAll({
-        attributes: ['Bl_ID', 'Bl_Title'],
+        attributes: ['Bl_ID', 'Bl_Title', 'Bl_PENSI_ID', 'Bl_PENSI_DNCSectorCode'],
         include: [{
           model: TStation,
           as: 'station1',
@@ -383,6 +384,7 @@ router.post(
  * name - наименование перегона (не обязательно),
  * station1 - id станции 1 (не обязателен),
  * station2 - id станции 2 (не обязателен),
+ * pensiDNCSectorCode - код участка ДНЦ, которому принадлежит перегон
  */
 router.post(
   '/mod',
@@ -403,7 +405,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, name, station1, station2 } = req.body;
+    const { id, name, station1, station2, pensiDNCSectorCode } = req.body;
 
     try {
       // Ищем в БД перегон, id которого совпадает с переданным пользователем
@@ -491,6 +493,9 @@ router.post(
       if (req.body.hasOwnProperty('station2')) {
         updateFields.Bl_StationID2 = station2;
       }
+      if (req.body.hasOwnProperty('pensiDNCSectorCode')) {
+        updateFields.Bl_PENSI_DNCSectorCode = pensiDNCSectorCode;
+      }
 
       const updateRes = await TBlock.update(updateFields, {
         where: {
@@ -505,7 +510,7 @@ router.post(
       // Возвращаю полную информацию о созданном перегоне, включая информацию о его граничных станциях
       const dataToReturn = await TBlock.findOne({
         where: { Bl_ID: id },
-        attributes: ['Bl_ID', 'Bl_Title'],
+        attributes: ['Bl_ID', 'Bl_Title', 'Bl_PENSI_ID', 'Bl_PENSI_DNCSectorCode'],
         include: [{
           model: TStation,
           as: 'station1',
@@ -528,6 +533,229 @@ router.post(
         action: 'Редактирование информации о перегоне',
         error,
         actionParams: { id, name, station1, station2 },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обрабатывает запрос на синхронизацию списка всех перегонов со списком перегонов ПЭНСИ.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ */
+ router.get(
+  '/syncWithPENSI',
+  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
+  auth,
+  // определяем требуемые полномочия на запрашиваемое действие
+  (req, _res, next) => {
+    req.action = {
+      which: HOW_CHECK_CREDS.OR,
+      creds: [MOD_BLOCK_ACTION],
+    };
+    next();
+  },
+  // проверка полномочий пользователя на выполнение запрашиваемого действия
+  checkGeneralCredentials,
+  async (req, res) => {
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции синхронизации не определен объект транзакции' });
+    }
+
+    const t = await sequelize.transaction();
+
+    let blocksDataHTTPRequest = '';
+
+    try {
+      const fetch = require('node-fetch');
+      const config = require('config');
+
+      const checkStatus = require('../http/checkStatus');
+      const PENSIServerAddress = config.get('PENSI.serverAddress');
+      const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
+      const roadCode = config.get('PENSI.roadCode');
+
+      // Из ПЭНСИ получаем следующую информацию по перегонам: id (будет передан вне зависимости от его
+      // присутствия в запросе), наименование перегона, ЕСР-коды ограничивающих станций, код соответствующего участка ДНЦ.
+      // Данные запрашиваем без учета истории их изменения. Т.е. придут только актуальные данные (history=0).
+      blocksDataHTTPRequest =
+        `http://${PENSIServerAddress}/WEBNSI/download.jsp?tab=NSIVIEW.PRED_RPP&cols=RPP_NAME,PRED_STA_NO_1,PRED_STA_NO_2,DISP_REG_NO&history=0` +
+        `&filter=(PRED_STA_NAME_2<>'')+AND+(ROAD_NO=${roadCode}+OR+(ROAD_NO=0+AND+DISP_REG_NO<>0))`;
+
+      // Вначале пытаюсь получить данные от ПЭНСИ
+      let response = await fetch(blocksDataHTTPRequest, { method: 'GET', body: null, headers: {} });
+      checkStatus(response);
+
+      // Затем декодирую полученные данные
+      let buffer = await response.arrayBuffer();
+      const decoder = new TextDecoder(responseEncoding);
+      const blocksPENSIString = decoder.decode(buffer); // строка со всеми данными по перегонам от ПЭНСИ
+
+      // После этого извлекаю данные по перегонам из своей БД
+      const localBlocksData = await TBlock.findAll({
+        attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2', 'Bl_PENSI_ID', 'Bl_PENSI_DNCSectorCode'],
+        transaction: t,
+      });
+
+      // Имея все данные, сравниваю их и вношу необходимые изменения в свою БД
+
+      // Формирую массив подстрок исходной строки данных от ПЭНСИ
+      const allRows = blocksPENSIString.split(/\r?\n|\r/);
+      // Теперь данные от ПЭНСИ положу в массив для удобства работы с ними
+      const pensiBlocksArray = [];
+      for (let singleRow = 1; singleRow < allRows.length; singleRow += 1) {
+        const rowCells = allRows[singleRow].split(';');
+        if (rowCells.length < 5) {
+          continue;
+        }
+        pensiBlocksArray.push({
+          blockId: +rowCells[0], // строку с id перегона - в числовое значение
+          blockName: rowCells[1].replace(/"/g,''), // из строки '"Наименование"' делаем 'Наименование'
+          station1: rowCells[2].replace(/"/g,''), // из строки '"Код станции"' делаем 'Код станции'
+          station2: rowCells[3].replace(/"/g,''), // из строки '"Код станции"' делаем 'Код станции'
+          dncSectorCode: +rowCells[4], // строку с кодом участка ДНЦ - в числовое значение
+        });
+      }
+
+      let syncResults = []; // для возврата запросившему операцию синхронизации (массив строк с результатами)
+
+      const getStationId_By_PENSI_UNMCCode = async (unmcCode) => {
+        const stationObject = await TStation.findOne({ where: { St_PENSI_UNMC: unmcCode }, transaction: t });
+        return stationObject ? stationObject.St_ID : null;
+      };
+
+      // Для каждой записи из ПЭНСИ нахожу соответствующую свою и сравниваю значения их полей.
+      // Если не совпадают - меняю. Если совпадения нет - создаю у себя новую запись.
+      // Т.к. ПЭНСИ передает ЕСР-коды станций для перегонов, то по этом кодам пытаюсь отыскать
+      // станцию в нашей БД. Если не нахожу, то соответствующую запись о перегоне не создаю, уже
+      // созданную запись не редактирую.
+      let correspLocalRecord;
+      const modifiedRecs = [];
+      const addedRecs = [];
+      const impossibleRecs = [];
+      let station1Id;
+      let station2Id;
+      for (let pensiRecord of pensiBlocksArray) {
+        correspLocalRecord = localBlocksData.find((el) => el.Bl_PENSI_ID === pensiRecord.blockId);
+        station1Id = await getStationId_By_PENSI_UNMCCode(pensiRecord.station1);
+        station2Id = await getStationId_By_PENSI_UNMCCode(pensiRecord.station2);
+        if (!station1Id || !station2Id) {
+          impossibleRecs.push(`Запись о перегоне ${pensiRecord.blockName} не может быть ` +
+          `${correspLocalRecord ? 'отредактирована' : 'создана'}: ` +
+          `для ЕСР-${(!station1Id && !station2Id) ? 'кодов ' + pensiRecord.station1 + ', ' + pensiRecord.station2 : 'кода ' + pensiRecord.station1 ?? pensiRecord.station2} ` +
+          `не найден${(!station1Id && !station2Id) ? 'ы соответствующие станции' : 'а соответствующая станция'}`);
+          continue;
+        }
+        if (correspLocalRecord) {
+          // Проверяю, существует ли перегон со станциями, имеющими id station1Id и station2Id,
+          // отличный от текущего. Если да, то не редактирую текущий (иначе БД выдаст исключение)
+          const blockObject = await TBlock.findOne({
+            where: {
+              Bl_StationID1: station1Id,
+              Bl_StationID2: station2Id,
+              Bl_ID: { [Op.ne]: correspLocalRecord.Bl_ID },
+            },
+            transaction: t,
+          });
+          if (blockObject) {
+            impossibleRecs.push(`Запись о перегоне ${correspLocalRecord.Bl_Title} не отредактирована: в БД уже есть перегон со станциями с кодами ${pensiRecord.station1} и ${pensiRecord.station2}`);
+            continue;
+          }
+          let needsToBeSaved = false;
+          let changedData = `${correspLocalRecord.Bl_Title}: `;
+          if (correspLocalRecord.Bl_Title !== pensiRecord.blockName) {
+            changedData += `${pensiRecord.blockName} (ранее ${correspLocalRecord.Bl_Title});`;
+            correspLocalRecord.Bl_Title = pensiRecord.blockName;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.Bl_PENSI_DNCSectorCode !== pensiRecord.dncSectorCode) {
+            changedData += `код участка ДНЦ ${pensiRecord.dncSectorCode} (ранее ${correspLocalRecord.Bl_PENSI_DNCSectorCode});`;
+            correspLocalRecord.Bl_PENSI_DNCSectorCode = pensiRecord.dncSectorCode;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.Bl_StationID1 !== station1Id) {
+            changedData += `id станции ${station1Id} (ранее ${correspLocalRecord.Bl_StationID1});`;
+            correspLocalRecord.Bl_StationID1 = station1Id;
+            needsToBeSaved = true;
+          }
+          if (correspLocalRecord.Bl_StationID2 !== station2Id) {
+            changedData += `id станции ${station2Id} (ранее ${correspLocalRecord.Bl_StationID2});`;
+            correspLocalRecord.Bl_StationID2 = station2Id;
+            needsToBeSaved = true;
+          }
+          if (needsToBeSaved) {
+            modifiedRecs.push(changedData);
+            correspLocalRecord.save();
+          }
+        } else {
+          // Проверяю, существует ли перегон со станциями, имеющими id station1Id и station2Id.
+          // Если да, то не создаю новый с такими же кодами (иначе БД выдаст исключение)
+          const blockObject = await TBlock.findOne({
+            where: {
+              Bl_StationID1: station1Id,
+              Bl_StationID2: station2Id,
+            },
+            transaction: t,
+          });
+          if (blockObject) {
+            impossibleRecs.push(`Запись о перегоне ${pensiRecord.blockName} не добавлена: в БД уже есть перегон со станциями с кодами ${pensiRecord.station1} и ${pensiRecord.station2}`);
+            continue;
+          }
+          await TBlock.create({
+            Bl_Title: pensiRecord.blockName,
+            Bl_StationID1: station1Id,
+            Bl_StationID2: station2Id,
+            Bl_PENSI_ID: pensiRecord.blockId,
+            Bl_PENSI_DNCSectorCode: pensiRecord.dncSectorCode,
+          }, { transaction: t });
+          addedRecs.push(pensiRecord.blockName);
+        }
+      }
+      if (modifiedRecs.length > 0) {
+        syncResults.push('Отредактирована информация по перегонам:', ...modifiedRecs);
+      }
+      if (addedRecs.length > 0) {
+        syncResults.push('Добавлены перегоны:', ...addedRecs);
+      }
+      if (impossibleRecs.length > 0) {
+        syncResults.push('Проблемы с созданием / редактированием перегонов:', ...impossibleRecs);
+      }
+      // Осталось отметить те перегоны в локальной БД, которых не было обнаружено в ПЭНСИ
+      const onlyLocalBlocks = localBlocksData.filter((el) =>
+        !pensiBlocksArray.find((item) => el.Bl_PENSI_ID === item.blockId));
+      if (onlyLocalBlocks.length) {
+        syncResults.push('Перегоны, информация по которым не получена от ПЭНСИ:');
+        syncResults.push(onlyLocalBlocks.map((block) => block.Bl_Title).join('; '));
+      }
+
+      await t.commit();
+
+      syncResults = syncResults.length ? ['Информация успешно синхронизирована', ...syncResults] :
+          ['Информация синхронизирована'];
+      res.status(OK).json({
+        message: syncResults.length > 1 ? 'Информация успешно синхронизирована' : 'Информация синхронизирована',
+        syncResults,
+      });
+
+      // Логируем действие пользователя
+      addAdminActionInfo({
+        user: userPostFIOString(req.user),
+        actionTime: new Date(),
+        action: 'Синхронизация таблицы перегонов с ПЭНСИ',
+        actionParams: { syncResults },
+      });
+
+    } catch (error) {
+      await t.rollback();
+      addError({
+        errorTime: new Date(),
+        action: 'Синхронизация таблицы перегонов с ПЭНСИ',
+        error,
+        actionParams: { blocksDataHTTPRequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

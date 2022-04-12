@@ -35,6 +35,16 @@ function createBlockModel(sequelize) {
       allowNull: false,
       unique: UNIQUE_BLOCK_STATIONS_CONSTRAINT_NAME,
     },
+    // код соответствующего участка ДНЦ в ПЭНСИ
+    Bl_PENSI_DNCSectorCode: {
+      type: DataTypes.SMALLINT,
+      allowNull: true,
+    },
+    // id перегона в ПЭНСИ
+    Bl_PENSI_ID: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance

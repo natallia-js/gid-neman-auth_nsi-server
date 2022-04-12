@@ -151,6 +151,8 @@ async function start() {
           // (не использовалось) в течение 10 сек
           idle: 10000
         },
+        // disable logging; default: console.log
+        logging: false,
       }
     );
 
@@ -209,10 +211,10 @@ async function start() {
 
   // Запускаем таймер для периодического удаления ненужной информации о распоряжениях из БД
   const delDataFrequency = config.get('delDBDataIntervalInMs');
-  let delDBDataTimerId = setTimeout(function delDBData() {
+  setTimeout(function delDBData() {
     processDelDBData()
       .then(() => {
-        delDBDataTimerId = setTimeout(delDBData, delDataFrequency);
+        setTimeout(delDBData, delDataFrequency);
       })
       .catch((error) => {
         addError({

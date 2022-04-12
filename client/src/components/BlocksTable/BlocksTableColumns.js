@@ -62,7 +62,7 @@ const blocksTableColumns = (props) => {
       dataIndex: BLOCK_FIELDS.PENSI_DNCSectorCode,
       key: BLOCK_FIELDS.PENSI_DNCSectorCode,
       width: '10%',
-      editable: false,
+      editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => {
         if (!a && b) return -1;

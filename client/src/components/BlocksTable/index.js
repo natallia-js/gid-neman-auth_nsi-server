@@ -203,6 +203,7 @@ const BlocksTable = () => {
       [BLOCK_FIELDS.NAME]: '',
       [BLOCK_FIELDS.STATION1]: '',
       [BLOCK_FIELDS.STATION2]: '',
+      [BLOCK_FIELDS.PENSI_DNCSectorCode]: '',
       ...record,
     });
     setEditingKey(record[BLOCK_FIELDS.KEY]);
@@ -266,7 +267,6 @@ const BlocksTable = () => {
 
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
@@ -334,9 +334,10 @@ const BlocksTable = () => {
   // ---------------------------------------------------------------
 
   /**
-   * Синхронизация с ПЭНСИ
+   * Синхронизация с ПЭНСИ (нужна была для первой синхронизации с таблицей перегонов АС ПРЕД;
+   * не удаляю, т.к. может в ПЭНСИ появиться нужная информация для возобновления синхронизации)
    */
-  const handleSyncWithPENSI = async () => {
+  /*const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
       let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'GET', null, {
@@ -352,7 +353,7 @@ const BlocksTable = () => {
 
     // Обновляем информацию по перегонам
     fetchData();
-  };
+  };*/
 
   // ---------------------------------------------------------------
 
@@ -381,11 +382,12 @@ const BlocksTable = () => {
         record,
         inputType: Array.isArray(col.dataIndex) && (col.dataIndex.length === 2) &&
           [BLOCK_FIELDS.STATION1, BLOCK_FIELDS.STATION2].includes(col.dataIndex[0]) &&
-          (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? 'stationsSelect' : 'text',
+          (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? 'stationsSelect' :
+          (col.dataIndex === BLOCK_FIELDS.PENSI_DNCSectorCode) ? 'number' : 'text',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: true,
+        required: true, // с этим не хочет нормально обновлять поле кода участка ДНЦ: (col.dataIndex !== BLOCK_FIELDS.PENSI_DNCSectorCode),
         stations: Array.isArray(col.dataIndex) && (col.dataIndex.length === 2) &&
           [BLOCK_FIELDS.STATION1, BLOCK_FIELDS.STATION2].includes(col.dataIndex[0]) &&
           (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? stations : null,
@@ -457,11 +459,14 @@ const BlocksTable = () => {
               Добавить запись
             </Button>
           </Col>
+          {/*
+          // Данную кнопку комментирую, т.к. синхронизация с ПЭНСИ здесь приведет к удалению тех
+          // данных, которые были изменены после самой первой синхронизации
           <Col span={12} style={{ textAlign: 'right' }}>
             <Button type="primary" onClick={handleSyncWithPENSI}>
               Синхронизировать с ПЭНСИ
             </Button>
-          </Col>
+          </Col>*/}
         </Row>
 
         <Table

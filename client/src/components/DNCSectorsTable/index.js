@@ -104,7 +104,7 @@ const DNCSectorsTable = () => {
       });
       const tableData = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()))
+        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
 
       // -------------------
 

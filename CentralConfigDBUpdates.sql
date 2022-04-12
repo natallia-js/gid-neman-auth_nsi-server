@@ -46,6 +46,21 @@ CREATE TABLE TDNCSectors
 )
 go
 
+ALTER TABLE TDNCSectors
+ALTER COLUMN DNCS_Title nvarchar(64) NOT NULL;
+
+ALTER TABLE TDNCSectors
+ADD DNCS_DESCRIPTION NVARCHAR(640);
+go
+
+ALTER TABLE TDNCSectors
+ADD DNCS_PENSI_ID int;
+go
+
+ALTER TABLE TDNCSectors
+ADD DNCS_PENSI_Code smallint;
+go
+
 /* Диспетчерские участки (участки ДНЦ) и ближайшие к ним диспетчерские круги (участки ЭЦД) */
 CREATE TABLE TNearestDNCandECDSectors
 (
@@ -219,6 +234,14 @@ CREATE TABLE TBlocks
   CONSTRAINT XUniqueBlockTitle UNIQUE (Bl_Title),
   CONSTRAINT XUniqueBlockStations UNIQUE (Bl_StationID1, Bl_StationID2)
 )
+go
+
+ALTER TABLE TBlocks
+ADD Bl_PENSI_ID int;
+go
+
+ALTER TABLE TBlocks
+ADD Bl_PENSI_DNCSectorCode smallint;
 go
 
 /* Принадлежность перегонов поездным участкам ДНЦ и соответствующим участкам ДНЦ */

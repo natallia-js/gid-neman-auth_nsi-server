@@ -204,7 +204,6 @@ const AppsTable = () => {
 
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
@@ -280,7 +279,6 @@ const AppsTable = () => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({

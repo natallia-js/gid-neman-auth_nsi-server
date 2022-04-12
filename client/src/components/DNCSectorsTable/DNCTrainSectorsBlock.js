@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Button, Form, Input, Typography, Row, Col } from 'antd';
-import { ServerAPI, DNCSECTOR_FIELDS, TRAIN_SECTOR_FIELDS } from '../../constants';
+import { ServerAPI, DNCSECTOR_FIELDS, TRAIN_SECTOR_FIELDS, BLOCK_FIELDS } from '../../constants';
 import { useHttp } from '../../hooks/http.hook';
 import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
@@ -153,7 +153,11 @@ const DNCTrainSectorsBlock = (props) => {
             currDNCSectorRecord={record}
             setTableDataCallback={setTableDataCallback}
             stations={stations}
-            blocks={blocks}
+            // передаю не все перегоны, а только те, для которых строит признак принадлежности
+            // текущему участку ДНЦ
+            blocks={blocks.filter((block) =>
+              block[BLOCK_FIELDS.PENSI_DNCSectorCode] === record[DNCSECTOR_FIELDS.PENSI_Code]
+            )}
           />
         </Col>
       </Row>

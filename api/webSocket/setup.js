@@ -114,7 +114,6 @@ function setupWebSocket(server) {
             }
           }
           ctx.send(ONLINE_USERS(onlineUsers));
-          console.log('onlineUsers',onlineUsers)
         }
         return;
       }
@@ -122,7 +121,7 @@ function setupWebSocket(server) {
 
     // handle close event
     ctx.on('close', function closeClientConnection() {
-      console.log('closed', wss.clients.size);
+      console.log('closed connection with client, clients: ', wss.clients.size);
       clearInterval(timerId);
     });
 
