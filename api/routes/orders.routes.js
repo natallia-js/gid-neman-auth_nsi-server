@@ -55,6 +55,7 @@ const {
  *
  * Параметры тела запроса:
  * type - тип распоряжения (обязателен),
+ * orderNumSaveType - тип распоряжения, под которым хранить информацию о номере последнего изданного документа (обязателен),
  * number - номер распоряжения (обязателен),
  * createDateTime - дата и время издания распоряжения (обязательны),
  * place - место действия распоряжения (не обязательно) - объект с полями:
@@ -140,7 +141,7 @@ const {
 
     // Считываем находящиеся в пользовательском запросе данные
     const {
-      type, number, createDateTime, place, timeSpan, orderText,
+      type, orderNumSaveType, number, createDateTime, place, timeSpan, orderText,
       dncToSend, dspToSend, ecdToSend, otherToSend,
       workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
       orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
@@ -214,7 +215,7 @@ const {
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
       // на текущем глобальном полигоне управления
       const filter = {
-        ordersType: type,
+        ordersType: orderNumSaveType,
         'workPoligon.id': workPoligon.id,
         'workPoligon.type': workPoligon.type,
       };
@@ -990,14 +991,10 @@ router.post(
                 });
               }
               break;
-            case 'orderSender':
-              matchFilter.$and.push({
-                $or: [
-                  { 'creator.post': new RegExp(filter.value, 'i') },
-                  { 'creator.fio': new RegExp(filter.value, 'i') },
-                ],
-              });
-              break;
+            /*case 'orderSender':*/
+            // этот случай здесь не рассматриваем, т.к. в случае журнала ЭЦД в поле издателя распоряжения
+            // включается информация также и со связанного распоряжения (уведомления), поэтому поиск
+            // по издателю осуществляется ниже, когда будет известна информация о связанных уведомлениях
           }
         });
       }
@@ -1026,6 +1023,7 @@ router.post(
                 _id: 0,
                 number: 1,
                 startDate: '$timeSpan.start',
+                creator: 1,
               },
             },
           ],
@@ -1073,6 +1071,26 @@ router.post(
             preserveNullAndEmptyArrays: !connectedDataFilterExists,
           } }
         );
+      }
+      // Именно здесь производим фильтрацию по издателю распоряжения!
+      // (т.к. в случае журнала ЭЦД нужно знать издателя как приказа/запрещения, так и уведомления)
+      if (filterFields) {
+        const orderSenderFilter = filterFields.find((el) => el.field === 'orderSender');
+        if (orderSenderFilter) {
+          const orderSenderFilterValue = new RegExp(orderSenderFilter.value, 'i');
+          aggregation.push(
+            {
+              $match: {
+                $or: [
+                  { 'creator.post': orderSenderFilterValue },
+                  { 'creator.fio': orderSenderFilterValue },
+                  { 'connectedOrder.creator.post': orderSenderFilterValue },
+                  { 'connectedOrder.creator.fio': orderSenderFilterValue },
+                ],
+              },
+            }
+          );
+        }
       }
       aggregation.push(
         { $sort: sortConditions },

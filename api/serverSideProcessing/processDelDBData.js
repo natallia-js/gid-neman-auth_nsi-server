@@ -34,12 +34,13 @@ const config = require('config');
  */
 async function processDelDBData() {
   const todayTime = new Date().getTime();
-  const workPeriodInDays = config.has('workPeriodInDays') ? config.get('workPeriodInDays') : 1;
+  const workPeriodInHours = config.has('workPeriodInHours') ? config.get('workPeriodInHours') : 1;
   const storeOrdersInDBInDays = config.has('storeOrdersInDBInDays') ? config.get('storeOrdersInDBInDays') : 365;
   const maxDaysToStoreUnconfirmedOrders = config.has('maxDaysToStoreUnconfirmedOrders')
     ? config.get('maxDaysToStoreUnconfirmedOrders') : 100;
   const storeLogsInDBInDays = config.has('storeLogsInDBInDays') ? config.get('storeLogsInDBInDays') : 365;
   const daysToMillisecondsMultiplier = 24 * 60 * 60 * 1000;
+  const hoursToMillisecondsMultiplier = 60 * 60 * 1000;
 
   // 1)
   let matchFilter = {
@@ -60,7 +61,7 @@ async function processDelDBData() {
             { confirmDateTime: { $ne: null } },
             { $and: [ { deliverDateTime: null }, { confirmDateTime: null } ] },
           ]},
-          { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - workPeriodInDays * daysToMillisecondsMultiplier) } },
+          { "orderChain.chainEndDateTime": { $lt: new Date(todayTime - workPeriodInHours * hoursToMillisecondsMultiplier) } },
         ],
       },
     ],
