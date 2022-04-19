@@ -8,7 +8,11 @@ const WorkOrder = require('../models/WorkOrder');
 const User = require('../models/User');
 const { WORK_POLIGON_TYPES } = require('../constants');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
-const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const {
+  getUserConciseFIOString,
+  userPostFIOString,
+  userConcisePostFIOString,
+} = require('../routes/additional/getUserTransformedData');
 const isOrderAsserted = require('../routes/additional/isOrderAsserted');
 
 const router = Router();
@@ -24,6 +28,8 @@ const {
   DNC_FULL,
   ECD_FULL,
   REVISOR,
+
+  ORDER_PATTERN_TYPES,
 } = require('../constants');
 
 
@@ -427,6 +433,11 @@ router.post(
         // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
         if (!order.assertDateTime) {
           order.assertDateTime = isOrderAsserted(order);
+          // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
+          if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
+            order.timeSpan.start = order.assertDateTime;
+            order.timeSpan.end = order.assertDateTime;
+          }
         }
         // By default, `save()` uses the associated session
         await order.save();
@@ -441,6 +452,7 @@ router.post(
         userPost,
         userFIO,
         assertDateTime: order.assertDateTime,
+        timeSpan: order.timeSpan,
       });
 
       // Логируем действие пользователя
@@ -538,11 +550,21 @@ router.post(
       // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
       if (!order.assertDateTime) {
         order.assertDateTime = isOrderAsserted(order);
+        // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
+        if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
+          order.timeSpan.start = order.assertDateTime;
+          order.timeSpan.end = order.assertDateTime;
+        }
       }
 
       await order.save();
 
-      res.status(OK).json({ message: 'Распоряжение подтверждено', orderId, assertDateTime: order.assertDateTime });
+      res.status(OK).json({
+        message: 'Распоряжение подтверждено',
+        orderId,
+        timeSpan: order.timeSpan,
+        assertDateTime: order.assertDateTime,
+      });
 
       // Логируем действие пользователя
       const logObject = {
@@ -730,6 +752,9 @@ router.post(
             sector.confirmDateTime = confirmDateTime;
             if (workPoligon.post) sector.post = workPoligon.post;
             if (workPoligon.fio) sector.fio = workPoligon.fio;
+            // Если идет подтверждение за другое лицо, то необходимо запоминать ФИО и должность того,
+            // кто является инициатором данного запроса
+            sector.confirmForPostFIO = userConcisePostFIOString(req.user);
             if (!orderConfirmed) orderConfirmed = true;
           }
           actualGlobalConfirmWorkPoligonsInfo.push({
@@ -739,6 +764,7 @@ router.post(
             confirmDateTime: sector.confirmDateTime,
             post: sector.post,
             fio: sector.fio,
+            confirmForPostFIO: sector.confirmForPostFIO,
           });
         }
         if (localSector) {
@@ -785,6 +811,11 @@ router.post(
         // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
         if (!order.assertDateTime) {
           order.assertDateTime = isOrderAsserted(order);
+          // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
+          if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
+            order.timeSpan.start = order.assertDateTime;
+            order.timeSpan.end = order.assertDateTime;
+          }
         }
         // By default, `save()` uses the associated session
         await order.save();
@@ -795,6 +826,7 @@ router.post(
       res.status(OK).json({
         message: 'Распоряжение подтверждено',
         orderId,
+        timeSpan: order.timeSpan,
         actualGlobalConfirmWorkPoligonsInfo,
         actualLocalConfirmWorkPoligonsInfo,
         assertDateTime: order.assertDateTime,

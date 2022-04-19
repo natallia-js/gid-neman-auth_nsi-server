@@ -26,6 +26,9 @@ CREATE TABLE TPosts
 )
 go
 
+ALTER TABLE TPosts
+ALTER COLUMN P_Abbrev nvarchar(24) NOT NULL;
+
 /* Диспетчерские круги (участки ЭЦД) */
 CREATE TABLE TECDSectors
 (

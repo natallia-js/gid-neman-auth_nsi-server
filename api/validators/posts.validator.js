@@ -4,8 +4,8 @@ const addPostValidationRules = () => {
   return [
     check('abbrev')
       .trim()
-      .isLength({ min: 1, max: 8 })
-      .withMessage('Длина аббревиатуры должности минимум 1 символ, максимум 8 символов'),
+      .isLength({ min: 1, max: 24 })
+      .withMessage('Длина аббревиатуры должности минимум 1 символ, максимум 24 символа'),
     check('title')
       .trim()
       .isLength({ min: 1, max: 32 })
@@ -29,8 +29,8 @@ const modPostValidationRules = () => {
     check('abbrev')
       .if(body('abbrev').exists())
       .trim()
-      .isLength({ min: 1, max: 8 })
-      .withMessage('Длина аббревиатуры должности минимум 1 символ, максимум 8 символов'),
+      .isLength({ min: 1, max: 24 })
+      .withMessage('Длина аббревиатуры должности минимум 1 символ, максимум 24 символа'),
     check('title')
       .if(body('title').exists())
       .trim()

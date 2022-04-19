@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model, Types } = require('mongoose');
 
 const {
   orderPlaceSchema,
@@ -50,6 +50,10 @@ const schema = new Schema({
   showOnGID: { type: Boolean, required: false },
   // Дата и время утверждения распоряжения
   assertDateTime: { type: Date, required: false, default: null },
+  // распоряжение, на которое издано текущее распоряжение (это распоряжение в цепочке распоряжений
+  // идет раньше текущего; для некоторых типов распоряжений текущее распоряжение может отменять
+  // указанное распоряжение, например, в случае запрещения ЭЦД - уведомления ЭЦД)
+  dispatchedOnOrder: { type: Types.ObjectId, required: false },
 });
 
 

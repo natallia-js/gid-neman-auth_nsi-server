@@ -26,6 +26,8 @@ const orderRecipientSchema = new Schema({
   // дата-время подтверждения адресатом получения распоряжения
   // (заполняется, когда пользователь подтвердит получение распоряжения)
   confirmDateTime: { type: Date, required: false, default: null },
+  // должность и ФИО лица, которое подтвердило документ за его адресата
+  confirmForPostFIO: { type: String, required: false },
 });
 
 const workPoligonSchema = new Schema({

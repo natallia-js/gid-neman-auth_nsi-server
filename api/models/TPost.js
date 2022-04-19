@@ -17,7 +17,7 @@ function createPostModel(sequelize) {
     },
     // аббревиатура должности
     P_Abbrev: {
-      type: DataTypes.STRING(8),
+      type: DataTypes.STRING(24),
       allowNull: false,
       unique: UNIQUE_POST_ABBREV_CONSTRAINT_NAME,
     },

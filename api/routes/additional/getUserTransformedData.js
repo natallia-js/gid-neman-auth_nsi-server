@@ -14,10 +14,23 @@ const getUserPostFIOString = ({ post, name, fatherName, surname }) => {
   return `${post} ${getUserFIOString({ name, fatherName, surname })}`;
 };
 
+// Возвращает строку, в которой указаны должность, фамилия и (кратко) имя и отчество человека
+const getUserConcisePostFIOString = ({ post, name, fatherName, surname }) => {
+  return `${post} ${getUserConciseFIOString({ name, fatherName, surname })}`;
+};
+
 // На основании данных о человеке, содержащихся в переданном объекте, формируем и возвращает строку,
 // в которой полностью указаны должность, фамилия, имя и отчество человека
 const userPostFIOString = (userObject) =>
   getUserPostFIOString({
+    post: userObject.post,
+    name: userObject.name,
+    fatherName: userObject.fatherName,
+    surname: userObject.surname,
+  });
+
+const userConcisePostFIOString = (userObject) =>
+  getUserConcisePostFIOString({
     post: userObject.post,
     name: userObject.name,
     fatherName: userObject.fatherName,
@@ -29,4 +42,5 @@ module.exports = {
   getUserFIOString,
   getUserPostFIOString,
   userPostFIOString,
+  userConcisePostFIOString,
 };

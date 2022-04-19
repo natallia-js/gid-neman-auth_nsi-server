@@ -102,6 +102,8 @@ const {
  * createdOnBehalfOf - от чьего имени издано распоряжение (не обязательно)
  * specialTrainCategories - отметки об особых категориях поездов, к которым имеет отношение распоряжение
  * orderChainId - id цепочки распоряжений, которой принадлежит издаваемое распоряжение
+ * dispatchedOnOrder - id распоряжения, которое предшествует текущему (связано с ним либо текущее
+ * распоряжение отменяет его) в рамках цепочки распоряжений
  * showOnGID - true - отображать на ГИД, false - не отображать на ГИД (не обязательно)
  * idOfTheOrderToCancel - id распоряжения, которое необходимо отменить при издании текущего распоряжения
  *   (специально для случая издания распоряжения о принятии дежурства ДСП: при издании нового распоряжения
@@ -144,7 +146,7 @@ const {
       type, orderNumSaveType, number, createDateTime, place, timeSpan, orderText,
       dncToSend, dspToSend, ecdToSend, otherToSend,
       workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
-      orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
+      orderChainId, dispatchedOnOrder, showOnGID, idOfTheOrderToCancel, draftId,
     } = req.body;
 
     // Генерируем id нового распоряжения
@@ -210,6 +212,7 @@ const {
           (!ecdToSend || !ecdToSend.length || !ecdToSend.find((el) => el.sendOriginal)) &&
           (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal))
           ? createDateTime : null,
+        dispatchedOnOrder,
       });
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
@@ -999,8 +1002,8 @@ router.post(
         });
       }
 
-      // Поиск связанных документов типа 'Уведомление ЭЦД'
-      // (только для журнала ЭЦД!)
+      // Поиск связанных документов типа 'Уведомление ЭЦД' (только для журнала ЭЦД!).
+      // Уведомление по id в БД всегда связано с приказом / запрещением.
       let lookupConditions = null;
       if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
         lookupConditions = {
@@ -1014,6 +1017,7 @@ router.post(
                     { $in: ['$$the_orderType', [ORDER_PATTERN_TYPES.ECD_ORDER, ORDER_PATTERN_TYPES.ECD_PROHIBITION]] },
                     { $eq: ['$type', ORDER_PATTERN_TYPES.ECD_NOTIFICATION] },
                     { $eq: ['$$the_chainId', '$orderChain.chainId'] },
+                    { $eq: ['$$the_id', '$dispatchedOnOrder'] },
                   ],
                 },
               },
