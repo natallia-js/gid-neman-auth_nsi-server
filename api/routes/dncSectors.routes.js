@@ -565,8 +565,8 @@ router.post(
       const csvToArray = require('../additional/csvToArray');
 
       const checkStatus = require('../http/checkStatus');
+      const { getResponseEncoding } = require('../http/getResponseEncoding');
       const PENSIServerAddress = config.get('PENSI.serverAddress');
-      const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
 
       // Из ПЭНСИ получаем следующую информацию по участкам ДНЦ: id (будет передан вне зависимости от его
       // присутствия в запросе), наименование участка, комментарий к записи, код участка ДНЦ.
@@ -577,6 +577,7 @@ router.post(
       // Вначале пытаюсь получить данные от ПЭНСИ
       let response = await fetch(dncSectorsDataHTTPRequest, { method: 'GET', body: null, headers: {} });
       checkStatus(response);
+      const responseEncoding = getResponseEncoding(response);
 
       // Затем декодирую полученные данные
       let buffer = await response.arrayBuffer();

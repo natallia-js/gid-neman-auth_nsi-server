@@ -507,8 +507,8 @@ router.post(
       const config = require('config');
 
       const checkStatus = require('../http/checkStatus');
+      const { getResponseEncoding } = require('../http/getResponseEncoding');
       const PENSIServerAddress = config.get('PENSI.serverAddress');
-      const responseEncoding = config.get('PENSI.responseEncoding'); // кодировка, в которой ПЭНСИ передает данные
       const roadCode = config.get('PENSI.roadCode');
       const additionalStationsCodes = config.get('PENSI.additionalStationsCodes');
 
@@ -522,6 +522,7 @@ router.post(
       // Вначале пытаюсь получить данные от ПЭНСИ
       let response = await fetch(stationsDataHTTPRequest, { method: 'GET', body: null, headers: {} });
       checkStatus(response);
+      const responseEncoding = getResponseEncoding(response);
 
       // Затем декодирую полученные данные
       let buffer = await response.arrayBuffer();

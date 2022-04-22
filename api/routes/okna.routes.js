@@ -12,24 +12,44 @@ const {
 
 /**
  * Обрабатывает запрос на получение данных от АС "Окна".
+ * Параметр stationsCodes - массив с кодами станций, информацию по которым необходимо получить.
+ * Возвращает информацию по перегонам, обе станции которых входят в массив stationsCodes.
  *
  * Данный запрос доступен любому лицу.
  */
- router.get(
+ router.post(
   '/data',
-  async (_req, res) => {
+  async (req, res) => {
+    const { stationsCodes } = req.body;
+
     let getOKNARequest = '';
     try {
       const fetch = require('node-fetch');
       const config = require('config');
       const checkStatus = require('../http/checkStatus');
+      const { DEFAULT_ENCODING, getResponseEncoding } = require('../http/getResponseEncoding');
       getOKNARequest = config.get('OKNA.getDataRequest');
 
       // Пытаюсь получить данные от АС "ОКНА"
       const response = await fetch(getOKNARequest, { method: 'GET', body: null, headers: {} });
       checkStatus(response);
-      const data = await response.json();
+      // Этот кусок кода нужен обязательно, т.к. данные передаются в utf-8, а сообщения об ошибках - почему-то в
+      // другой кодировке
+      const responseEncoding = getResponseEncoding(response);
 
+      let data;
+      if (responseEncoding === DEFAULT_ENCODING) {
+        data = await response.json();
+        if (data instanceof Array) {
+          // Выбираю нужные данные (по кодам станций)
+          data = data.filter((el) => stationsCodes.includes(el.sta1) && stationsCodes.includes(el.sta2));
+        }
+      } else {
+        // Декодирую полученные данные
+        const buffer = await response.arrayBuffer();
+        const decoder = new TextDecoder(responseEncoding);
+        data = JSON.parse(decoder.decode(buffer));
+      }
       res.status(OK).json({ data });
 
     } catch (error) {

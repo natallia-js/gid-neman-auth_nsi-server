@@ -10,11 +10,13 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Индекс поезда', additionalOrderPlaceInfoForGID: false },
     { refName: 'Километры', additionalOrderPlaceInfoForGID: false },
     { refName: 'Количество вагонов', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Место работ', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер соединенного поезда', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
     { refName: 'Поезда', additionalOrderPlaceInfoForGID: false },
     { refName: 'Примечание', additionalOrderPlaceInfoForGID: false },
     { refName: 'Причина оставления поезда', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Продолжительность "окна"', additionalOrderPlaceInfoForGID: false },
     { refName: 'Пути перегона', additionalOrderPlaceInfoForGID: true },
     { refName: 'Пути станции', additionalOrderPlaceInfoForGID: true },
     { refName: 'Пути станции отправления', additionalOrderPlaceInfoForGID: true },
@@ -63,11 +65,14 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Дата издания действующего уведомления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата издания действующего приказа', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата издания действующего запрещения', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Текущая дата', additionalOrderPlaceInfoForGID: false },
   ],
 },
 {
   elementType: "time",
-  possibleRefs: [],
+  possibleRefs: [
+    { refName: 'Текущее время', additionalOrderPlaceInfoForGID: false },
+  ],
 },
 {
   elementType: "datetime",
@@ -81,6 +86,7 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Дата-время открытия перегона', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время принятия дежурства', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дата-время сдачи дежурства', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Текущее время', additionalOrderPlaceInfoForGID: false },
   ],
 },
 ])
