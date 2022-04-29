@@ -1235,7 +1235,7 @@ router.post(
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
-      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true }); console.log(user)
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
@@ -1253,7 +1253,7 @@ router.post(
         },
         jwtSecret,
         //{ expiresIn: '1h' }
-      );
+      );console.log('newToken',newToken)
 
       res.status(OK).json({ token: newToken });
 
@@ -1276,6 +1276,7 @@ router.post(
         error,
         actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
+      console.log('error',error)
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

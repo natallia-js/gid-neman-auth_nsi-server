@@ -88,6 +88,7 @@ const shortUserInfoSchema = new Schema({
 });
 
 const otherToSendSchema = new Schema({
+  additionalId: { type: String, required: false },
   placeTitle: { type: String, required: true },
   post: { type: String, required: false },
   fio: { type: String, required: false },
