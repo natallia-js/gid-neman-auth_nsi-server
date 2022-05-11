@@ -3,7 +3,7 @@
   "jwtSecret": "secret jwt key",
   "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
   "CentralConfigDB": {
-    "host": "localhost",
+    "host": "10.23.0.67",
     "dialect": "mssql",
     "port": 1433,
     "timezone": "+03:00",

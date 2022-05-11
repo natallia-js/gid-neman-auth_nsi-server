@@ -200,7 +200,7 @@ async function start() {
     //server.listen(5001, () => console.log(`Server started on port 5001`));
 
   } catch (e) {
-    console.log('Server Error', e.message);
+    console.log('Server Error:', e.message);
     addError({
       errorTime: new Date(),
       action: 'Server Error, terminating...',

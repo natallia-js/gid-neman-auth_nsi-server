@@ -1,4 +1,4 @@
-db.orderpatternelementrefs.insertMany([
+﻿db.orderpatternelementrefs.insertMany([
 {
   elementType: "input",
   possibleRefs: [
@@ -51,6 +51,7 @@ db.orderpatternelementrefs.insertMany([
     { refName: 'Путь станции', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции отправления', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции прибытия', additionalOrderPlaceInfoForGID: true },
+    { refName: 'Руководители', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция прибытия', additionalOrderPlaceInfoForGID: false },

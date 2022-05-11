@@ -9,6 +9,7 @@ const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const compareStringArrays = require('../additional/compareStringArrays');
 const {
   registerValidationRules,
   addRoleValidationRules,
@@ -950,8 +951,9 @@ router.post(
       // Смотрим, принимал ли ранее пользователь дежурство на указанном рабочем полигоне.
       const lastInfo = (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length) ? null :
         user.lastTakePassDutyTimes.find((item) =>
-          item.workPoligon.type === workPoligonType &&
-          item.workPoligon.id === workPoligonId &&
+          compareStringArrays(item.сredentials, specialCredentials) &&
+          (item.workPoligon.type === workPoligonType) &&
+          (item.workPoligon.id === workPoligonId) &&
           (
             (!workSubPoligonId && !item.workPoligon.workPlaceId) ||
             (workSubPoligonId && item.workPoligon.workPlaceId === workSubPoligonId)
@@ -1076,15 +1078,16 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      // Смотрим, принимал ли когда-либо ранее пользователь дежурство на указанном рабочем полигоне.
+      // Смотрим, принимал ли когда-либо ранее пользователь дежурство с указанными полномочиями на указанном рабочем полигоне.
       // Если нет, то создаем новую запись о принятии пользователем дежурства.
       // Если да, то обновляем существующую запись (при условии, что пользователь до этого сдавал дежурство).
       if (!user.lastTakePassDutyTimes) {
         user.lastTakePassDutyTimes = [];
       }
       const lastInfo = user.lastTakePassDutyTimes.find((item) =>
-        item.workPoligon.type === workPoligonType &&
-        item.workPoligon.id === workPoligonId &&
+        compareStringArrays(item.сredentials, specialCredentials) &&
+        (item.workPoligon.type === workPoligonType) &&
+        (item.workPoligon.id === workPoligonId) &&
         (
           (!workSubPoligonId && !item.workPoligon.workPlaceId) ||
           (workSubPoligonId && item.workPoligon.workPlaceId === workSubPoligonId)
@@ -1110,7 +1113,6 @@ router.post(
         }
         lastInfo.lastTakeDutyTime = lastTakeDutyTime;
         lastPassDutyTime = lastInfo.lastPassDutyTime;
-        lastInfo.credentials = specialCredentials;
       }
 
       // Включаем информацию о рабочем полигоне, временах принятия и сдачи на нем дежурства,
@@ -1235,7 +1237,7 @@ router.post(
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
       // Ищем в БД пользователя, который прислал запрос на выход из системы
-      const user = await User.findOne({ _id: req.user.userId, confirmed: true }); console.log(user)
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
@@ -1253,7 +1255,7 @@ router.post(
         },
         jwtSecret,
         //{ expiresIn: '1h' }
-      );console.log('newToken',newToken)
+      );
 
       res.status(OK).json({ token: newToken });
 
@@ -1276,7 +1278,6 @@ router.post(
         error,
         actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
-      console.log('error',error)
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -1298,7 +1299,7 @@ router.post(
     const { applicationAbbreviation } = req.body;
 
     try {
-      // Из системы выходит пользователь с id = req.user.userId,
+      // Из системы выходит пользователь с id = req.user.userId, specialCredentials = req.user.specialCredentials,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
       // Отмечаем сдачу дежурства в токене пользователя
@@ -1327,8 +1328,9 @@ router.post(
         (!user.lastTakePassDutyTimes || !user.lastTakePassDutyTimes.length)
         ? null
         : user.lastTakePassDutyTimes.find((el) =>
-          el.workPoligon.type === workPoligon.type &&
-          el.workPoligon.id === workPoligon.id &&
+          compareStringArrays(el.сredentials, req.user.specialCredentials) &&
+          (el.workPoligon.type === workPoligon.type) &&
+          (el.workPoligon.id === workPoligon.id) &&
           (
             (!workPoligon.workPlaceId && !el.workPoligon.workPlaceId) ||
             (workPoligon.workPlaceId && workPoligon.workPlaceId === el.workPoligon.workPlaceId)
