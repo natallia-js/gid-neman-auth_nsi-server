@@ -23,6 +23,7 @@ export const GetDataCredentials = Object.freeze({
   GET_ADMINS_LOGS_ACTION: 'GET_ADMINS_LOGS_ACTION',
   GET_DY58_USERS_LOGS_ACTION: 'GET_DY58_USERS_LOGS_ACTION',
   GET_SERVER_ERRORS_LOGS_ACTION: 'GET_SERVER_ERRORS_LOGS_ACTION',
+  GET_SERVER_LOGS_ACTION: 'GET_SERVER_LOGS_ACTION',
 });
 
 // ----------------------------------------
@@ -154,6 +155,7 @@ export const ServerAPI = Object.freeze({
   GET_ADMINS_LOGS_LIST: ServerAddress + '/api/adminsLogs/data',
   GET_DY58USERS_LOGS_LIST: ServerAddress + '/api/dy58UsersLogs/data',
   GET_SERVER_ERRORS_LOGS_LIST: ServerAddress + '/api/errorsLogs/data',
+  GET_SERVER_LOGS_LIST: ServerAddress + '/api/serverLogs/data',
 });
 
 // ----------------------------------------
@@ -375,6 +377,15 @@ export const DY58USER_LOGS_FIELDS = Object.freeze({
   ACTION_TIME: 'actionTime',
   ACTION: 'action',
   ACTION_PARAMS: 'actionParams',
+});
+
+// ----------------------------------------
+
+export const SERVER_LOGS_FIELDS = Object.freeze({
+  KEY: 'key',
+  ACTION_TIME: 'actionTime',
+  ACTION: 'action',
+  DESCRIPTION: 'description',
 });
 
 // ----------------------------------------

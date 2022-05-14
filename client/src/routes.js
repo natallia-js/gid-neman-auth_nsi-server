@@ -15,6 +15,7 @@ import { OrderPatternsPage } from './pages/OrderPatternsPage';
 import { AdminsLogsPage } from './pages/AdminsLogsPage';
 import { DY58UsersLogsPage } from './pages/DY58UsersLogsPage';
 import { ServerErrorsLogsPage } from './pages/ServerErrorsLogsPage';
+import { ServerLogsPage } from './pages/ServerLogsPage';
 
 import { GetDataCredentials } from './constants';
 
@@ -61,6 +62,9 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
         </Route>
         <Route path="/ecdSectors" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_ECDSECTORS_ACTION) ? <ECDSectorsPage /> : <Redirect to="/help" />}
+        </Route>
+        <Route path="/serverLogs" exact>
+          {hasUserCredential(GetDataCredentials.GET_SERVER_LOGS_ACTION) ? <ServerLogsPage /> : <Redirect to="/help" />}
         </Route>
         <Route path="/adminsLogs" exact>
           {hasUserCredential(GetDataCredentials.GET_ADMINS_LOGS_ACTION) ? <AdminsLogsPage /> : <Redirect to="/help" />}

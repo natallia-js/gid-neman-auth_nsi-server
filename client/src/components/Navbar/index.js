@@ -86,6 +86,7 @@ export const Navbar = () => {
         <Menu.Item key={PAGES_IDS.ORDER_PATTERNS}><NavLink to="/orderPatterns">Шаблоны распоряжений</NavLink></Menu.Item>
         <SubMenu key={PAGES_IDS.LOGS} title="Логи">
           <Menu.Item key={LOGS_IDS.SERVER_ERRORS}><NavLink to="/serverErrorsLogs">серверных ошибок</NavLink></Menu.Item>
+          <Menu.Item key={LOGS_IDS.SERVER_ACTIONS}><NavLink to="/serverLogs">действий сервера</NavLink></Menu.Item>
           <Menu.Item key={LOGS_IDS.ADMINS_ACTIONS}><NavLink to="/adminsLogs">действий администраторов</NavLink></Menu.Item>
           <Menu.Item key={LOGS_IDS.USERS_ACTIONS}><NavLink to="/dy58UsersLogs">действий пользователей ДУ-58</NavLink></Menu.Item>
         </SubMenu>
