@@ -1,0 +1,26 @@
+Нужно создать индексы:
+
+db.adminslogs.createIndex({"actionTime":1})
+db.dy58userslogs.createIndex({"actionTime":1})
+db.errorslogs.createIndex({"errorTime":1})
+db.serverlogs.createIndex({"actionTime":1})
+db.orders.createIndex({"createDateTime":1})
+db.workorders.createIndex({"recipientWorkPoligon.id":1,"recipientWorkPoligon.type":1})
+
+Проблема на сервере: при запуске запроса на создание индекса консоль (mongo) подвисает.
+Индекс не создается. Что делаем, чтобы все-таки создать индекс:
+
+1. Ищем файл mongod.conf
+  В него необходимо добавить такую секцию:
+security:
+  keyFile: путь_к\mongo.keyfile
+  authorization: enabled
+
+2. Для генерации mongo.keyfile делаем следующее:
+openssl rand -base64 -out <path-to-keyfile_with_mongo.keyfile_at_the_end> 756
+
+3. Затем рестартуем mongod
+
+4. Переподключаемся к mongod
+
+5. Спокойно создаем индекс

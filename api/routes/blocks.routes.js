@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addBlockValidationRules,
   delBlockValidationRules,
@@ -15,6 +14,7 @@ const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteBlock = require('../routes/deleteComplexDependencies/deleteBlock');
 const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
@@ -28,9 +28,6 @@ const {
   SUCCESS_ADD_MESS,
   DATA_TO_DEL_NOT_FOUND,
   DATA_TO_MOD_NOT_FOUND,
-
-  GET_ALL_BLOCKS_ACTION,
-  MOD_BLOCK_ACTION,
 } = require('../constants');
 
 
@@ -43,16 +40,10 @@ const {
   '/shortData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_BLOCKS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_BLOCKS_SHORT_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TBlock.findAll({
@@ -84,16 +75,10 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_BLOCKS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_BLOCKS_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TBlock.findAll({
@@ -139,16 +124,10 @@ router.get(
   '/stationData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_BLOCKS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_BLOCKS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { stationId } = req.body;
@@ -209,16 +188,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_BLOCK_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_BLOCK; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addBlockValidationRules(),
   validate,
@@ -323,16 +296,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_BLOCK_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_BLOCK; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delBlockValidationRules(),
   validate,
@@ -390,16 +357,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_BLOCK_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_BLOCK; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modBlockValidationRules(),
   validate,
@@ -549,16 +510,10 @@ router.post(
   '/syncWithPENSI',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_BLOCK_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.SYNC_BLOCKS_WITH_PENSI; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const sequelize = req.sequelize;
 

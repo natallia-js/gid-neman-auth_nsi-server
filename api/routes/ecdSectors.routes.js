@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   getDefiniteECDSectorValidationRules,
   getDefiniteECDSectorsValidationRules,
@@ -19,6 +18,7 @@ const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteECDSector = require('../routes/deleteComplexDependencies/deleteECDSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
@@ -28,9 +28,6 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
   DATA_TO_DEL_NOT_FOUND,
-
-  GET_ALL_ECDSECTORS_ACTION,
-  MOD_ECDSECTOR_ACTION,
 } = require('../constants');
 
 
@@ -45,16 +42,10 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ECD_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TECDSector.findAll({
@@ -104,6 +95,10 @@ router.get(
  */
  router.get(
   '/shortData',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ECD_SECTORS_SHORT_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TECDSector.findAll({
@@ -139,16 +134,10 @@ router.get(
   '/shortStationData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_ECD_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { stationId } = req.body;
@@ -215,16 +204,10 @@ router.get(
   '/definitData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ECD_SECTOR_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   getDefiniteECDSectorValidationRules(),
   validate,
@@ -306,16 +289,10 @@ router.get(
   '/shortDefinitData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_GIVEN_ECD_SECTORS_SHORT_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   getDefiniteECDSectorsValidationRules(),
   validate,
@@ -356,16 +333,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ECD_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addECDSectorValidationRules(),
   validate,
@@ -412,16 +383,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ECD_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delECDSectorValidationRules(),
   validate,
@@ -476,16 +441,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ECD_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modECDSectorValidationRules(),
   validate,

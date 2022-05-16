@@ -1,7 +1,6 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
@@ -14,21 +13,13 @@ const {
   userConcisePostFIOString,
 } = require('../routes/additional/getUserTransformedData');
 const isOrderAsserted = require('../routes/additional/isOrderAsserted');
+const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
 const {
-  OK,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-  ERR,
-
+  OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
   DSP_FULL,
-  DSP_Operator,
-  DNC_FULL,
-  ECD_FULL,
-  REVISOR,
-
   ORDER_PATTERN_TYPES,
 } = require('../constants');
 
@@ -48,6 +39,22 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
     );
   }
   return null;
+};
+
+
+/**
+ * Для указанного распоряжения проверяет факт его утвержденности.
+ * Если не утверждено, но можно утвердить - утверждает.
+ */
+const assertOrder = (order) => {
+  if (order && !order.assertDateTime) {
+    order.assertDateTime = isOrderAsserted(order);
+    // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
+    if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
+      order.timeSpan.start = order.assertDateTime;
+      order.timeSpan.end = order.assertDateTime;
+    }
+  }
 };
 
 
@@ -77,20 +84,14 @@ const findSector = (sectors, workPoligon, findGlobalSector) => {
  * Данный временной интервал не ограничен справа. Если параметр startDate не указан, то извлекается
  * вся имеющаяся информация в коллекции рабочих распоряжений, относящаяся к указанному рабочему полигону.
  */
- router.post(
+router.post(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_WORK_ORDERS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
@@ -185,16 +186,10 @@ router.post(
   '/reportOnDelivery',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.REPORT_ON_ORDER_DELIVERY; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
@@ -318,17 +313,11 @@ router.post(
   '/confirmOrder',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка наличия у пользователя определенных выше полномочий
-  checkGeneralCredentials,
-  // проверка факта нахождения пользователя на смене
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
@@ -431,14 +420,8 @@ router.post(
           localSector.fio = userFIO;
         }
         // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
-        if (!order.assertDateTime) {
-          order.assertDateTime = isOrderAsserted(order);
-          // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
-          if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
-            order.timeSpan.start = order.assertDateTime;
-            order.timeSpan.end = order.assertDateTime;
-          }
-        }
+        assertOrder(order);
+
         // By default, `save()` uses the associated session
         await order.save();
       }
@@ -501,16 +484,10 @@ router.post(
   '/confirmOrderForOtherReceivers',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHER_RECEIVERS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка факта нахождения пользователя на дежурстве
   isOnDuty,
   async (req, res) => {
@@ -543,19 +520,10 @@ router.post(
         return res.status(ERR).json({ message: 'Нет полигонов для подтверждения' });
       }
 
-      order.otherToSend.forEach((el) => {
-        el.confirmDateTime = confirmDateTime;
-      });
+      order.otherToSend.forEach((el) => { el.confirmDateTime = confirmDateTime });
 
       // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
-      if (!order.assertDateTime) {
-        order.assertDateTime = isOrderAsserted(order);
-        // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
-        if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
-          order.timeSpan.start = order.assertDateTime;
-          order.timeSpan.end = order.assertDateTime;
-        }
-      }
+      assertOrder(order);
 
       await order.save();
 
@@ -629,16 +597,10 @@ router.post(
   '/confirmOrdersForOthers',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHERS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка факта нахождения пользователя на дежурстве
   isOnDuty,
   async (req, res) => {
@@ -809,14 +771,8 @@ router.post(
 
       if (orderConfirmed) {
         // После подтверждения распоряжения необходимо проверить его утвержденность, если оно еще не утверждено
-        if (!order.assertDateTime) {
-          order.assertDateTime = isOrderAsserted(order);
-          // Для уведомления ЭЦД время утверждения равно времени его начала и окончания действия
-          if (order.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order.assertDateTime) {
-            order.timeSpan.start = order.assertDateTime;
-            order.timeSpan.end = order.assertDateTime;
-          }
-        }
+        assertOrder(order);
+
         // By default, `save()` uses the associated session
         await order.save();
       }
@@ -880,17 +836,11 @@ router.post(
   '/delConfirmedOrdersFromChain',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
-  // проверка факта нахождения пользователя на смене
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.DEL_CONFIRMED_ORDERS_FROM_CHAIN; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
@@ -957,16 +907,10 @@ router.post(
   '/delStationWorkPlaceReceiver',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DSP_FULL, DSP_Operator],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка факта нахождения пользователя на смене
   isOnDuty,
   async (req, res) => {

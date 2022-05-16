@@ -5,11 +5,16 @@ const MODEL_NAME = 'TAdjacentDNCSector';
 
 class TAdjacentDNCSector extends Model {}
 
+const TAdjacentDNCSectorFields = {
+  ADNCS_DNCSectorID1: 'ADNCS_DNCSectorID1',
+  ADNCS_DNCSectorID2: 'ADNCS_DNCSectorID2',
+};
+
 // Схема таблицы смежных участков ДНЦ
 function createAdjacentDNCSectorModel(sequelize) {
   TAdjacentDNCSector.init({
     // id одного участка ДНЦ
-    ADNCS_DNCSectorID1: {
+    [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
@@ -21,7 +26,7 @@ function createAdjacentDNCSectorModel(sequelize) {
       onUpdate: 'NO ACTION',
     },
     // id другого участка ДНЦ
-    ADNCS_DNCSectorID2: {
+    [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
@@ -42,5 +47,6 @@ function createAdjacentDNCSectorModel(sequelize) {
 
 module.exports = {
   createAdjacentDNCSectorModel,
+  TAdjacentDNCSectorFields,
   TAdjacentDNCSector,
 };

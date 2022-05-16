@@ -1,13 +1,10 @@
 const { Router } = require('express');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-} = require('../constants');
+const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -19,6 +16,10 @@ const {
  */
  router.post(
   '/data',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_OKNAS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const { stationsCodes } = req.body;
 

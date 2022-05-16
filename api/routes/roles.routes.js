@@ -1,8 +1,6 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
-const { isMainAdmin, checkMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const Role = require('../models/Role');
 const App = require('../models/App');
 const User = require('../models/User');
@@ -15,19 +13,15 @@ const {
 } = require('../validators/roles.validator');
 const validate = require('../validators/validate');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const {
+  AUTH_NSI_ACTIONS,
+  isMainAdmin,
+  hasUserRightToPerformAction,
+} = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  ERR,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  MOD_APP_CREDENTIALS_ACTION,
-  GET_ALL_ROLES_ACTION,
-  MOD_ROLE_ACTION,
-} = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -37,6 +31,10 @@ const {
  */
  router.get(
   '/allData',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ROLES; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await Role.find({}, { _id: 1, englAbbreviation: 1, description: 1 });
@@ -66,16 +64,10 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ROLES_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ALLOWED_ROLES; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     try {
       let data;
@@ -112,16 +104,10 @@ router.get(
   '/abbrs',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ROLES_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ROLES_ABBRS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     try {
       let data;
@@ -208,18 +194,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ROLE_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addRoleValidationRules(),
   validate,
@@ -281,18 +259,10 @@ router.post(
   '/addCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ROLE_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP_CRED_TO_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addCredValidationRules(),
   validate,
@@ -349,7 +319,7 @@ router.post(
 
 
 /**
- * Обработка запроса на изменение списка полномочий в приложении.
+ * Обработка запроса на изменение списка полномочий в приложении для указанной роли.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
@@ -363,18 +333,10 @@ router.post(
   '/changeCreds',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_CREDENTIALS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ROLE_APP_CREDENTIALS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   changeCredsValidationRules(),
   validate,
@@ -434,18 +396,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ROLE_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delRoleValidationRules(),
   validate,
@@ -522,18 +476,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ROLE_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modRoleValidationRules(),
   validate,

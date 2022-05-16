@@ -1,8 +1,6 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
-const { checkMainAdmin } = require('../middleware/isMainAdmin.middleware');
 const App = require('../models/App');
 const Role = require('../models/Role');
 const {
@@ -15,20 +13,11 @@ const {
 } = require('../validators/apps.validator');
 const validate = require('../validators/validate');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  ERR,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  GET_ALL_APPS_ACTION,
-  GET_APPS_CREDENTIALS_ACTION,
-  MOD_APP_ACTION,
-  MOD_APP_CREDENTIAL_ACTION,
-} = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -40,18 +29,10 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_APPS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await App.find();
@@ -80,18 +61,10 @@ router.get(
   '/abbrData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_APPS_CREDENTIALS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS_ABBR_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: { _id: 1, englAbbreviation: 1 } });
@@ -128,18 +101,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addAppValidationRules(),
   validate,
@@ -195,18 +160,10 @@ router.post(
   '/addCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_CREDENTIAL_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP_CREDENTIAL; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addCredValidationRules(),
   validate,
@@ -282,18 +239,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delAppValidationRules(),
   validate,
@@ -366,18 +315,10 @@ router.post(
   '/delCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_CREDENTIAL_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP_CREDENTIAL; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delCredValidationRules(),
   validate,
@@ -459,18 +400,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modAppValidationRules(),
   validate,
@@ -533,18 +466,10 @@ router.post(
   '/modCred',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // проверяем, является ли пользователь главным администратором ГИД Неман
-  checkMainAdmin,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_APP_CREDENTIAL_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP_CREDENTIAL; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modCredValidationRules(),
   validate,

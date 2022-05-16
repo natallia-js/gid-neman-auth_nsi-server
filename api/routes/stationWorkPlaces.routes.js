@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addStationWorkPlaceValidationRules,
   delStationWorkPlaceValidationRules,
@@ -10,6 +9,7 @@ const validate = require('../validators/validate');
 const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
@@ -22,8 +22,6 @@ const {
   SUCCESS_MOD_RES,
   SUCCESS_ADD_MESS,
   DATA_TO_DEL_NOT_FOUND,
-
-  MOD_STATION_ACTION,
 } = require('../constants');
 
 
@@ -40,16 +38,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_STATION_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_STATION_WORK_PLACE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addStationWorkPlaceValidationRules(),
   validate,
@@ -102,16 +94,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_STATION_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_STATION_WORK_PLACE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delStationWorkPlaceValidationRules(),
   validate,
@@ -170,16 +156,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_STATION_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_STATION_WORK_PLACE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modStationWorkPlaceValidationRules(),
   validate,

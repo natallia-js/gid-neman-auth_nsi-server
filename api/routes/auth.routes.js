@@ -6,8 +6,7 @@ const auth = require('../middleware/auth.middleware');
 const canWorkOnWorkPoligon = require('../middleware/canWorkOnWorkPoligon.middleware');
 const hasSpecialCredentials = require('../middleware/hasSpecialCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
-const { isMainAdmin } = require('../middleware/isMainAdmin.middleware');
+const { isMainAdmin } = require('../middleware/hasUserRightToPerformAction.middleware');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 const compareStringArrays = require('../additional/compareStringArrays');
 const {
@@ -27,6 +26,7 @@ const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 const { addDY58UserActionInfo, addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
@@ -53,10 +53,6 @@ const {
   MAIN_ADMIN_SURNAME,
   MAIN_ADMIN_POST,
 
-  GET_ALL_USERS_ACTION,
-  REGISTER_USER_ACTION,
-  MOD_USER_ACTION,
-
   Get_GidNemanAuthNSIUtil_AllCredentials,
 } = require('../constants');
 
@@ -72,6 +68,10 @@ const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
  */
 router.put(
   '/registerSuperAdmin',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.REGISTER_SUPERADMIN; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       // Чтобы созданный администратор мог работать, необходимо определить для него
@@ -162,16 +162,10 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_USERS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_USERS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const serviceName = req.user.service;
     const fieldsToExtract = {
@@ -387,16 +381,10 @@ router.post(
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь) и
   // проверка приложения, с которого пришел запрос
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [REGISTER_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.REGISTER_USER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   registerValidationRules(),
   validate,
@@ -500,6 +488,10 @@ router.post(
  */
  router.post(
   '/applyForRegistration',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.APPLY_FOR_REGISTRATION; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   registerValidationRules(),
   validate,
@@ -588,16 +580,10 @@ router.post(
   '/addRole',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_USER_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addRoleValidationRules(),
   validate,
@@ -680,6 +666,10 @@ router.post(
  */
 router.post(
   '/login',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.LOGIN; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   loginValidationRules(),
   validate,
@@ -925,6 +915,10 @@ router.post(
   // определяем возможность выполнения запрашиваемого действия
   hasSpecialCredentials, // проверка specialCredentials
   canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITHOUT_TAKING_DUTY; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const {
@@ -1054,6 +1048,10 @@ router.post(
   // определяем возможность выполнения запрашиваемого действия
   hasSpecialCredentials, // проверка specialCredentials (наделен ли ими пользователь администратором системы)
   canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITH_TAKING_DUTY; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const {
@@ -1228,6 +1226,10 @@ router.post(
   '/logout',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.LOGOUT; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { applicationAbbreviation } = req.body;
@@ -1294,6 +1296,10 @@ router.post(
   auth,
   // определяем возможность выполнения запрашиваемого действия
   isOnDuty,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.LOGOUT_WITH_DUTY_PASS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { applicationAbbreviation } = req.body;
@@ -1386,16 +1392,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_USER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delUserValidationRules(),
   validate,
@@ -1485,16 +1485,10 @@ router.post(
   '/delRole',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_USER_ROLE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delRoleValidationRules(),
   validate,
@@ -1580,16 +1574,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_USER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   modUserValidationRules(),
   validate,
@@ -1711,16 +1699,10 @@ router.post(
   '/confirm',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_USER_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CONFIRM_USER_REGISTRATION_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;

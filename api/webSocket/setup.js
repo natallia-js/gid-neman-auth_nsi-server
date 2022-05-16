@@ -6,7 +6,12 @@ const {
   PONG_MESSAGE_PATTERN,
   GET_ONLINE_USERS_MESSAGE_PATTERN,
   ONLINE_USERS,
+  UPGRADE_EVENT,
+  CONNECTION_EVENT,
+  MESSAGE_EVENT,
+  CLOSE_EVENT,
 } = require('../constants');
+const { addServerActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 
 
 // accepts an http server instance
@@ -23,13 +28,18 @@ function setupWebSocket(server) {
   // (the WebSocket clients send the HTTP request asking for a WebSocket connection,
   // then the server responds with an HTTP 101 Switching protocols, meaning that it accepts the connection,
   // and then the client can start to send and receive data in binary format)
-  server.on('upgrade', function upgrade(request, socket, head) {
+  server.on(UPGRADE_EVENT, function upgrade(request, socket, head) {
     try {
       wss.handleUpgrade(request, socket, head, function done(ws) {
-        wss.emit('connection', ws, request);
+        wss.emit(CONNECTION_EVENT, ws, request);
       });
     } catch (err) {
-      console.log('ws upgrade exception', err);
+      addError({
+        errorTime: new Date(),
+        action: 'ws upgrade',
+        error,
+        actionParams: null,
+      });
       socket.write(UPGRADE_ERROR_MESSAGE);
       socket.destroy();
       return;
@@ -37,7 +47,7 @@ function setupWebSocket(server) {
   });
 
   // what to do after a connection is established
-  wss.on('connection', (ctx, req) => {
+  wss.on(CONNECTION_EVENT, (ctx, req) => {
     // print number of active connections
     let clientIP;
     try {
@@ -45,14 +55,17 @@ function setupWebSocket(server) {
     } catch {
       clientIP = req.socket.remoteAddress;
     }
-    console.log(`connected ip=${clientIP}, connected clients number=${wss.clients.size}`);
+    addServerActionInfo({
+      actionTime: new Date(),
+      action: 'новое подключение',
+      description: `подключение с ip=${clientIP}, общее количество подключенных клиентов=${wss.clients.size}`,
+    });
 
     ctx.isAlive = true;
     const timerId = ping(ctx);
 
     // handle message events
-    ctx.on('message', function incomingMessage(message) {
-      console.log(`Received message => ${message}`);
+    ctx.on(MESSAGE_EVENT, function incomingMessage(message) {
       if (!message) {
         return;
       }
@@ -120,8 +133,12 @@ function setupWebSocket(server) {
     });
 
     // handle close event
-    ctx.on('close', function closeClientConnection() {
-      console.log('closed connection with client, clients: ', wss.clients.size);
+    ctx.on(CLOSE_EVENT, function closeClientConnection() {
+      addServerActionInfo({
+        actionTime: new Date(),
+        action: 'закрытие соединения',
+        description: `клиент на ip=${clientIP} закрыл соединение, общее количество подключенных клиентов=${wss.clients.size}`,
+      });
       clearInterval(timerId);
     });
 

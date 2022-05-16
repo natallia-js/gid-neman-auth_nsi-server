@@ -1,20 +1,14 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const ErrorsLog = require('../models/ErrorsLog');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const { getLogsRules } = require('../validators/logs.validator');
 const validate = require('../validators/validate');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  GET_SERVER_ERRORS_LOGS_ACTION,
-} = require('../constants');
+const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -35,16 +29,10 @@ const {
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_SERVER_ERRORS_LOGS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ERRORS_LOGS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   getLogsRules(),
   validate,

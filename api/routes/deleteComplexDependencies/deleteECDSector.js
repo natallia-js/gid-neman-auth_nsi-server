@@ -1,6 +1,6 @@
 const deleteECDTrainSector = require('./deleteECDTrainSector');
 const { TECDTrainSector } = require('../../models/TECDTrainSector');
-const { TAdjacentECDSector } = require('../../models/TAdjacentECDSector');
+const { TAdjacentECDSectorFields, TAdjacentECDSector } = require('../../models/TAdjacentECDSector');
 const { TNearestDNCandECDSector } = require('../../models/TNearestDNCandECDSector');
 const { TECDStructuralDivision } = require('../../models/TECDStructuralDivision');
 const { TECDSectorWorkPoligon } = require('../../models/TECDSectorWorkPoligon');
@@ -26,8 +26,8 @@ async function deleteECDSector(id, transaction) {
   await TAdjacentECDSector.destroy({
     where: {
       [Op.or]: [
-        { AECDS_ECDSectorID1: id },
-        { AECDS_ECDSectorID2: id },
+        { [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: id },
+        { [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: id },
       ],
     },
     transaction,

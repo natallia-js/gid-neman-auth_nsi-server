@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addAdjacentECDSectorsValidationRules,
   delAdjacentECDSectorValidationRules,
@@ -8,21 +7,14 @@ const {
 } = require('../validators/adjacentECDSectors.validator');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
-const { TAdjacentECDSector } = require('../models/TAdjacentECDSector');
+const { TAdjacentECDSectorFields, TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TECDSector } = require('../models/TECDSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  ERR,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  GET_ALL_ECDSECTORS_ACTION,
-  MOD_ECDSECTOR_ACTION,
-} = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -34,21 +26,15 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_ECD_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TAdjacentECDSector.findAll({
         raw: true,
-        attributes: ['AECDS_ECDSectorID1', 'AECDS_ECDSectorID2'],
+        attributes: [TAdjacentECDSectorFields.AECDS_ECDSectorID1, TAdjacentECDSectorFields.AECDS_ECDSectorID2],
       });
       res.status(OK).json(data);
 
@@ -77,16 +63,10 @@ router.get(
   '/definitData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_ECDSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_ECD_SECTORS_OF_DEFINITE_ECD_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const { sectorId } = req.body;
 
@@ -95,11 +75,11 @@ router.get(
         raw: true,
         where: {
           [Op.or]: [
-            { AECDS_ECDSectorID1: sectorId },
-            { AECDS_ECDSectorID2: sectorId },
+            { [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorId },
+            { [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorId },
           ],
         },
-        attributes: ['AECDS_ECDSectorID1', 'AECDS_ECDSectorID2'],
+        attributes: [TAdjacentECDSectorFields.AECDS_ECDSectorID1, TAdjacentECDSectorFields.AECDS_ECDSectorID2],
       });
 
       if (!data || !data.length) {
@@ -107,10 +87,10 @@ router.get(
       }
 
       const ecdSectorIds = data.map((info) => {
-        if (info.AECDS_ECDSectorID1 === sectorId) {
-          return info.AECDS_ECDSectorID2;
+        if (info[TAdjacentECDSectorFields.AECDS_ECDSectorID1] === sectorId) {
+          return info[TAdjacentECDSectorFields.AECDS_ECDSectorID2];
         }
-        return info.AECDS_ECDSectorID1;
+        return info[TAdjacentECDSectorFields.AECDS_ECDSectorID1];
       });
       data = await TECDSector.findAll({
         raw: true,
@@ -145,16 +125,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ADJACENT_ECD_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addAdjacentECDSectorsValidationRules(),
   validate,
@@ -192,10 +166,16 @@ router.post(
         const antiCandidate = await TAdjacentECDSector.findOne({
           where: {
             [Op.or]: [
-              { AECDS_ECDSectorID1: sectorID, AECDS_ECDSectorID2: id },
-              { AECDS_ECDSectorID1: id, AECDS_ECDSectorID2: sectorID },
-            ]
-          }
+              {
+                [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorID,
+                [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: id,
+              },
+              {
+                [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: id,
+                [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorID,
+              },
+            ],
+          },
         });
 
         // Если находим, то установить смежность с данным участком не можем.
@@ -212,8 +192,8 @@ router.post(
       // Создаем в БД записи с идентификаторами смежных участков
       for (let id of finalAdjSectIds) {
         await TAdjacentECDSector.create({
-          AECDS_ECDSectorID1: sectorID,
-          AECDS_ECDSectorID2: id,
+          [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorID,
+          [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: id,
         });
       }
 
@@ -245,16 +225,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ADJACENT_ECD_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delAdjacentECDSectorValidationRules(),
   validate,
@@ -267,10 +241,16 @@ router.post(
       const destroyedRows = await TAdjacentECDSector.destroy({
         where: {
           [Op.or]: [
-            { AECDS_ECDSectorID1: sectorID1, AECDS_ECDSectorID2: sectorID2 },
-            { AECDS_ECDSectorID1: sectorID2, AECDS_ECDSectorID2: sectorID1 },
-          ]
-        }
+            {
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorID1,
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorID2,
+            },
+            {
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorID2,
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorID1,
+            },
+          ],
+        },
       });
 
       if (destroyedRows < 1) {
@@ -306,16 +286,10 @@ router.post(
   '/changeAdjacentSectors',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_ECDSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CHANGE_ADJACENT_ECD_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   changeAdjacentSectorsValidationRules(),
   validate,
@@ -364,9 +338,15 @@ router.post(
           const antiCandidate = await TAdjacentECDSector.findOne({
             where: {
               [Op.or]: [
-                { AECDS_ECDSectorID1: sectorId, AECDS_ECDSectorID2: id },
-                { AECDS_ECDSectorID1: id, AECDS_ECDSectorID2: sectorId },
-              ]
+                {
+                  [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorId,
+                  [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: id,
+                },
+                {
+                  [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: id,
+                  [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorId,
+                },
+              ],
             },
             transaction: t,
           });
@@ -383,8 +363,8 @@ router.post(
           // Создаем в БД записи с идентификаторами смежных участков
           for (let id of finalAdjSectIds) {
             await TAdjacentECDSector.create({
-              AECDS_ECDSectorID1: sectorId,
-              AECDS_ECDSectorID2: id,
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorId,
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: id,
             }, { transaction: t });
           }
         }
@@ -394,9 +374,15 @@ router.post(
       await TAdjacentECDSector.destroy({
         where: {
           [Op.or]: [
-            { AECDS_ECDSectorID1: sectorId, AECDS_ECDSectorID2: { [Op.notIn]: adjacentSectIds } },
-            { AECDS_ECDSectorID1: { [Op.notIn]: adjacentSectIds }, AECDS_ECDSectorID2: sectorId },
-          ]
+            {
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: sectorId,
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: { [Op.notIn]: adjacentSectIds },
+            },
+            {
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID1]: { [Op.notIn]: adjacentSectIds },
+              [TAdjacentECDSectorFields.AECDS_ECDSectorID2]: sectorId,
+            },
+          ],
         },
         transaction: t,
       });

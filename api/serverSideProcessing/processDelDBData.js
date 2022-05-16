@@ -3,6 +3,8 @@ const Order = require('../models/Order');
 const DY58UsersLog = require('../models/DY58UsersLog');
 const ErrorsLog = require('../models/ErrorsLog');
 const AdminsLog = require('../models/AdminsLog');
+const ServerLog = require('../models/ServerLog');
+const { addServerActionInfo } = require('./processLogsActions');
 const config = require('config');
 
 
@@ -66,24 +68,55 @@ async function processDelDBData() {
       },
     ],
   };
-  await WorkOrder.deleteMany(matchFilter);
+  let delRes = await WorkOrder.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы рабочих распоряжений',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
 
   // 2)
   matchFilter = {
     "orderChain.chainEndDateTime": { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) },
   };
-  await Order.deleteMany(matchFilter);
+  delRes = await Order.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы распоряжений',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
 
   // 3)
   matchFilter = {
     actionTime: { $lt: new Date(todayTime - storeLogsInDBInDays * daysToMillisecondsMultiplier) },
   };
-  await DY58UsersLog.deleteMany(matchFilter);
-  await AdminsLog.deleteMany(matchFilter);
+  delRes = await DY58UsersLog.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы логов действий пользователей ДУ-58',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
+  delRes = await AdminsLog.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы логов администраторов',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
+  delRes = await ServerLog.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы логов действий сервера',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
   matchFilter = {
     errorTime: { $lt: new Date(todayTime - storeLogsInDBInDays * daysToMillisecondsMultiplier) },
   };
-  await ErrorsLog.deleteMany(matchFilter);
+  delRes = await ErrorsLog.deleteMany(matchFilter);
+  addServerActionInfo({
+    actionTime: new Date(),
+    action: '"чистка" таблицы логов серверных ошибок',
+    description: `удалено записей ${delRes.deletedCount}`,
+  });
 }
 
 

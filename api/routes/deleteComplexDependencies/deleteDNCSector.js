@@ -1,6 +1,6 @@
 const deleteDNCTrainSector = require('./deleteDNCTrainSector');
 const { TDNCTrainSector } = require('../../models/TDNCTrainSector');
-const { TAdjacentDNCSector } = require('../../models/TAdjacentDNCSector');
+const { TAdjacentDNCSectorFields, TAdjacentDNCSector } = require('../../models/TAdjacentDNCSector');
 const { TNearestDNCandECDSector } = require('../../models/TNearestDNCandECDSector');
 const { TDNCSectorWorkPoligon } = require('../../models/TDNCSectorWorkPoligon');
 const { TDNCSector } = require('../../models/TDNCSector');
@@ -25,8 +25,8 @@ async function deleteDNCSector(id, transaction) {
   await TAdjacentDNCSector.destroy({
     where: {
       [Op.or]: [
-        { ADNCS_DNCSectorID1: id },
-        { ADNCS_DNCSectorID2: id },
+        { [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: id },
+        { [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: id },
       ],
     },
     transaction,

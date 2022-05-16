@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const DY58UsersLog = require('../models/DY58UsersLog');
+const ServerLog = require('../models/ServerLog');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const { getLogsRules } = require('../validators/logs.validator');
 const validate = require('../validators/validate');
@@ -12,7 +12,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обрабатывает запрос на получение списка логов действий пользователей ДУ-58.
+ * Обрабатывает запрос на получение списка логов действий сервера.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -30,7 +30,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DY58_USERS_ACTIONS_LOGS; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_SERVER_ACTIONS_LOGS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   // проверка параметров запроса
@@ -75,7 +75,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       ];
 
       // Ищем данные
-      const data = await DY58UsersLog.aggregate(aggregation);
+      const data = await ServerLog.aggregate(aggregation);
 
       res.status(OK).json({
         data: data && data[0] ? data[0].data : [],
@@ -85,7 +85,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение списка логов действий пользователей ДУ-58',
+        action: 'Получение списка логов действий сервера',
         error,
         actionParams: {
           datetimeStart, datetimeEnd, page, docsCount,

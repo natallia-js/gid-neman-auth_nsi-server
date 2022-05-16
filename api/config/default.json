@@ -12,10 +12,10 @@
     "password": "1",
     "timezoneFormat": "YYYY-MM-DD HH:mm:ss.SSS"
   },
-  "delDBDataIntervalInMs": 60000,
+  "delDBDataIntervalInMs": 3600000,
   "workPeriodInHours": 8,
   "storeOrdersInDBInDays": 730,
-  "storeLogsInDBInDays": 365,
+  "storeLogsInDBInDays": 30,
   "maxDaysToStoreUnconfirmedOrders": 30,
   "PENSI": {
     "serverAddress": "10.200.2.29:80",

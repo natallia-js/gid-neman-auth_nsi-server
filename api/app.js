@@ -104,6 +104,7 @@ app.use('/api/orderDrafts', require('./routes/drafts.routes'));
 app.use('/api/adminsLogs', require('./routes/adminsLogs.routes'));
 app.use('/api/dy58UsersLogs', require('./routes/dy58UsersLogs.routes'));
 app.use('/api/errorsLogs', require('./routes/errorsLogs.routes'));
+app.use('/api/serverLogs', require('./routes/serverLogs.routes'));
 app.use('/api/okna', require('./routes/okna.routes'));
 
 // Порт сервера

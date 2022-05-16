@@ -1,8 +1,11 @@
 const DY58UsersLog = require('../models/DY58UsersLog');
 const ErrorsLog = require('../models/ErrorsLog');
 const AdminsLog = require('../models/AdminsLog');
+const ServerLog = require('../models/ServerLog');
 
-
+/**
+ * Добавление записи в коллекцию ошибок.
+ */
 async function addError(params) {
   const {
     errorTime,
@@ -23,6 +26,9 @@ async function addError(params) {
   }
 }
 
+/**
+ * Добавление записи в коллекцию действий пользователей системы ДУ-58.
+ */
 async function addDY58UserActionInfo(params) {
   const {
     user,
@@ -50,6 +56,9 @@ async function addDY58UserActionInfo(params) {
   }
 }
 
+/**
+ * Добавление записи в коллекцию действий администраторов.
+ */
 async function addAdminActionInfo(params) {
   const {
     user,
@@ -75,9 +84,35 @@ async function addAdminActionInfo(params) {
   }
 }
 
+/**
+ * Добавление записи в коллекцию серверных действий.
+ */
+async function addServerActionInfo(params) {
+  const {
+    actionTime,
+    action,
+    description,
+  } = params;
+  try {
+    const actionInfo = new ServerLog({
+      actionTime,
+      action,
+      description,
+    });
+    await actionInfo.save();
+  } catch (error) {
+    addError({
+      errorTime: new Date(),
+      action: 'Сохранение информации о действии сервера',
+      error,
+      actionParams: params,
+    });
+  }
+}
 
 module.exports = {
   addError,
   addDY58UserActionInfo,
   addAdminActionInfo,
+  addServerActionInfo,
 };

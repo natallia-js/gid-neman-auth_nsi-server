@@ -9,6 +9,7 @@ const PROJECT_CONSTANTS = Object.freeze({
   UNKNOWN_ERR_MESS: 'Что-то пошло не так, попробуйте снова',
   USER_NOT_FOUND_ERR_MESS: 'Пользователь не найден',
   UNAUTHORIZED_ERR_MESS: 'Пользователь не имеет права на выполнение данного действия',
+  UNDEFINED_ACTION_ERR_MESS: 'Не определено запрошенное действие',
   NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS: 'Пользователь не имеет права работать на указанном рабочем полигоне',
   NOT_LOGGED_IN_ERR_MESS: 'Пользователь вышел из системы',
   NOT_MAIN_ADMIN_ERR_MESS: 'На выполнение данного действия требуются права главного администратора',
@@ -33,6 +34,7 @@ const PROJECT_CONSTANTS = Object.freeze({
 
   ALL_PERMISSIONS: 'ALL',
 });
+
 
 const AUTH_NSI_UTIL_CREDENTIALS = Object.freeze({
   GET_ALL_APPS_ACTION: 'GET_ALL_APPS_ACTION',
@@ -71,7 +73,9 @@ const AUTH_NSI_UTIL_CREDENTIALS = Object.freeze({
   GET_ADMINS_LOGS_ACTION: 'GET_ADMINS_LOGS_ACTION',
   GET_DY58_USERS_LOGS_ACTION: 'GET_DY58_USERS_LOGS_ACTION',
   GET_SERVER_ERRORS_LOGS_ACTION: 'GET_SERVER_ERRORS_LOGS_ACTION',
+  GET_SERVER_LOGS_ACTION: 'GET_SERVER_LOGS_ACTION',
 });
+
 
 const DY58_SERVER_CREDENTIALS = Object.freeze({
   DNC_FULL: 'DNC_FULL',
@@ -80,6 +84,7 @@ const DY58_SERVER_CREDENTIALS = Object.freeze({
   ECD_FULL: 'ECD_FULL',
   REVISOR: 'REVISOR',
 });
+
 
 const WEBSOCKET_CONSTANTS = Object.freeze({
   PING_PONG_INTERVAL: 20000,
@@ -91,10 +96,17 @@ const WEBSOCKET_CONSTANTS = Object.freeze({
   PING_MESSAGE: 'ping',
   ONLINE_USERS: (usersIds) => `online ${JSON.stringify(usersIds)}`,
 
+  // События
+  UPGRADE_EVENT: 'upgrade',
+  CONNECTION_EVENT: 'connection',
+  MESSAGE_EVENT: 'message',
+  CLOSE_EVENT: 'close',
+
   // Сообщения, принимаемые от клиентов
   PONG_MESSAGE_PATTERN: /^pong /,
   GET_ONLINE_USERS_MESSAGE_PATTERN: /^online /,
 });
+
 
 const WORK_POLIGON_TYPES = Object.freeze({
   STATION: 'станция',
@@ -102,10 +114,12 @@ const WORK_POLIGON_TYPES = Object.freeze({
   ECD_SECTOR: 'участок ЭЦД',
 });
 
+
 const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
   ONLY_OUTGOUING: 'ONLY_OUTGOUING', // учитывать только исходящие документы
   INCLUDE_ACTIVE: 'INCLUDE_ACTIVE', // учитывать действующие документы
 });
+
 
 const ORDER_PATTERN_TYPES = Object.freeze({
   ORDER: 'распоряжение',
@@ -115,6 +129,7 @@ const ORDER_PATTERN_TYPES = Object.freeze({
   ECD_PROHIBITION: 'запрещение',
   ECD_NOTIFICATION: 'уведомление/отмена запрещения',
 });
+
 
 module.exports = {
   ...PROJECT_CONSTANTS,

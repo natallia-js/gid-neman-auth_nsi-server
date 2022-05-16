@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const {
   addAdjacentDNCSectorsValidationRules,
   delAdjacentDNCSectorValidationRules,
@@ -8,21 +7,14 @@ const {
 } = require('../validators/adjacentDNCSectors.validator');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
-const { TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
+const { TAdjacentDNCSectorFields, TAdjacentDNCSector } = require('../models/TAdjacentDNCSector');
 const { TDNCSector } = require('../models/TDNCSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  ERR,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  GET_ALL_DNCSECTORS_ACTION,
-  MOD_DNCSECTOR_ACTION,
-} = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -34,21 +26,15 @@ router.get(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_DNCSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_DNC_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (_req, res) => {
     try {
       const data = await TAdjacentDNCSector.findAll({
         raw: true,
-        attributes: ['ADNCS_DNCSectorID1', 'ADNCS_DNCSectorID2'],
+        attributes: [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1, TAdjacentDNCSectorFields.ADNCS_DNCSectorID2],
       });
       res.status(OK).json(data);
 
@@ -77,16 +63,11 @@ router.get(
   '/definitData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [GET_ALL_DNCSECTORS_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_DNC_SECTORS_OF_DEFINITE_DNC_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  // проверку параметра запроса sectorId не делаю: если он будет указан неверно, то запрос ничего не вернет
   async (req, res) => {
     const { sectorId } = req.body;
 
@@ -95,11 +76,11 @@ router.get(
         raw: true,
         where: {
           [Op.or]: [
-            { ADNCS_DNCSectorID1: sectorId },
-            { ADNCS_DNCSectorID2: sectorId },
+            { [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorId },
+            { [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorId },
           ],
         },
-        attributes: ['ADNCS_DNCSectorID1', 'ADNCS_DNCSectorID2'],
+        attributes: [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1, TAdjacentDNCSectorFields.ADNCS_DNCSectorID2],
       });
 
       if (!data || !data.length) {
@@ -107,16 +88,18 @@ router.get(
       }
 
       const dncSectorIds = data.map((info) => {
-        if (info.ADNCS_DNCSectorID1 === sectorId) {
-          return info.ADNCS_DNCSectorID2;
+        if (info[TAdjacentDNCSectorFields.ADNCS_DNCSectorID1] === sectorId) {
+          return info[TAdjacentDNCSectorFields.ADNCS_DNCSectorID2];
         }
-        return info.ADNCS_DNCSectorID1;
+        return info[TAdjacentDNCSectorFields.ADNCS_DNCSectorID1];
       });
+
       data = await TDNCSector.findAll({
         raw: true,
         attributes: ['DNCS_ID', 'DNCS_Title'],
         where: { DNCS_ID: dncSectorIds },
       });
+
       res.status(OK).json(data);
 
     } catch (error) {
@@ -145,16 +128,10 @@ router.post(
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_DNCSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ADJACENT_DNC_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   addAdjacentDNCSectorsValidationRules(),
   validate,
@@ -192,8 +169,14 @@ router.post(
         const antiCandidate = await TAdjacentDNCSector.findOne({
           where: {
             [Op.or]: [
-              { ADNCS_DNCSectorID1: sectorID, ADNCS_DNCSectorID2: id },
-              { ADNCS_DNCSectorID1: id, ADNCS_DNCSectorID2: sectorID },
+              {
+                [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorID,
+                [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: id,
+              },
+              {
+                [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: id,
+                [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorID,
+              },
             ]
           }
         });
@@ -212,8 +195,8 @@ router.post(
       // Создаем в БД записи с идентификаторами смежных участков
       for (let id of finalAdjSectIds) {
         await TAdjacentDNCSector.create({
-          ADNCS_DNCSectorID1: sectorID,
-          ADNCS_DNCSectorID2: id,
+          [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorID,
+          [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: id,
         });
       }
 
@@ -245,16 +228,10 @@ router.post(
   '/del',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_DNCSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ADJACENT_DNC_SECTOR; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   delAdjacentDNCSectorValidationRules(),
   validate,
@@ -267,8 +244,14 @@ router.post(
       const destroyedRows = await TAdjacentDNCSector.destroy({
         where: {
           [Op.or]: [
-            { ADNCS_DNCSectorID1: sectorID1, ADNCS_DNCSectorID2: sectorID2 },
-            { ADNCS_DNCSectorID1: sectorID2, ADNCS_DNCSectorID2: sectorID1 },
+            {
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorID1,
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorID2,
+            },
+            {
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorID2,
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorID1,
+            },
           ]
         }
       });
@@ -306,16 +289,10 @@ router.post(
   '/changeAdjacentSectors',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [MOD_DNCSECTOR_ACTION],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CHANGE_ADJACENT_DNC_SECTORS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   changeAdjacentSectorsValidationRules(),
   validate,
@@ -364,9 +341,15 @@ router.post(
           const antiCandidate = await TAdjacentDNCSector.findOne({
             where: {
               [Op.or]: [
-                { ADNCS_DNCSectorID1: sectorId, ADNCS_DNCSectorID2: id },
-                { ADNCS_DNCSectorID1: id, ADNCS_DNCSectorID2: sectorId },
-              ]
+                {
+                  [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorId,
+                  [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: id,
+                },
+                {
+                  [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: id,
+                  [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorId,
+                },
+              ],
             },
             transaction: t,
           });
@@ -383,8 +366,8 @@ router.post(
           // Создаем в БД записи с идентификаторами смежных участков
           for (let id of finalAdjSectIds) {
             await TAdjacentDNCSector.create({
-              ADNCS_DNCSectorID1: sectorId,
-              ADNCS_DNCSectorID2: id,
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorId,
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: id,
             }, { transaction: t });
           }
         }
@@ -394,9 +377,15 @@ router.post(
       await TAdjacentDNCSector.destroy({
         where: {
           [Op.or]: [
-            { ADNCS_DNCSectorID1: sectorId, ADNCS_DNCSectorID2: { [Op.notIn]: adjacentSectIds } },
-            { ADNCS_DNCSectorID1: { [Op.notIn]: adjacentSectIds }, ADNCS_DNCSectorID2: sectorId },
-          ]
+            {
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: sectorId,
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: { [Op.notIn]: adjacentSectIds },
+            },
+            {
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID1]: { [Op.notIn]: adjacentSectIds },
+              [TAdjacentDNCSectorFields.ADNCS_DNCSectorID2]: sectorId,
+            },
+          ],
         },
         transaction: t,
       });

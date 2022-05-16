@@ -1,7 +1,6 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const Draft = require('../models/Draft');
@@ -20,24 +19,13 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
+const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
 const {
-  OK,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-  ERR,
-
-  DSP_FULL,
-  DSP_Operator,
-  DNC_FULL,
-  ECD_FULL,
-  REVISOR,
-
-  WORK_POLIGON_TYPES,
-  INCLUDE_DOCUMENTS_CRITERIA,
-  ORDER_PATTERN_TYPES,
+  OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
+  WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
 } = require('../constants');
 
 
@@ -115,16 +103,10 @@ const {
   '/add',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.ADD_ORDER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   // проверка параметров запроса
@@ -458,16 +440,10 @@ router.post(
   '/mod',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.MOD_ORDER; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка факта нахождения пользователя на смене (дежурстве)
   isOnDuty,
   async (req, res) => {
@@ -580,6 +556,10 @@ router.post(
  */
  router.post(
   '/getDataForGID',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_DATA_FOR_GID; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   getDataForGIDValidationRules(),
   validate,
@@ -723,16 +703,10 @@ router.post(
   '/ordersAddressedToGivenWorkPoligonFromGivenDate',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_ORDERS_ADDRESSED_TO_GIVEN_WORK_POLIGON_FROM_GIVEN_DATE; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   // проверка параметров запроса
   getOrdersFromGivenDateRules(),
   validate,
@@ -817,16 +791,10 @@ router.post(
   '/journalData',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [ECD_FULL, DSP_Operator, DSP_FULL, DNC_FULL, REVISOR],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_ORDERS_JOURNAL_DATA; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {

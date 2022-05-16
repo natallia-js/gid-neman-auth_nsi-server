@@ -1,21 +1,12 @@
 const { Router } = require('express');
 const auth = require('../middleware/auth.middleware');
-const { checkGeneralCredentials, HOW_CHECK_CREDS } = require('../middleware/checkGeneralCredentials.middleware');
 const LastOrdersParam = require('../models/LastOrdersParam');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
 
 const router = Router();
 
-const {
-  OK,
-  UNKNOWN_ERR,
-  UNKNOWN_ERR_MESS,
-
-  DNC_FULL,
-  DSP_FULL,
-  DSP_Operator,
-  ECD_FULL,
-} = require('../constants');
+const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -33,16 +24,10 @@ router.post(
   '/data',
   // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
   auth,
-  // определяем требуемые полномочия на запрашиваемое действие
-  (req, _res, next) => {
-    req.action = {
-      which: HOW_CHECK_CREDS.OR,
-      creds: [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL],
-    };
-    next();
-  },
-  // проверка полномочий пользователя на выполнение запрашиваемого действия
-  checkGeneralCredentials,
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_LAST_ORDERS_PARAMS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
