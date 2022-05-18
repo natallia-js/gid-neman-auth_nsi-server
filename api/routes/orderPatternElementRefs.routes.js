@@ -1,8 +1,8 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -17,8 +17,6 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
  router.get(
   '/fullData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -31,7 +29,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех возможных смысловых значений элементов шаблонов распоряжений',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -49,8 +47,6 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
  router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS_AS_STRING_ARRAYS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -68,7 +64,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех возможных смысловых значений элементов шаблонов распоряжений с привязкой к типу элемента',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

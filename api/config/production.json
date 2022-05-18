@@ -1,5 +1,8 @@
 {
   "port": 5000,
+  "allowedCORSOrigins": ["https://10.23.0.79:81","https://10.23.0.79:83","https://10.23.0.79:84"],
+  "cookieMaxAgeInMs": 46800000,
+  "touchUserSessionAfterSec": 46800,
   "jwtSecret": "secret jwt key",
   "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
   "CentralConfigDB": {

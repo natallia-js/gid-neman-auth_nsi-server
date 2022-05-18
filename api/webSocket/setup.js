@@ -37,7 +37,7 @@ function setupWebSocket(server) {
       addError({
         errorTime: new Date(),
         action: 'ws upgrade',
-        error,
+        error: err.message,
         actionParams: null,
       });
       socket.write(UPGRADE_ERROR_MESSAGE);

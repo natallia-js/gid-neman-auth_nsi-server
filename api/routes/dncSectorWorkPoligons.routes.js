@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   getDefinitUsersValidationRules,
   changeDNCSectorWorkPoligonsValidationRules,
@@ -10,7 +9,8 @@ const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const matchUserRolesToAppsAndCreds = require('./additional/matchUserRolesToAppsAndCreds');
 const getUserCredsInApps = require('./additional/getUserCredsInApps');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -24,8 +24,6 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_DNC_SECTOR_WORK_POLIGONS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -42,7 +40,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех рабочих полигонов-участков ДНЦ',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -72,8 +70,6 @@ router.get(
  */
  router.post(
   '/definitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_USERS_WITH_GIVEN_DNC_SECTOR_WORK_POLIGONS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -134,7 +130,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех пользователей, у которых рабочий полигон - участок ДНЦ с одним из заданных id',
-        error,
+        error: error.message,
         actionParams: { sectorIds, apps },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -155,8 +151,6 @@ router.get(
  */
  router.post(
   '/change',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_USER_DNC_SECTOR_WORK_POLIGONS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -215,7 +209,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Изменение списка рабочих полигонов-участков ДНЦ',
-        error,
+        error: error.message,
         actionParams: { userId, dncSectorIds },
       });
       await t.rollback();

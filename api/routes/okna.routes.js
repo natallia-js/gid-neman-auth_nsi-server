@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
@@ -57,7 +58,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       addError({
         errorTime: new Date(),
         action: 'Получение информации от АС Окна',
-        error,
+        error: error.message,
         actionParams: { getOKNARequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

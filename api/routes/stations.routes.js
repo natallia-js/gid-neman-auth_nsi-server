@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   getDefiniteStationValidationRules,
   getDefiniteStationsValidationRules,
@@ -14,7 +13,8 @@ const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const deleteStation = require('../routes/deleteComplexDependencies/deleteStation');
 const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -35,8 +35,6 @@ const {
  */
  router.get(
   '/fullData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATIONS_WITH_TRACKS_AND_WORK_PLACES; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -60,7 +58,7 @@ const {
       addError({
         errorTime: new Date(),
         action: 'Получение полного списка всех станций (+ пути и рабочие места)',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -76,8 +74,6 @@ const {
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATIONS_WITH_TRACKS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -97,7 +93,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение полного списка всех станций (+ пути)',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -116,8 +112,6 @@ router.get(
  */
  router.post(
   '/definitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DEFINIT_STATION_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -149,7 +143,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение информации о станции (+ пути)',
-        error,
+        error: error.message,
         actionParams: { stationId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -168,8 +162,6 @@ router.get(
  */
 router.post(
   '/shortDefinitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DEFINIT_STATIONS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -193,7 +185,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка станций по заданным id этих станций',
-        error,
+        error: error.message,
         actionParams: { stationIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -239,7 +231,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка станций и их рабочих мест (по заданным id станций)',
-        error,
+        error: error.message,
         actionParams: { stationIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -259,8 +251,6 @@ router.post(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_STATION; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -290,7 +280,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление новой станции',
-        error,
+        error: error.message,
         actionParams: { ESRCode, name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -309,8 +299,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_STATION; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -347,7 +335,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление станции',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -368,8 +356,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_STATION; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -422,7 +408,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о станции',
-        error,
+        error: error.message,
         actionParams: { id, ESRCode, name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -438,8 +424,6 @@ router.post(
  */
  router.get(
   '/syncWithPENSI',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.SYNC_STATIONS_WITH_PENSI; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -578,7 +562,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Синхронизация таблицы станций с ПЭНСИ',
-        error,
+        error: error.message,
         actionParams: { stationsDataHTTPRequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

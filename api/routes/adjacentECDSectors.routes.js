@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   addAdjacentECDSectorsValidationRules,
   delAdjacentECDSectorValidationRules,
@@ -10,7 +9,8 @@ const { Op } = require('sequelize');
 const { TAdjacentECDSectorFields, TAdjacentECDSector } = require('../models/TAdjacentECDSector');
 const { TECDSector } = require('../models/TECDSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -24,8 +24,6 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -42,7 +40,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех смежных участков ЭЦД',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -61,8 +59,6 @@ router.get(
  */
  router.post(
   '/definitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_ECD_SECTORS_OF_DEFINITE_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -103,7 +99,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех смежных участков ЭЦД заданного участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -123,8 +119,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ADJACENT_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -203,7 +197,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление смежных участков ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorID, adjSectorIDs },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -223,8 +217,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ADJACENT_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -263,7 +255,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление смежного участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorID1, sectorID2 },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -284,8 +276,6 @@ router.post(
  */
  router.post(
   '/changeAdjacentSectors',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CHANGE_ADJACENT_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -395,7 +385,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Изменение списка смежных участков ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorId, adjacentSectIds },
       });
       await t.rollback();

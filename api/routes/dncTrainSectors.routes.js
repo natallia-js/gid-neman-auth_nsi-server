@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   addDNCTrainSectorValidationRules,
   delDNCTrainSectorValidationRules,
@@ -9,7 +8,8 @@ const validate = require('../validators/validate');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const deleteDNCTrainSector = require('../routes/deleteComplexDependencies/deleteDNCTrainSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -33,8 +33,6 @@ const {
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_DNC_TRAIN_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -64,7 +62,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового поездного участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { name, dncSectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -83,8 +81,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_DNC_TRAIN_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -121,7 +117,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление поездного участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -141,8 +137,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_DNC_TRAIN_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -193,7 +187,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о поездном участке ДНЦ',
-        error,
+        error: error.message,
         actionParams: { id, name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

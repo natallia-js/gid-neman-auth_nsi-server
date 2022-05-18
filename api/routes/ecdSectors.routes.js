@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   getDefiniteECDSectorValidationRules,
   getDefiniteECDSectorsValidationRules,
@@ -18,7 +17,8 @@ const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteECDSector = require('../routes/deleteComplexDependencies/deleteECDSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -40,8 +40,6 @@ const {
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -79,7 +77,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение полного списка всех участков ЭЦД',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -111,7 +109,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение краткого списка всех участков ЭЦД',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -132,8 +130,6 @@ router.get(
  */
  router.post(
   '/shortStationData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -181,7 +177,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех участков ЭЦД для заданной станции',
-        error,
+        error: error.message,
         actionParams: { stationId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -202,8 +198,6 @@ router.get(
  */
  router.post(
   '/definitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ECD_SECTOR_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -267,7 +261,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение полной информации по конкретному участку ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -287,8 +281,6 @@ router.get(
  */
  router.post(
   '/shortDefinitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_GIVEN_ECD_SECTORS_SHORT_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -312,7 +304,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение краткой информации по конкретным участкам ЭЦД',
-        error,
+        error: error.message,
         actionParams: { ecdSectorIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -331,8 +323,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -362,7 +352,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -381,8 +371,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -419,7 +407,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -439,8 +427,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -491,7 +477,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации по участку ЭЦД',
-        error,
+        error: error.message,
         actionParams: { id, name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

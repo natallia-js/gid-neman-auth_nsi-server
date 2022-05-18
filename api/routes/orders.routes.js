@@ -1,7 +1,5 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const auth = require('../middleware/auth.middleware');
-const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const Draft = require('../models/Draft');
 const LastOrdersParam = require('../models/LastOrdersParam');
@@ -19,7 +17,8 @@ const validate = require('../validators/validate');
 const { Op } = require('sequelize');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
-const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
@@ -101,14 +100,10 @@ const {
  */
  router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.ADD_ORDER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   // проверка параметров запроса
   addOrderValidationRules(),
   validate,
@@ -395,7 +390,7 @@ const {
       addError({
         errorTime: new Date(),
         action: 'Издание распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user),
           type, number, createDateTime, place, timeSpan, orderText,
@@ -438,14 +433,10 @@ const {
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.MOD_ORDER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     // Действия выполняем в транзакции
     const session = await mongoose.startSession();
@@ -524,7 +515,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           user: userPostFIOString(req.user), orderId: id, timeSpan, orderText,
         },
@@ -673,7 +664,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение информации о распоряжениях для отображения на ГИД',
-        error,
+        error: error.message,
         actionParams: {
           startDate, stations,
         },
@@ -701,8 +692,6 @@ router.post(
  */
  router.post(
   '/ordersAddressedToGivenWorkPoligonFromGivenDate',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_ORDERS_ADDRESSED_TO_GIVEN_WORK_POLIGON_FROM_GIVEN_DATE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -744,7 +733,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение массива id распоряжений, изданных начиная с указанной даты и адресованных заданному полигону управления',
-        error,
+        error: error.message,
         actionParams: {
           workPoligon, datetime,
         },
@@ -789,8 +778,6 @@ router.post(
  */
  router.post(
   '/journalData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_ORDERS_JOURNAL_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1091,7 +1078,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка распоряжений для журнала',
-        error,
+        error: error.message,
         actionParams: {
           workPoligon, datetimeStart, datetimeEnd, includeDocsCriteria,
           sortFields, filterFields, page, docsCount,

@@ -2,11 +2,7 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('config');
-const auth = require('../middleware/auth.middleware');
-const canWorkOnWorkPoligon = require('../middleware/canWorkOnWorkPoligon.middleware');
-const hasSpecialCredentials = require('../middleware/hasSpecialCredentials.middleware');
-const { isOnDuty } = require('../middleware/isOnDuty.middleware');
-const { isMainAdmin } = require('../middleware/hasUserRightToPerformAction.middleware');
+const { isMainAdmin } = require('../middleware/checkMainAdmin');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 const compareStringArrays = require('../additional/compareStringArrays');
 const {
@@ -26,7 +22,8 @@ const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 const { addDY58UserActionInfo, addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -139,7 +136,7 @@ router.put(
       addError({
         errorTime: new Date(),
         action: 'Регистрация Главного администратора',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -160,8 +157,6 @@ router.put(
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_USERS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -235,7 +230,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех пользователей',
-        error,
+        error: error.message,
         actionParams: { serviceName },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -378,9 +373,6 @@ const saveNewUserData = async (props) => {
  */
 router.post(
   '/register',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь) и
-  // проверка приложения, с которого пришел запрос
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.REGISTER_USER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -446,7 +438,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Регистрация пользователя',
-        error,
+        error: error.message,
         actionParams: {
           login, name, fatherName, surname,
           post, service, roles, stations, dncSectors, ecdSectors,
@@ -546,7 +538,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подача заявки на регистрацию пользователя',
-        error,
+        error: error.message,
         actionParams: {
           login, password, name, fatherName, surname, post, contactData,
           service, roles, stations, dncSectors, ecdSectors,
@@ -578,8 +570,6 @@ router.post(
  */
 router.post(
   '/addRole',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_USER_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -646,7 +636,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление пользователю роли',
-        error,
+        error: error.message,
         actionParams: { serviceName, userId, roleId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -843,6 +833,9 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
+      req.session.userId = user._id;
+      req.session.userToken = token;
+
       res.status(OK).json({
         token,
         userId: user._id,
@@ -882,7 +875,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Вход в систему',
-        error,
+        error: error.message,
         actionParams: { application: applicationAbbreviation, login },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -910,11 +903,6 @@ router.post(
  */
 router.post(
   '/startWorkWithoutTakingDuty',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем возможность выполнения запрашиваемого действия
-  hasSpecialCredentials, // проверка specialCredentials
-  canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITHOUT_TAKING_DUTY; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -980,24 +968,27 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
+      req.session.userId = user._id;
+      req.session.userToken = newToken;
+
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
       // Логируем действие пользователя
-      const logObject = {
-        user: userPostFIOString(user),
-        workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
-        actionTime: new Date(),
-        action: 'Вход в систему без принятия дежурства',
-        actionParams: {
-          userId: user._id,
-          workPoligonType,
-          workPoligonId,
-          workSubPoligonId,
-          specialCredentials,
-          application: applicationAbbreviation,
-        },
-      };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        const logObject = {
+          user: userPostFIOString(user),
+          workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+          actionTime: new Date(),
+          action: 'Вход в систему без принятия дежурства',
+          actionParams: {
+            userId: user._id,
+            workPoligonType,
+            workPoligonId,
+            workSubPoligonId,
+            specialCredentials,
+            application: applicationAbbreviation,
+          },
+        };        
         addDY58UserActionInfo(logObject);
       }
 
@@ -1005,7 +996,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Вход в систему без принятия дежурства',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId,
           workPoligonType,
@@ -1043,11 +1034,6 @@ router.post(
  */
 router.post(
   '/takeDuty',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем возможность выполнения запрашиваемого действия
-  hasSpecialCredentials, // проверка specialCredentials (наделен ли ими пользователь администратором системы)
-  canWorkOnWorkPoligon, // проверка workPoligonType, workPoligonId, workSubPoligonId
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITH_TAKING_DUTY; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1171,24 +1157,27 @@ router.post(
 
       await session.commitTransaction();
 
+      req.session.userId = user._id;
+      req.session.userToken = newToken;
+
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
       // Логируем действие пользователя
-      const logObject = {
-        user: userPostFIOString(user),
-        workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
-        actionTime: lastTakeDutyTime,
-        action: 'Принятие дежурства',
-        actionParams: {
-          userId: user._id,
-          workPoligonType,
-          workPoligonId,
-          workSubPoligonId,
-          specialCredentials,
-          application: applicationAbbreviation,
-        },
-      };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        const logObject = {
+          user: userPostFIOString(user),
+          workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+          actionTime: lastTakeDutyTime,
+          action: 'Принятие дежурства',
+          actionParams: {
+            userId: user._id,
+            workPoligonType,
+            workPoligonId,
+            workSubPoligonId,
+            specialCredentials,
+            application: applicationAbbreviation,
+          },
+        };
         addDY58UserActionInfo(logObject);
       }
 
@@ -1196,7 +1185,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Принятие дежурства',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId,
           workPoligonType,
@@ -1224,8 +1213,6 @@ router.post(
  */
  router.post(
   '/logout',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.LOGOUT; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1259,17 +1246,21 @@ router.post(
         //{ expiresIn: '1h' }
       );
 
+      //req.session.userId = user._id;
+      //req.session.userToken = newToken;
+      req.session.destroy();
+
       res.status(OK).json({ token: newToken });
 
       // Логируем действие пользователя
-      const logObject = {
-        user: userPostFIOString(user),
-        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
-        actionTime: new Date(),
-        action: 'Выход из системы без сдачи дежурства',
-        actionParams: { application: applicationAbbreviation, userId: user._id },
-      };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        const logObject = {
+          user: userPostFIOString(user),
+          workPoligon: req.user.workPoligon ? `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}` : '?',
+          actionTime: new Date(),
+          action: 'Выход из системы без сдачи дежурства',
+          actionParams: { application: applicationAbbreviation, userId: user._id },
+        };
         addDY58UserActionInfo(logObject);
       }
 
@@ -1277,7 +1268,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Выход из системы без сдачи дежурства',
-        error,
+        error: error.message,
         actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -1292,10 +1283,6 @@ router.post(
  */
  router.post(
   '/logoutWithDutyPass',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
-  // определяем возможность выполнения запрашиваемого действия
-  isOnDuty,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.LOGOUT_WITH_DUTY_PASS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1351,17 +1338,21 @@ router.post(
       lastTakePassDutyOnWorkPoligonInfo.lastPassDutyTime = lastPassDutyTime;
       await user.save();
 
+      //req.session.userId = user._id;
+      //req.session.userToken = newToken;
+      req.session.destroy();
+
       res.status(OK).json({ token: newToken, lastPassDutyTime });
 
       // Логируем действие пользователя
-      const logObject = {
-        user: userPostFIOString(user),
-        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
-        actionTime: new Date(),
-        action: 'Выход из системы со сдачей дежурства',
-        actionParams: { application: applicationAbbreviation, userId: user._id },
-      };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
+        const logObject = {
+          user: userPostFIOString(user),
+          workPoligon: req.user.workPoligon ? `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}` : '?',
+          actionTime: new Date(),
+          action: 'Выход из системы со сдачей дежурства',
+          actionParams: { application: applicationAbbreviation, userId: user._id },
+        };
         addDY58UserActionInfo(logObject);
       }
 
@@ -1369,7 +1360,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Выход из системы со сдачей дежурства',
-        error,
+        error: error.message,
         actionParams: { application: applicationAbbreviation, userId: req.user.userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -1390,8 +1381,6 @@ router.post(
  */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_USER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1456,7 +1445,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление пользователя',
-        error,
+        error: error.message,
         actionParams: { serviceName, userId },
       });
       await t.rollback();
@@ -1483,8 +1472,6 @@ router.post(
  */
 router.post(
   '/delRole',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_USER_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1542,7 +1529,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление роли пользователя',
-        error,
+        error: error.message,
         actionParams: { serviceName, userId, roleId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -1572,8 +1559,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_USER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1670,7 +1655,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о пользователе',
-        error,
+        error: error.message,
         actionParams: {
           userId,
           requestData: {
@@ -1697,8 +1682,6 @@ router.post(
  */
  router.post(
   '/confirm',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CONFIRM_USER_REGISTRATION_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1743,7 +1726,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подтверждение информации о пользователе',
-        error,
+        error: error.message,
         actionParams: { userId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

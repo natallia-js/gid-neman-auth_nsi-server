@@ -37,7 +37,7 @@ function setClientsOnlineStatus(clients) {
       addError({
         errorTime: new Date(),
         action: 'Установка online-статуса пользователей в БД',
-        error,
+        error: error.message,
         actionParams: { clientsIds },
       });
     }

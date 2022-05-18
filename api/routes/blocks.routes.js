@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   addBlockValidationRules,
   delBlockValidationRules,
@@ -14,7 +13,8 @@ const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteBlock = require('../routes/deleteComplexDependencies/deleteBlock');
 const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -38,8 +38,6 @@ const {
  */
  router.get(
   '/shortData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_BLOCKS_SHORT_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -56,7 +54,7 @@ const {
       addError({
         errorTime: new Date(),
         action: 'Получение простого списка всех перегонов',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -73,8 +71,6 @@ const {
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_BLOCKS_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -102,7 +98,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех перегонов с соответствующими станциями и путями перегонов',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -122,8 +118,6 @@ router.get(
  */
  router.post(
   '/stationData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_BLOCKS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -165,7 +159,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех перегонов заданной станции',
-        error,
+        error: error.message,
         actionParams: { stationId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -186,8 +180,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_BLOCK; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -275,7 +267,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового перегона',
-        error,
+        error: error.message,
         actionParams: { name, station1, station2 },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -294,8 +286,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_BLOCK; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -332,7 +322,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление перегона',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -355,8 +345,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_BLOCK; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -492,7 +480,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о перегоне',
-        error,
+        error: error.message,
         actionParams: { id, name, station1, station2 },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -508,8 +496,6 @@ router.post(
  */
  router.get(
   '/syncWithPENSI',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.SYNC_BLOCKS_WITH_PENSI; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -710,7 +696,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Синхронизация таблицы перегонов с ПЭНСИ',
-        error,
+        error: error.message,
         actionParams: { blocksDataHTTPRequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

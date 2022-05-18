@@ -1,7 +1,5 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const auth = require('../middleware/auth.middleware');
-const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
 const User = require('../models/User');
@@ -13,7 +11,8 @@ const {
   userConcisePostFIOString,
 } = require('../routes/additional/getUserTransformedData');
 const isOrderAsserted = require('../routes/additional/isOrderAsserted');
-const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
@@ -86,13 +85,13 @@ const assertOrder = (order) => {
  */
 router.post(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_WORK_ORDERS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
+    console.log('session', req.session, req.sessionID);
+
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
@@ -159,7 +158,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка входящих распоряжений',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), startDate,
         },
@@ -184,8 +183,6 @@ router.post(
  */
 router.post(
   '/reportOnDelivery',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.REPORT_ON_ORDER_DELIVERY; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -271,7 +268,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подтверждение доставки распоряжений на рабочий полигон',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), orderIds, deliverDateTime,
         },
@@ -311,14 +308,10 @@ router.post(
  */
  router.post(
   '/confirmOrder',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
 
@@ -454,7 +447,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подтверждение распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), orderId: id, confirmDateTime,
         },
@@ -482,14 +475,10 @@ router.post(
  */
  router.post(
   '/confirmOrderForOtherReceivers',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHER_RECEIVERS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на дежурстве
-  isOnDuty,
   async (req, res) => {
     const userWorkPoligon = req.user.workPoligon;
 
@@ -550,7 +539,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подтверждение распоряжения за других',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), orderId, confirmDateTime,
         },
@@ -595,14 +584,10 @@ router.post(
  */
  router.post(
   '/confirmOrdersForOthers',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHERS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на дежурстве
-  isOnDuty,
   async (req, res) => {
     const userWorkPoligon = req.user.workPoligon;
 
@@ -804,7 +789,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Подтверждение распоряжения за других',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), confirmWorkPoligons, orderId, confirmDateTime,
         },
@@ -834,14 +819,10 @@ router.post(
  */
  router.post(
   '/delConfirmedOrdersFromChain',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.DEL_CONFIRMED_ORDERS_FROM_CHAIN; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     const workPoligon = req.user.workPoligon;
 
@@ -874,7 +855,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление рабочего распоряжения / цепочки распоряжений',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), chainId,
         },
@@ -905,14 +886,10 @@ router.post(
  */
  router.post(
   '/delStationWorkPlaceReceiver',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене
-  isOnDuty,
   async (req, res) => {
     const userWorkPoligon = req.user.workPoligon;
 
@@ -1002,7 +979,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление адресата распоряжения в рамках станции',
-        error,
+        error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user), orderId, workPlaceId,
         },

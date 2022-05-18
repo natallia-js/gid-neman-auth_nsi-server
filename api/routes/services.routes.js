@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   addServiceValidationRules,
   delServiceValidationRules,
@@ -11,7 +10,8 @@ const User = require('../models/User');
 const OrderPattern = require('../models/OrderPattern');
 const mongoose = require('mongoose');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -40,7 +40,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех служб',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -60,8 +60,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_SERVICE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -91,7 +89,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление новой службы',
-        error,
+        error: error.message,
         actionParams: { abbrev, title },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -110,8 +108,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_SERVICE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -172,7 +168,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление службы',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       await t.rollback();
@@ -198,8 +194,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_SERVICE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -291,7 +285,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о службе',
-        error,
+        error: error.message,
         actionParams: { id, abbrev, title },
       });
       await t.rollback();

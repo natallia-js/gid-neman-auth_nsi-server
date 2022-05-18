@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   addECDToDNCValidationRules,
   addDNCToECDValidationRules,
@@ -13,7 +12,8 @@ const { TNearestDNCandECDSector } = require('../models/TNearestDNCandECDSector')
 const { TDNCSector} = require('../models/TDNCSector');
 const { TECDSector} = require('../models/TECDSector');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -27,8 +27,6 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_NEAREST_DNC_ECD_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -45,7 +43,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех ближайших участков ДНЦ и ЭЦД',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -64,8 +62,6 @@ router.get(
  */
  router.post(
   '/dncDefinitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_NEAREST_ECD_SECTORS_OF_DEFINITE_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -96,7 +92,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех ближайших участков ЭЦД заданного участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { sectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -115,8 +111,6 @@ router.get(
  */
  router.post(
   '/ecdDefinitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_NEAREST_DNC_SECTORS_OF_DEFINITE_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -147,7 +141,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех ближайших участков ДНЦ заданного участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -167,8 +161,6 @@ router.get(
  */
 router.post(
   '/addECDToDNC',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_NEAREST_ECD_SECTOR_TO_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -216,7 +208,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление информации о близости участков ЭЦД к данному участку ДНЦ',
-        error,
+        error: error.message,
         actionParams: { dncSectorId, ecdSectorIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -236,8 +228,6 @@ router.post(
  */
  router.post(
   '/addDNCToECD',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_NEAREST_DNC_SECTOR_TO_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -285,7 +275,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление информации о близости участков ДНЦ к данному участку ЭЦД',
-        error,
+        error: error.message,
         actionParams: { ecdSectorId, dncSectorIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -305,8 +295,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_NEAREST_DNC_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -335,7 +323,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление ближайшего участка (ДНЦ либо ЭЦД)',
-        error,
+        error: error.message,
         actionParams: { dncSectorID, ecdSectorID },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -356,8 +344,6 @@ router.post(
  */
  router.post(
   '/changeNearestECDSectors',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_NEAREST_ECD_SECTORS_FOR_DEFINITE_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -441,7 +427,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Изменение списка ближайших участков ЭЦД для данного участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { sectorId, nearestECDSectIds },
       });
       await t.rollback();
@@ -463,8 +449,6 @@ router.post(
  */
  router.post(
   '/changeNearestDNCSectors',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_NEAREST_DNC_SECTORS_FOR_DEFINITE_ECD_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -541,7 +525,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Изменение списка ближайших участков ДНЦ для данного участка ЭЦД',
-        error,
+        error: error.message,
         actionParams: { sectorId, nearestDNCSectIds },
       });
       await t.rollback();

@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const {
   getDefiniteDNCSectorValidationRules,
   getDefiniteDNCSectorsValidationRules,
@@ -18,7 +17,8 @@ const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteDNCSector = require('../routes/deleteComplexDependencies/deleteDNCSector');
 const { addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -39,8 +39,6 @@ const {
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DNC_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -73,7 +71,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех участков ДНЦ',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -105,7 +103,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение простого списка всех участков ДНЦ',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -126,8 +124,6 @@ router.get(
  */
  router.post(
   '/shortStationData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_DNC_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -175,7 +171,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка участков ДНЦ заданной станции',
-        error,
+        error: error.message,
         actionParams: { stationId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -195,8 +191,6 @@ router.get(
  */
  router.post(
   '/definitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DNC_SECTOR_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -255,7 +249,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение конкретного участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { sectorId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -275,8 +269,6 @@ router.get(
  */
  router.post(
   '/shortDefinitData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_GIVEN_DNC_SECTORS_SHORT_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -300,7 +292,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка конкретных участков ДНЦ',
-        error,
+        error: error.message,
         actionParams: { dncSectorIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -319,8 +311,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -350,7 +340,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -369,8 +359,6 @@ router.post(
   */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -407,7 +395,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление участка ДНЦ',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -427,8 +415,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -479,7 +465,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации об участке ДНЦ',
-        error,
+        error: error.message,
         actionParams: { id, name },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -495,8 +481,6 @@ router.post(
  */
  router.get(
   '/syncWithPENSI',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.SYNC_DNC_SECTORS_WITH_PENSI; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -642,7 +626,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Синхронизация таблицы участков ДНЦ с ПЭНСИ',
-        error,
+        error: error.message,
         actionParams: { dncSectorsDataHTTPRequest },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

@@ -50,7 +50,7 @@ async function addDY58UserActionInfo(params) {
     addError({
       errorTime: new Date(),
       action: 'Сохранение информации о действии пользователя ДУ-58',
-      error,
+      error: error.message,
       actionParams: params,
     });
   }
@@ -78,7 +78,7 @@ async function addAdminActionInfo(params) {
     addError({
       errorTime: new Date(),
       action: 'Сохранение информации о действии администратора',
-      error,
+      error: error.message,
       actionParams: params,
     });
   }
@@ -104,7 +104,7 @@ async function addServerActionInfo(params) {
     addError({
       errorTime: new Date(),
       action: 'Сохранение информации о действии сервера',
-      error,
+      error: error.message,
       actionParams: params,
     });
   }

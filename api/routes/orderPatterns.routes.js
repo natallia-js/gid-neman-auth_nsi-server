@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const OrderPattern = require('../models/OrderPattern');
 const {
   addOrderPatternValidationRules,
@@ -8,9 +7,10 @@ const {
   modOrderPatternsCategoryValidationRules,
 } = require('../validators/orderPatterns.validator');
 const validate = require('../validators/validate');
-const { isMainAdmin } = require('../middleware/hasUserRightToPerformAction.middleware');
+const { isMainAdmin } = require('../middleware/checkMainAdmin');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -39,8 +39,6 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.post(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ORDER_PATTERNS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -94,7 +92,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех общих (не приватных) шаблонов распоряжений',
-        error,
+        error: error.message,
         actionParams: { userId, workPoligonType, workPoligonId, getChildPatterns },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -130,8 +128,6 @@ router.post(
  */
  router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ORDER_PATTERN; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -195,7 +191,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового шаблона распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           _id, service, type, category, title, specialTrainCategories,
           elements, isPersonalPattern, workPoligonId, workPoligonType,
@@ -219,8 +215,6 @@ router.post(
  */
  router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ORDER_PATTERN; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -253,7 +247,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление шаблона распоряжения',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -280,8 +274,6 @@ router.post(
  */
  router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ORDER_PATTERN; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -330,7 +322,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование данных шаблона распоряжения',
-        error,
+        error: error.message,
         actionParams: { id, title },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -352,8 +344,6 @@ router.post(
  */
  router.post(
   '/modCategoryTitle',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ORDER_PATTERNS_CATEGORY_TITLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -393,7 +383,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование наименования категории шаблонов распоряжений',
-        error,
+        error: error.message,
         actionParams: { service, orderType, title, newTitle },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

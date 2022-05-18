@@ -3,33 +3,32 @@ const {
   NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS,
 } = require('../constants');
 const { addError } = require('../serverSideProcessing/processLogsActions');
+const AUTH_NSI_ACTIONS = require('./AUTH_NSI_ACTIONS');
 
 /**
- * Промежуточный обработчик проверки того, может ли лицо, запрашивающее действие, работать на указанном
- * в запросе рабочем полигоне.
- * В req.user должна быть информация, извлеченная из token (см. auth.middleware.js).
+ * Проверяет, может ли лицо, запрашивающее действие, работать на указанном в запросе рабочем полигоне.
+ * В req.user должна быть информация, извлеченная из хранящегося в session token.
  * В req.body должна быть информация о рабочем полигоне: workPoligonType, workPoligonId, workSubPoligonId.
- *
- * @param {object} req - объект запроса
- * @param {object} res - объект ответа
- * @param {function} next - функция, при вызове которой активируется следующая функция промежуточной обработки
- *                          (управление передается следующему обработчику)
  */
-module.exports = async (req, res, next) => {
-  // Справка: HTTP-метод OPTIONS используется для описания параметров соединения с целевым ресурсом.
-  //          Клиент может указать особый URL для обработки метода OPTIONS, или * (зведочку) чтобы
-  //          указать весь сервер целиком.
-  if (req.method === 'OPTIONS') {
-    return next();
+module.exports = async (req) => {
+  if (!req) {
+    return { err: true, status: UNAUTHORIZED, message: NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS };
   }
-
-  const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
-  const userData = req.user;
-  let hasRight = true;
+  if (![
+    AUTH_NSI_ACTIONS.START_WORK_WITHOUT_TAKING_DUTY,
+    AUTH_NSI_ACTIONS.START_WORK_WITH_TAKING_DUTY,
+    ].includes(req.requestedAction)
+  ) {
+    return { err: false };
+  }
 
   // Теперь проверяем возможность пользователя работать на желаемом рабочем полигоне, анализируя
   // информацию, извлеченную из его токена
   try {
+    const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
+    const userData = req.user;
+    let hasRight = true;
+  
     switch (workPoligonType) {
       case WORK_POLIGON_TYPES.STATION:
         if (
@@ -64,18 +63,21 @@ module.exports = async (req, res, next) => {
     }
 
     if (!hasRight) {
-      return res.status(UNAUTHORIZED).json({ message: NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS });
+      return { err: true, status: UNAUTHORIZED, message: NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS };
     }
 
-    next();
+    return { err: false };
 
   } catch (error) {
     addError({
       errorTime: new Date(),
-      action: 'Промежуточный обработчик проверки возможности работать на указанном рабочем полигоне',
-      error,
-      actionParams: {},
+      action: 'Проверка возможности работать на указанном рабочем полигоне',
+      error: error.message,
+      actionParams: {
+        requestBody: req.body,
+        requestUser: req.user,
+      },
     });
-    res.status(UNAUTHORIZED).json({ message: UNAUTHORIZED_ERR_MESS });
+    return { err: true, status: UNAUTHORIZED, message: UNAUTHORIZED_ERR_MESS };
   }
 }

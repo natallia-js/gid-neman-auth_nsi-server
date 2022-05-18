@@ -1,10 +1,10 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const DY58UsersLog = require('../models/DY58UsersLog');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const { getLogsRules } = require('../validators/logs.validator');
 const validate = require('../validators/validate');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -27,8 +27,6 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
  router.post(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DY58_USERS_ACTIONS_LOGS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -86,7 +84,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       addError({
         errorTime: new Date(),
         action: 'Получение списка логов действий пользователей ДУ-58',
-        error,
+        error: error.message,
         actionParams: {
           datetimeStart, datetimeEnd, page, docsCount,
         },

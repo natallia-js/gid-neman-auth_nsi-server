@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const auth = require('../middleware/auth.middleware');
 const App = require('../models/App');
 const Role = require('../models/Role');
 const {
@@ -13,7 +12,8 @@ const {
 } = require('../validators/apps.validator');
 const validate = require('../validators/validate');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { AUTH_NSI_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
@@ -27,13 +27,11 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  async (_req, res) => {
+  async (req, res) => {
     try {
       const data = await App.find();
       res.status(OK).json(data);
@@ -41,7 +39,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех приложений',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -59,8 +57,6 @@ router.get(
  */
 router.get(
   '/abbrData',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS_ABBR_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -73,7 +69,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех приложений и соответствующих им полномочий пользователей',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -99,8 +95,6 @@ router.get(
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -136,7 +130,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового приложения',
-        error,
+        error: error.message,
         actionParams: { _id, shortTitle, title, credentials },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -158,8 +152,6 @@ router.post(
  */
 router.post(
   '/addCred',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP_CREDENTIAL; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -218,7 +210,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление нового полномочия приложения',
-        error,
+        error: error.message,
         actionParams: { appId, _id, englAbbreviation, description },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -237,8 +229,6 @@ router.post(
  */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -287,7 +277,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление приложения',
-        error,
+        error: error.message,
         actionParams: { appId },
       });
 
@@ -313,8 +303,6 @@ router.post(
  */
 router.post(
   '/delCred',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP_CREDENTIAL; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -367,7 +355,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление полномочия приложения',
-        error,
+        error: error.message,
         actionParams: { appId, credId },
       });
 
@@ -398,8 +386,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -442,7 +428,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о приложении',
-        error,
+        error: error.message,
         actionParams: { appId, shortTitle },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -464,8 +450,6 @@ router.post(
  */
 router.post(
   '/modCred',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP_CREDENTIAL; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -527,7 +511,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование информации о полномочии приложения',
-        error,
+        error: error.message,
         actionParams: { appId, credId, englAbbreviation, description },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

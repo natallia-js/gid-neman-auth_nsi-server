@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const auth = require('../middleware/auth.middleware');
 const Role = require('../models/Role');
 const App = require('../models/App');
 const User = require('../models/User');
@@ -13,11 +12,9 @@ const {
 } = require('../validators/roles.validator');
 const validate = require('../validators/validate');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const {
-  AUTH_NSI_ACTIONS,
-  isMainAdmin,
-  hasUserRightToPerformAction,
-} = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
+const { isMainAdmin } = require('../middleware/checkMainAdmin');
 
 const router = Router();
 
@@ -43,7 +40,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех ролей',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -62,8 +59,6 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ALLOWED_ROLES; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -83,7 +78,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка всех ролей',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -102,8 +97,6 @@ router.get(
  */
 router.get(
   '/abbrs',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ROLES_ABBRS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -123,7 +116,7 @@ router.get(
       addError({
         errorTime: new Date(),
         action: 'Получение списка аббревиатур всех ролей с их идентификаторами',
-        error,
+        error: error.message,
         actionParams: {},
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -192,8 +185,6 @@ const checkAppWithCredsExists = async (app) => {
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -236,7 +227,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление новой роли',
-        error,
+        error: error.message,
         actionParams: { _id, englAbbreviation, description, subAdminCanUse, apps },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -257,8 +248,6 @@ router.post(
  */
 router.post(
   '/addCred',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP_CRED_TO_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -309,7 +298,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Добавление в роль нового полномочия в приложении',
-        error,
+        error: error.message,
         actionParams: { roleId, appId, credId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -331,8 +320,6 @@ router.post(
  */
 router.post(
   '/changeCreds',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ROLE_APP_CREDENTIALS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -375,7 +362,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Изменение списка полномочий в приложении',
-        error,
+        error: error.message,
         actionParams: { roleId, appId, newCredIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -394,8 +381,6 @@ router.post(
  */
 router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -444,7 +429,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление роли',
-        error,
+        error: error.message,
         actionParams: { roleId },
       });
       await session.abortTransaction();
@@ -474,8 +459,6 @@ router.post(
  */
 router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ROLE; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -528,7 +511,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование роли',
-        error,
+        error: error.message,
         actionParams: { roleId, englAbbreviation, apps },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

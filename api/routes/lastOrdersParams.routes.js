@@ -1,8 +1,8 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
 const LastOrdersParam = require('../models/LastOrdersParam');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
@@ -22,8 +22,6 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  */
 router.post(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_LAST_ORDERS_PARAMS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -44,7 +42,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка параметров всех последних изданных распоряжений',
-        error,
+        error: error.message,
         actionParams: { workPoligon },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });

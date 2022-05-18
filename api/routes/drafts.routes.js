@@ -1,9 +1,8 @@
 const { Router } = require('express');
-const auth = require('../middleware/auth.middleware');
-const { isOnDuty } = require('../middleware/isOnDuty.middleware');
 const Draft = require('../models/Draft');
 const { addError } = require('../serverSideProcessing/processLogsActions');
-const { DY58_ACTIONS, hasUserRightToPerformAction } = require('../middleware/hasUserRightToPerformAction.middleware');
+const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
+const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
@@ -17,14 +16,10 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR } = require('../constants');
  */
 router.post(
   '/add',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.ADD_ORDER_DRAFT; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     // Определяем рабочий полигон пользователя
     const workPoligon = req.user.workPoligon;
@@ -53,7 +48,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Создание нового черновика распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           type, createDateTime, place, timeSpan, defineOrderTimeSpan, orderText,
           dncToSend, dspToSend, ecdToSend, otherToSend, workPoligon, createdOnBehalfOf, showOnGID,
@@ -75,14 +70,10 @@ router.post(
  */
  router.post(
   '/mod',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.MOD_ORDER_DRAFT; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const {
@@ -116,7 +107,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Редактирование черновика распоряжения',
-        error,
+        error: error.message,
         actionParams: {
           id, place, timeSpan, defineOrderTimeSpan, orderText, dncToSend,
           dspToSend, ecdToSend, otherToSend, createdOnBehalfOf, showOnGID,
@@ -138,14 +129,10 @@ router.post(
  */
  router.post(
   '/del',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.DEL_ORDER_DRAFT; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверка факта нахождения пользователя на смене (дежурстве)
-  isOnDuty,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { id } = req.body;
@@ -161,7 +148,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Удаление черновика распоряжения',
-        error,
+        error: error.message,
         actionParams: { id },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -182,8 +169,6 @@ router.post(
  */
  router.get(
   '/data',
-  // расшифровка токена (извлекаем из него полномочия, которыми наделен пользователь)
-  auth,
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_ORDER_DRAFTS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -215,7 +200,7 @@ router.post(
       addError({
         errorTime: new Date(),
         action: 'Получение списка черновиков распоряжений, созданных на заданном полигоне управления',
-        error,
+        error: error.message,
         actionParams: { workPoligon },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
