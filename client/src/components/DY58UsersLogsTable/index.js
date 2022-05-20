@@ -73,8 +73,7 @@ const DY58UsersLogsTable = () => {
           datetimeEnd: timeSpan.endDate,
           page,
           docsCount: MAX_TABLE_ROW_COUNT,
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
 
       const tableData = res.data.map((item) => getAppDY58UserLogObjFromDBDY58UserLogObj(item));

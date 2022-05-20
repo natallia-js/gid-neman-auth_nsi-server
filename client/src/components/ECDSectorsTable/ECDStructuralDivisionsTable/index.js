@@ -72,10 +72,8 @@ const ECDStructuralDivisionsTable = (props) => {
     try {
       // Делаем запрос на сервер с целью добавления информации о подразделении
       const res = await request(ServerAPI.ADD_ECDSTRUCTURALDIVISIONS_DATA, 'POST',
-        { ecdSectorId: currECDSectorRecordId, ...division },
-        { Authorization: `Bearer ${auth.token}` }
+        { ecdSectorId: currECDSectorRecordId, ...division }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
@@ -113,10 +111,7 @@ const ECDStructuralDivisionsTable = (props) => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о подразделении ЭЦД
-      const res = await request(ServerAPI.DEL_ECDSTRUCTURALDIVISIONS_DATA, 'POST', { id: divisionId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_ECDSTRUCTURALDIVISIONS_DATA, 'POST', { id: divisionId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>
@@ -191,11 +186,7 @@ const ECDStructuralDivisionsTable = (props) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о подразделении
-      const res = await request(ServerAPI.MOD_ECDSTRUCTURALDIVISIONS_DATA, 'POST',
-        { id: divisionId, ...rowData },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.MOD_ECDSTRUCTURALDIVISIONS_DATA, 'POST', { id: divisionId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) =>

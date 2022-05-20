@@ -77,12 +77,8 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по станциям
-      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET');
       const tableData = res.map((station) => getAppStationObjFromDBStationObj(station));
-
       setTableData(tableData);
       setLoadDataErr(null);
 
@@ -121,14 +117,9 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о станции
-      const res = await request(ServerAPI.ADD_STATION_DATA, 'POST', { ...station }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_STATION_DATA, 'POST', { ...station });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newStation = getAppStationObjFromDBStationObj(res.station);
-
       setTableData([...tableData, newStation]);
 
     } catch (e) {
@@ -155,12 +146,8 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о станции
-      const res = await request(ServerAPI.DEL_STATION_DATA, 'POST', { id: stationId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_STATION_DATA, 'POST', { id: stationId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((station) => station[STATION_FIELDS.KEY] !== stationId));
 
     } catch (e) {
@@ -224,19 +211,14 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о станции
-      const res = await request(ServerAPI.MOD_STATION_DATA, 'POST', { id: stationId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_STATION_DATA, 'POST', { id: stationId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((station) => {
         if (station[STATION_FIELDS.KEY] === stationId) {
           return { ...station, ...rowData };
         }
         return station;
       });
-
       setTableData(newTableData);
       finishEditing();
 
@@ -275,9 +257,7 @@ const StationsTable = () => {
   const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_STATIONS_WITH_PENSI, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      let res = await request(ServerAPI.SYNC_STATIONS_WITH_PENSI, 'GET');
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

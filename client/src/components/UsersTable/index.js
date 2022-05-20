@@ -118,9 +118,7 @@ const UsersTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
-      let res = await request(ServerAPI.GET_ALL_USERS, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      let res = await request(ServerAPI.GET_ALL_USERS, 'GET');
       const tableData = res
         .map((user) => getAppUserObjFromDBUserObj(user))
         // Неподтвержденные записи по пользователям выводим в начале списка
@@ -137,9 +135,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET');
       // Участки ДНЦ будем сортировать при отображении в списках выбора
       const dncSectors = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
@@ -153,9 +149,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET');
      // Участки ЭЦД будем сортировать при отображении в списках выбора
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
@@ -169,9 +163,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
-      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET');
       const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       // Станции будем сортировать при отображении в списках выбора
       const dataForStationsMultipleSelect = [];
@@ -197,9 +189,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по ролям
-      res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET');
       // Роли отсортируем перед отображением в списках выбора
       const rolesData = res
         .map((role) => getAppRoleObjFromDBRoleObj(role))
@@ -213,9 +203,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по службам
-      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
       // Хочу, чтобы службы в выпадающих списках были отсортированы по алфавиту
       const servicesData = res
         .map((service) => getAppServiceObjFromDBServiceObj(service))
@@ -231,9 +219,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по должностям
-      res = await request(ServerAPI.GET_POSTS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_POSTS_DATA, 'GET');
       // Хочу, чтобы должности в выпадающих списках были отсортированы по алфавиту
       const postsData = res
         .map((post) => getAppPostObjFromDBPostObj(post))
@@ -277,9 +263,7 @@ const UsersTable = () => {
     setRecsBeingAdded((value) => value + 1);
     try {
       // Делаем запрос на сервер с целью добавления информации о пользователе
-      const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user);
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newUser = getAppUserObjFromDBUserObj(res.user);
       setTableData([...tableData, newUser]);
@@ -305,9 +289,7 @@ const UsersTable = () => {
     setRecsBeingProcessed((value) => [...value, userId]);
     try {
       // Делаем запрос на сервер с целью удаления всей информации о пользователе
-      const res = await request(ServerAPI.DEL_USER, 'POST', { userId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.DEL_USER, 'POST', { userId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData(tableData.filter((user) => user[USER_FIELDS.KEY] !== userId));
 
@@ -327,9 +309,7 @@ const UsersTable = () => {
     setRecsBeingProcessed((value) => [...value, userId]);
     try {
       // Делаем запрос на сервер с целью подтверждения всей информации о пользователе
-      const res = await request(ServerAPI.CONFIRM_USER, 'POST', { userId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.CONFIRM_USER, 'POST', { userId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
@@ -400,9 +380,7 @@ const UsersTable = () => {
     setRecsBeingProcessed((value) => [...value, userId]);
     try {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
-      const res = await request(ServerAPI.MOD_USER, 'POST', { userId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.MOD_USER, 'POST', { userId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
@@ -434,9 +412,7 @@ const UsersTable = () => {
    const handleEditUserRoles = async ({ userId, rolesIds }) => {
     try {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
-      const res = await request(ServerAPI.MOD_USER, 'POST', { userId, roles: rolesIds }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.MOD_USER, 'POST', { userId, roles: rolesIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
@@ -461,10 +437,7 @@ const UsersTable = () => {
    */
    const handleEditUserStationWorkPoligons = async ({ userId, poligons }) => {
     try {
-      const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST',
-        { userId, poligons },
-        { Authorization: `Bearer ${auth.token}` }
-      );
+      const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST', { userId, poligons });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
@@ -488,10 +461,7 @@ const UsersTable = () => {
    */
    const handleEditUserDNCSectorWorkPoligons = async ({ userId, dncSectorIds }) => {
     try {
-      const res = await request(ServerAPI.MOD_DNC_SECTORS_WORK_POLIGON_LIST, 'POST',
-        { userId, dncSectorIds },
-        { Authorization: `Bearer ${auth.token}` }
-      );
+      const res = await request(ServerAPI.MOD_DNC_SECTORS_WORK_POLIGON_LIST, 'POST', { userId, dncSectorIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
@@ -515,10 +485,7 @@ const UsersTable = () => {
    */
    const handleEditUserECDSectorWorkPoligons = async ({ userId, ecdSectorIds }) => {
     try {
-      const res = await request(ServerAPI.MOD_ECD_SECTORS_WORK_POLIGON_LIST, 'POST',
-        { userId, ecdSectorIds },
-        { Authorization: `Bearer ${auth.token}` }
-      );
+      const res = await request(ServerAPI.MOD_ECD_SECTORS_WORK_POLIGON_LIST, 'POST', { userId, ecdSectorIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {

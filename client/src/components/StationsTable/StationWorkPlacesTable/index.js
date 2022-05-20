@@ -65,12 +65,8 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
 
     try {
       // Делаем запрос на сервер с целью добавления информации о рабочем месте
-      const res = await request(ServerAPI.ADD_STATION_WORK_PLACE_DATA, 'POST', { stationId, ...workPlace }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_STATION_WORK_PLACE_DATA, 'POST', { stationId, ...workPlace });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -106,12 +102,8 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о рабочем месте на станции
-      const res = await request(ServerAPI.DEL_STATION_WORK_PLACE_DATA, 'POST', { id: stationWorkPlaceId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_STATION_WORK_PLACE_DATA, 'POST', { id: stationWorkPlaceId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -182,12 +174,8 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о рабочем месте на станции
-      const res = await request(ServerAPI.MOD_STATION_WORK_PLACE_DATA, 'POST', { id: stationWorkPlaceId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_STATION_WORK_PLACE_DATA, 'POST', { id: stationWorkPlaceId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -201,7 +189,6 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
           return station;
         })
       );
-
       finishEditing();
 
     } catch (e) {

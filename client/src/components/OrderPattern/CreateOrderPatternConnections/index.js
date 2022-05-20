@@ -378,10 +378,8 @@ export const CreateOrderPatternConnections = (props) => {
               childParamId: conn.childParamId,
             };
           }),
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.baseCandidate);
@@ -406,10 +404,8 @@ export const CreateOrderPatternConnections = (props) => {
         {
           basePatternId: selectedBasePattern[ORDER_PATTERN_FIELDS.KEY],
           childPatternId: selectedChildPattern[ORDER_PATTERN_FIELDS.KEY],
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.baseCandidate);

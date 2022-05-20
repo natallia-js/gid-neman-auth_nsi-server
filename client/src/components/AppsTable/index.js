@@ -66,23 +66,16 @@ const AppsTable = () => {
    */
   const fetchData = useCallback(async () => {
     setDataLoaded(false);
-
     try {
       // Делаем запрос на сервер с целью получения информации по приложениям
-      const res = await request(ServerAPI.GET_APPS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.GET_APPS_DATA, 'GET');
       const tableData = res.map((app) => getAppApplicationObjFromDBApplicationObj(app));
-
       setTableData(tableData);
       setLoadDataErr(null);
-
     } catch (e) {
       setTableData(null);
       setLoadDataErr(e.message);
     }
-
     setDataLoaded(true);
   }, [auth.token, request]);
 
@@ -110,27 +103,19 @@ const AppsTable = () => {
    */
   const handleAddNewApp = async (app) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о приложении
-      const res = await request(ServerAPI.ADD_APP_DATA, 'POST', { ...app, credentials: [] }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_APP_DATA, 'POST', { ...app, credentials: [] });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData([...tableData, getAppApplicationObjFromDBApplicationObj(res.app)]);
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setAppFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -142,21 +127,14 @@ const AppsTable = () => {
    */
   const handleDelApp = async (appId) => {
     setRecsBeingProcessed((value) => [...value, appId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о приложении
-      const res = await request(ServerAPI.DEL_APP_DATA, 'POST', { appId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_APP_DATA, 'POST', { appId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((app) => String(app[APP_FIELDS.KEY]) !== String(appId)));
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== appId));
   }
 
@@ -213,25 +191,19 @@ const AppsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о приложении
-      const res = await request(ServerAPI.MOD_APP_DATA, 'POST', { appId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_APP_DATA, 'POST', { appId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((app) => {
         if (String(app[APP_FIELDS.KEY]) === String(res.app._id)) {
           return { ...app, ...getAppApplicationObjFromDBApplicationObj(res.app) };
         }
         return app;
       })
-
       setTableData(newTableData);
       finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });

@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import {
-  LOCALSTORAGE_NAME,
-  CURR_APP_ABBREV_NAME,
-} from '../constants';
+import { CURR_APP_ABBREV_NAME, ServerAPI } from '../constants';
+import { useHttp } from '../hooks/http.hook';
 
 
 /**
@@ -23,35 +21,25 @@ export const useAuth = () => {
   const [authError, setAuthError] = useState(null);
   // Завершен / не завершен процесс аутентификации пользователя
   const [ready, setReady] = useState(false);
+  // Для запросов к серверу
+  const { request } = useHttp();
 
 
   /**
-   * Функция входа пользователя в систему
+   * Функция входа пользователя в систему (должна вызываться после отправки запроса на сервер).
    */
-  const login = useCallback((jwtToken, id, userInfo, roles, credentials) => {
+  const login = useCallback(({ jwtToken, id, userInfo, roles, credentials }) => {
     if (!jwtToken || !id || !roles || !credentials ||
       // Имея список полномочий пользователя в приложениях ГИД Неман, ищем среди них текущее приложение
       !credentials.find((app) => app.appAbbrev === CURR_APP_ABBREV_NAME)) {
       setAuthError('Данный пользователь не имеет прав на работу с текущим приложением');
       return;
     }
-
     setToken(jwtToken);
     setUserId(id);
     setUserInfo(userInfo);
     setUserRoles(roles);
     setUserCredentials(credentials);
-
-    const localStorageData = JSON.parse(localStorage.getItem(LOCALSTORAGE_NAME));
-
-    localStorage.setItem(LOCALSTORAGE_NAME, JSON.stringify({
-      ...localStorageData,
-      userId: id,
-      token: jwtToken,
-      userInfo,
-      userRoles: roles,
-      userCredentials: credentials,
-    }));
   }, []);
 
 
@@ -80,8 +68,6 @@ export const useAuth = () => {
     setUserInfo(null);
     setUserRoles(null);
     setUserCredentials(null);
-
-    localStorage.removeItem(LOCALSTORAGE_NAME);
   }, []);
 
 
@@ -90,14 +76,27 @@ export const useAuth = () => {
    * а не рендеринг компонентов).
    */
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem(LOCALSTORAGE_NAME));
-
-    if (data) {
-      login(data.token, data.userId, data.userInfo, data.userRoles, data.userCredentials);
-    }
-
-    setReady(true);
-  }, [login]);
+    // Отправляем серверу запрос на вход в систему через сессию
+    request(ServerAPI.WHO_AM_I, 'GET')
+      .then((responseData) => {
+        if (responseData) {
+          login({
+            jwtToken: responseData.token,
+            id: responseData.userId,
+            userInfo: responseData.userInfo,
+            roles: responseData.roles,
+            credentials: responseData.credentials,
+          });
+        }
+      })
+      .catch(() => {
+        // ничего не делаем при неудачной попытке аутентифицироваться автоматически через сессию,
+        // пользователю будет просто предложено снова войти в систему
+      })
+      .finally(() => {
+        setReady(true);
+      });
+  }, [login, request]);
 
 
   return {

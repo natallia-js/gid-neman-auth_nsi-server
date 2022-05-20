@@ -10,7 +10,7 @@ const AUTH_NSI_ACTIONS = require('./AUTH_NSI_ACTIONS');
  * В req.user должна быть информация, извлеченная из хранящегося в session token.
  * В req.body должна быть информация о рабочем полигоне: workPoligonType, workPoligonId, workSubPoligonId.
  */
-module.exports = async (req) => {
+module.exports = (req) => {
   if (!req) {
     return { err: true, status: UNAUTHORIZED, message: NO_RIGHT_WORK_ON_WORK_POLIGON_ERR_MESS };
   }

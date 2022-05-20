@@ -101,10 +101,8 @@ const ECDTrainSectorBlocksTable = (props) => {
           blockId,
           posInTrainSector: rowData[BLOCK_FIELDS.POS_IN_TRAIN_SECTOR],
           belongsToSector: rowData[BLOCK_FIELDS.BELONGS_TO_SECTOR] ? 1 : 0,
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
@@ -154,10 +152,8 @@ const ECDTrainSectorBlocksTable = (props) => {
         {
           trainSectorId: record[TRAIN_SECTOR_FIELDS.KEY],
           blockId,
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние

@@ -4,10 +4,6 @@ const ServerAddress = process.env.REACT_APP_SERVER_URL;
 
 // ----------------------------------------
 
-export const LOCALSTORAGE_NAME = 'gid-neman-nsi-auth-user';
-
-// ----------------------------------------
-
 export const CURR_APP_ABBREV_NAME = 'GidNemanAuthNSIUtil';
 
 // ----------------------------------------
@@ -39,6 +35,8 @@ export const ServerAPI = Object.freeze({
   MOD_APP_CRED_DATA: ServerAddress + '/api/apps/modCred',
 
   LOGIN: ServerAddress + '/api/auth/login',
+  WHO_AM_I: ServerAddress + '/api/auth/whoAmI',
+  LOGOUT: ServerAddress + '/api/auth/logout',
 
   GET_ROLES_DATA: ServerAddress + '/api/roles/data',
   GET_ROLES_ABBR_DATA: ServerAddress + '/api/roles/abbrs',

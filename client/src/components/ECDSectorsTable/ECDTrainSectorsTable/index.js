@@ -100,11 +100,7 @@ const ECDTrainSectorsTable = (props) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке
-      const res = await request(ServerAPI.MOD_ECDTRAINSECTORS_DATA, 'POST',
-        { id: trainSectorId, ...rowData },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.MOD_ECDTRAINSECTORS_DATA, 'POST', { id: trainSectorId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
@@ -145,11 +141,7 @@ const ECDTrainSectorsTable = (props) => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации об участке ЭЦД
-      const res = await request(ServerAPI.DEL_ECDTRAINSECTORS_DATA, 'POST',
-        { id: trainSectorId },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.DEL_ECDTRAINSECTORS_DATA, 'POST', { id: trainSectorId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние

@@ -58,10 +58,7 @@ const NearestECDSectorsBlock = (props) => {
     try {
       // Делаем запрос на сервер с целью редактирования информации о ближайших участках ЭЦД
       const res = await request(ServerAPI.MOD_NEARESTECDFORDNCSECTORS_DATA, 'POST',
-        { sectorId: currDNCSectorKey, nearestECDSectIds: newNearestECDSectList },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+        { sectorId: currDNCSectorKey, nearestECDSectIds: newNearestECDSectList });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Меняем локальное состояние (вносим изменения в массив объектов участков ДНЦ)

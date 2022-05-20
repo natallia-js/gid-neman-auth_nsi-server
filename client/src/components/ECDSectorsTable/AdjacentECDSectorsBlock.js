@@ -54,10 +54,8 @@ const AdjacentECDSectorsBlock = (props) => {
     try {
       // Делаем запрос на сервер с целью редактирования информации о смежных участках ЭЦД
       const res = await request(ServerAPI.MOD_ADJACENTECDSECTORS_DATA, 'POST',
-        { sectorId: currECDSectorKey, adjacentSectIds: newAdjacentECDSectList },
-        { Authorization: `Bearer ${auth.token}` }
+        { sectorId: currECDSectorKey, adjacentSectIds: newAdjacentECDSectList }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Формируем массив id участков ЭЦД, связь смежности с которыми была удалена для текущего участка ЭЦД

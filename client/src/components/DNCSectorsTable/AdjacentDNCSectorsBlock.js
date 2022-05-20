@@ -54,8 +54,7 @@ const AdjacentDNCSectorsBlock = (props) => {
     try {
       // Делаем запрос на сервер с целью редактирования информации о смежных участках ДНЦ
       const res = await request(ServerAPI.MOD_ADJACENTDNCSECTORS_DATA, 'POST',
-        { sectorId: currDNCSectorKey, adjacentSectIds: newAdjacentDNCSectList },
-        { Authorization: `Bearer ${auth.token}` }
+        { sectorId: currDNCSectorKey, adjacentSectIds: newAdjacentDNCSectList }
       );
 
       message(MESSAGE_TYPES.SUCCESS, res.message);

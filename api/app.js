@@ -101,12 +101,16 @@ connectToMongoDB(mongoURI)
       // TRUE forces a session that is “uninitialized” to be saved to the store; a session is uninitialized when it is new but not modified
       saveUninitialized: false,
       // TRUE forces the session to be saved back to the session store, even if the session was never modified during the request
+      // (т.е. если явно в req.session ничего не записать, то при resave = true будет создана запись в БД;
+      // нам такое поведение не нужно, в БД будем писать только успешно вошедшего в систему пользователя)
       resave: false,
       cookie: {
         // user session expiration date; each time a user interacts with the server, its session expiration date in refreshed
         maxAge: cookieMaxAgeInMs,
-        httpOnly: true, // no XSS attacks
-        secure: true, // only via https
+        // no XSS attacks
+        httpOnly: true,
+        // only via https
+        secure: true,
         // connect-mongo uses MongoDB's TTL connection feature to have mongod automatically remove expired sessions
         autoRemove: 'native',
         // we do not want to resave all the session on database every single time that the user refreshes the page, so we

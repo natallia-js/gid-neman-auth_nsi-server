@@ -34,14 +34,9 @@ const ChangePasswordBlock = ({
    */
    const handleChangePassword = async ({ userId, newPassword }) => {
     try {
-      const res = await request(ServerAPI.MOD_USER, 'POST',
-        { userId, password: newPassword },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.MOD_USER, 'POST', { userId, password: newPassword });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setPasswordError(null);
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
       if (e.errors && e.errors[0]) {

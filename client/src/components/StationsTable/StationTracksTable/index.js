@@ -65,12 +65,8 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
 
     try {
       // Делаем запрос на сервер с целью добавления информации о пути
-      const res = await request(ServerAPI.ADD_STATION_TRACK_DATA, 'POST', { stationId, ...track }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_STATION_TRACK_DATA, 'POST', { stationId, ...track });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -106,12 +102,8 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о пути станции
-      const res = await request(ServerAPI.DEL_STATION_TRACK_DATA, 'POST', { id: stationTrackId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_STATION_TRACK_DATA, 'POST', { id: stationTrackId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -182,12 +174,8 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о пути станции
-      const res = await request(ServerAPI.MOD_STATION_TRACK_DATA, 'POST', { id: stationTrackId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_STATION_TRACK_DATA, 'POST', { id: stationTrackId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((station) => {
           if (String(station[STATION_FIELDS.KEY]) === String(stationId)) {
@@ -201,7 +189,6 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
           return station;
         })
       );
-
       finishEditing();
 
     } catch (e) {

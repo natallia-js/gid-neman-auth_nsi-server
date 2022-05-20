@@ -70,12 +70,8 @@ const PostsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по должностям
-      let res = await request(ServerAPI.GET_POSTS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      let res = await request(ServerAPI.GET_POSTS_DATA, 'GET');
       const tableData = res.map((post) => getAppPostObjFromDBPostObj(post));
-
       setTableData(tableData);
       setLoadDataErr(null);
 
@@ -114,14 +110,9 @@ const PostsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о должности
-      const res = await request(ServerAPI.ADD_POST_DATA, 'POST', { ...post }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_POST_DATA, 'POST', { ...post });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newPost = getAppPostObjFromDBPostObj(res.post);
-
       setTableData([...tableData, newPost]);
 
     } catch (e) {
@@ -148,12 +139,8 @@ const PostsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о должности
-      const res = await request(ServerAPI.DEL_POST_DATA, 'POST', { id: postId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_POST_DATA, 'POST', { id: postId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((post) => post[POST_FIELDS.KEY] !== postId));
 
     } catch (e) {
@@ -217,10 +204,7 @@ const PostsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о должности
-      const res = await request(ServerAPI.MOD_POST_DATA, 'POST', { id: postId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_POST_DATA, 'POST', { id: postId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const newTableData = tableData.map((post) => {

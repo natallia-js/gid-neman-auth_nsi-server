@@ -62,15 +62,10 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
    */
   const handleAddNewAppCred = async (cred) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о полномочии
-      const res = await request(ServerAPI.ADD_APP_CRED_DATA, 'POST', { appId, ...cred }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_APP_CRED_DATA, 'POST', { appId, ...cred });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((app) => {
           if (String(app[APP_FIELDS.KEY]) === String(appId)) {
@@ -81,17 +76,14 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
           return app;
         })
       );
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setAppCredFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -103,15 +95,10 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
    */
   const handleDelAppCred = async (credId) => {
     setRecsBeingProcessed((value) => [...value, credId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о полномочии
-      const res = await request(ServerAPI.DEL_APP_CRED_DATA, 'POST', { appId, credId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_APP_CRED_DATA, 'POST', { appId, credId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((app) => {
           if (String(app[APP_FIELDS.KEY]) === String(appId)) {
@@ -121,11 +108,9 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
           return app;
         })
       );
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== credId));
   }
 
@@ -173,7 +158,6 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
 
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
@@ -183,12 +167,8 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о полномочии
-      const res = await request(ServerAPI.MOD_APP_CRED_DATA, 'POST', { appId, credId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_APP_CRED_DATA, 'POST', { appId, credId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((app) => {
           if (String(app[APP_FIELDS.KEY]) === String(appId)) {
@@ -202,12 +182,9 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
           return app;
         })
       );
-
       finishEditing();
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });

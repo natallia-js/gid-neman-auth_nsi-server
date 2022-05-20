@@ -253,12 +253,9 @@ export const CreateOrderPattern = (props) => {
           [ORDER_PATTERN_FIELDS.CATEGORY]: orderCategory,
           [ORDER_PATTERN_FIELDS.ELEMENTS]: orderPattern,
           isPersonalPattern: false,
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       onCreateOrderPattern(res.orderPattern);
 
     } catch (e) {

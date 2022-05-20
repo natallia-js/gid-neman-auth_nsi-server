@@ -24,7 +24,7 @@ const {
 } = require('../constants');
 const AUTH_NSI_ACTIONS = require('./AUTH_NSI_ACTIONS');
 const DY58_ACTIONS = require('./DY58_ACTIONS');
-const checkUserAuthenticated = require('./checkUserAuthenticated');
+const { checkUserAuthenticated } = require('./checkUserAuthenticated');
 const checkOnDuty = require('./checkOnDuty');
 const checkSpecialCredentials = require('./checkSpecialCredentials');
 const checkCanWorkOnWorkPoligon = require('./checkCanWorkOnWorkPoligon');
@@ -478,7 +478,7 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     try {
       const checkRes = checkGeneralCredentials(req);
       if (checkRes.err) {
-        return res.status(err.status).json({ message: err.message });
+        return res.status(checkRes.status).json({ message: checkRes.message });
       }
     } catch (error) {
       addError({

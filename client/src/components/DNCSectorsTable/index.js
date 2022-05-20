@@ -99,9 +99,7 @@ const DNCSectorsTable = () => {
       // (запрос возвратит информацию в виде массива объектов участков ДНЦ; для каждого
       // объекта участка ДНЦ будет определен массив объектов поездных участков ДНЦ; для
       // каждого поездного участка ДНЦ будет определен массив объектов соответствующих станций)
-      let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET');
       const tableData = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
         .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
@@ -109,9 +107,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Теперь получаем информацию о смежных участках ДНЦ
-      res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'GET');
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ДНЦ
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -130,9 +126,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET');
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
         .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
@@ -141,9 +135,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Теперь обращаемся к серверу за информацией о ближайших участках ДНЦ и ЭЦД
-      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'GET');
       // Для каждой полученной записи создаем в tableData элемент массива ближайших участков ЭЦД
       // для соответствующего участка ДНЦ
       res.forEach((data) => {
@@ -164,9 +156,7 @@ const DNCSectorsTable = () => {
 
       // Получаем информацию о всех станциях
 
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET');
       setStations(res
         .map((station) => getAppStationObjFromDBStationObj(station))
         .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
@@ -176,9 +166,7 @@ const DNCSectorsTable = () => {
 
       // Получаем информацию о всех перегонах
 
-      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET');
       setBlocks(res
         .map((block) => getAppBlockObjFromDBBlockObj(block))
         .sort((a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()))
@@ -245,11 +233,7 @@ const DNCSectorsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о новом участке ДНЦ
-      const res = await request(ServerAPI.ADD_DNCSECTORS_DATA, 'POST',
-        { ...sector },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.ADD_DNCSECTORS_DATA, 'POST', { ...sector });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
@@ -280,11 +264,7 @@ const DNCSectorsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации об участке ДНЦ
-      const res = await request(ServerAPI.DEL_DNCSECTORS_DATA, 'POST',
-        { id: sectorId },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.DEL_DNCSECTORS_DATA, 'POST', { id: sectorId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние (удаляем запись из основного массива участков ДНЦ, а также
@@ -359,11 +339,7 @@ const DNCSectorsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации об участке ДНЦ
-      const res = await request(ServerAPI.MOD_DNCSECTORS_DATA, 'POST',
-        { id: sectorId, ...rowData },
-        { Authorization: `Bearer ${auth.token}` }
-      );
-
+      const res = await request(ServerAPI.MOD_DNCSECTORS_DATA, 'POST', { id: sectorId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние
@@ -395,9 +371,7 @@ const DNCSectorsTable = () => {
   const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_DNCSECTORS_WITH_PENSI, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      let res = await request(ServerAPI.SYNC_DNCSECTORS_WITH_PENSI, 'GET');
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

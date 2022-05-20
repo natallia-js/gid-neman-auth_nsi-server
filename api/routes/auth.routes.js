@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 const { isMainAdmin } = require('../middleware/checkMainAdmin');
+const { isUserAuthenticated } = require('../middleware/checkUserAuthenticated');
 const { userPostFIOString } = require('../routes/additional/getUserTransformedData');
 const compareStringArrays = require('../additional/compareStringArrays');
 const {
@@ -830,14 +831,16 @@ router.post(
           ecdSectorsWorkPoligons: ecdSectors,
         },
         jwtSecret,
-        //{ expiresIn: '1h' }
       );
 
+      // Сохраняю зашифрованный token в пользовательской сессии (буду использовать зашифрованные в нем
+      // данные при выполнении пользователем запросов - чтобы что-то проверить)
       req.session.userId = user._id;
       req.session.userToken = token;
 
       res.status(OK).json({
-        token,
+        token, // это уже не нужно, осталось для обратной совместимости (пользователь, получив это значение,
+               // полагает, что вход в систему выполнен успешно)
         userId: user._id,
         userInfo: {
           name: user.name,
@@ -879,6 +882,44 @@ router.post(
         actionParams: { application: applicationAbbreviation, login },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * "Достает" из пользовательской сессии данные и отправляет их пользователю
+ * (помогает при перезагрузках страниц, чтобы пользователю не нужно было
+ * заново проходить процедуру аутентификации).
+ */
+router.get(
+  '/whoAmI',
+  async (req, res) => {
+    const checkRes = isUserAuthenticated(req);
+    if (checkRes.err) {
+      res.status(checkRes.status).json({ message: checkRes.message });
+    } else {
+      res.status(OK).json({
+        token: req.session.userToken,
+        userId: req.user.userId,
+        userInfo: {
+          name: req.user.name,
+          fatherName: req.user.fatherName,
+          surname: req.user.surname,
+          service: req.user.service,
+          post: req.user.post,
+        },
+        roles: req.user.roles,
+        credentials: req.user.credentials,
+        stationWorkPoligons: req.user.stationWorkPoligons,
+        dncSectorsWorkPoligons: req.user.dncSectorsWorkPoligons,
+        ecdSectorsWorkPoligons: req.user.ecdSectorsWorkPoligons,
+        // дополнительно
+        lastTakeDutyTime: req.user.lastTakeDutyTime,
+        lastPassDutyTime: req.user.lastPassDutyTime,
+        lastCredential: req.user.specialCredentials,
+        lastWorkPoligon: req.user.workPoligon,
+      });
     }
   }
 );
@@ -942,8 +983,9 @@ router.post(
           )
         );
 
-      // Включаем необходимую информацию (в зависимости от ситуации) в token пользователя
-      const token = req.headers.authorization.split(' ')[1];
+      // Включаем необходимую информацию (в зависимости от ситуации) в сессионный token пользователя
+
+      const token = req.session.userToken;
       const decoded = jwt.verify(token, jwtSecret);
 
       let lastTakeDutyTime = null;
@@ -951,7 +993,7 @@ router.post(
 
       if (lastInfo) {
         // сюда попадаем в том случае, если на указанном рабочем полигоне пользователь ранее
-        // работал в системе с принятием дежурства
+        // работал в системе, приняв дежурство
         lastTakeDutyTime = lastInfo.lastTakeDutyTime || null;
         lastPassDutyTime = lastInfo.lastPassDutyTime || null;
       }
@@ -965,7 +1007,6 @@ router.post(
           specialCredentials,
         },
         jwtSecret,
-        //{ expiresIn: '1h' }
       );
 
       req.session.userId = user._id;
@@ -1100,8 +1141,9 @@ router.post(
       }
 
       // Включаем информацию о рабочем полигоне, временах принятия и сдачи на нем дежурства,
-      // указанных в запросе специальных полномочиях в token пользователя
-      const token = req.headers.authorization.split(' ')[1];
+      // указанных в запросе специальных полномочиях в сессионный token пользователя
+
+      const token = req.session.userToken;
       const decoded = jwt.verify(token, jwtSecret);
 
       const newToken = jwt.sign(
@@ -1113,7 +1155,6 @@ router.post(
           specialCredentials,
         },
         jwtSecret,
-        //{ expiresIn: '1h' }
       );
 
       await user.save();
@@ -1231,26 +1272,9 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      // Вносим изменения в token пользователя
-      const token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, jwtSecret);
-      const newToken = jwt.sign(
-        {
-          ...decoded,
-          lastTakeDutyTime: null,
-          lastPassDutyTime: null,
-          workPoligon: null,
-          specialCredentials: null,
-        },
-        jwtSecret,
-        //{ expiresIn: '1h' }
-      );
-
-      //req.session.userId = user._id;
-      //req.session.userToken = newToken;
       req.session.destroy();
 
-      res.status(OK).json({ token: newToken });
+      res.status(OK).json({ message: 'Пользователь успешно вышел из системы' });
 
       // Логируем действие пользователя
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
@@ -1295,21 +1319,6 @@ router.post(
       // Из системы выходит пользователь с id = req.user.userId, specialCredentials = req.user.specialCredentials,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
 
-      // Отмечаем сдачу дежурства в токене пользователя
-      const token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, jwtSecret);
-      const newToken = jwt.sign(
-        {
-          ...decoded,
-          lastTakeDutyTime: null,
-          lastPassDutyTime: null,
-          workPoligon: null,
-          specialCredentials: null,
-        },
-        jwtSecret,
-        //{ expiresIn: '1h' }
-      );
-
       // Ищем в БД пользователя, который прислал запрос на выход из системы
       const user = await User.findOne({ _id: req.user.userId, confirmed: true });
       if (!user) {
@@ -1338,11 +1347,9 @@ router.post(
       lastTakePassDutyOnWorkPoligonInfo.lastPassDutyTime = lastPassDutyTime;
       await user.save();
 
-      //req.session.userId = user._id;
-      //req.session.userToken = newToken;
       req.session.destroy();
 
-      res.status(OK).json({ token: newToken, lastPassDutyTime });
+      res.status(OK).json({ message: 'Пользователь успешно вышел из системы', lastPassDutyTime });
 
       // Логируем действие пользователя
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {

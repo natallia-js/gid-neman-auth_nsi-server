@@ -75,18 +75,14 @@ const RolesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по ролям
-      const res = await request(ServerAPI.GET_ROLES_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.GET_ROLES_DATA, 'GET');
       const tableData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
       setTableData(tableData);
 
       // -------------------
 
       // Получаем также необходимую информацию по приложениям
-      const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET');
       const appsTableData = appsData.map((app) => getAppApplicationObjFromDBApplicationObj(app));
       setAppCredAbbrs(appsTableData);
 
@@ -127,9 +123,7 @@ const RolesTable = () => {
     setRecsBeingAdded((value) => value + 1);
     try {
       // Делаем запрос на сервер с целью добавления информации о роли
-      const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, apps: [] }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, apps: [] });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData([...tableData, getAppRoleObjFromDBRoleObj(res.role)]);
 
@@ -154,9 +148,7 @@ const RolesTable = () => {
     setRecsBeingProcessed((value) => [...value, roleId]);
     try {
       // Делаем запрос на сервер с целью удаления всей информации о роли
-      const res = await request(ServerAPI.DEL_ROLE_DATA, 'POST', { roleId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.DEL_ROLE_DATA, 'POST', { roleId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData(tableData.filter((role) => String(role[ROLE_FIELDS.KEY]) !== String(roleId)));
 
@@ -216,9 +208,7 @@ const RolesTable = () => {
     setRecsBeingProcessed((value) => [...value, roleId]);
     try {
       // Делаем запрос на сервер с целью редактирования информации о роли
-      const res = await request(ServerAPI.MOD_ROLE_DATA, 'POST', { roleId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      const res = await request(ServerAPI.MOD_ROLE_DATA, 'POST', { roleId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const newTableData = tableData.map((role) => {
         if (String(role[ROLE_FIELDS.KEY]) === String(res.role._id)) {
@@ -255,10 +245,7 @@ const RolesTable = () => {
     }
     try {
       // Отправляем запрос об изменении списка полномочий на сервер
-      const res = await request(ServerAPI.MOD_ROLE_CREDS, 'POST',
-        { roleId, appId, newCredIds: credIds },
-        { Authorization: `Bearer ${auth.token}` }
-      );
+      const res = await request(ServerAPI.MOD_ROLE_CREDS, 'POST', { roleId, appId, newCredIds: credIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData((roles) => roles.map((role) => {
         if (String(role[ROLE_FIELDS.KEY]) !== String(roleId)) {

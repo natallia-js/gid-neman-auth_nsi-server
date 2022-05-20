@@ -54,10 +54,8 @@ const ECDTrainSectorsBlock = (props) => {
         {
           name: newSectorTitle,
           ecdSectorId: record[ECDSECTOR_FIELDS.KEY],
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       // Обновляем локальное состояние

@@ -56,8 +56,7 @@ const DNCTrainSectorStationsBlock = (props) => {
             const stationObj = stations.find((station) => station[STATION_FIELDS.NAME_AND_CODE] === val);
             return stationObj[STATION_FIELDS.KEY];
           })
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
 
       message(MESSAGE_TYPES.SUCCESS, res.message);

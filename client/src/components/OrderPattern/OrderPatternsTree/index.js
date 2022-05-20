@@ -331,10 +331,8 @@ export const OrderPatternsTree = (props) => {
           title: editedPattern[ORDER_PATTERN_FIELDS.TITLE],
           specialTrainCategories: editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           elements: editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       const editedAndTransformedPattern = getAppOrderPatternObjFromDBOrderPatternObj(res.orderPattern);
@@ -381,12 +379,8 @@ export const OrderPatternsTree = (props) => {
     setRecsBeingProcessed((value) => value + 1);
 
     try {
-      const res = await request(ServerAPI.DEL_ORDER_PATTERN_DATA, 'POST', { id: selectedPattern[ORDER_PATTERN_FIELDS.KEY] }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_ORDER_PATTERN_DATA, 'POST', { id: selectedPattern[ORDER_PATTERN_FIELDS.KEY] });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       onDeleteOrderPattern(selectedPattern[ORDER_PATTERN_FIELDS.KEY]);
 
       setSelectedPattern(null);
@@ -419,10 +413,8 @@ export const OrderPatternsTree = (props) => {
           orderType: selectedOrderCategory.orderType,
           title: selectedOrderCategory.category,
           newTitle: editedOrderCategory,
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       onEditOrderCategoryTitle({

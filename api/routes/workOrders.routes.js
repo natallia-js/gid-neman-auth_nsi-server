@@ -90,8 +90,6 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    console.log('session', req.session, req.sessionID);
-
     const workPoligon = req.user.workPoligon;
     if (!workPoligon || !workPoligon.type || !workPoligon.id) {
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });

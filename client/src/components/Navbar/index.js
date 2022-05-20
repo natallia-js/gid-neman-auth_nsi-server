@@ -1,10 +1,13 @@
 import React, { useContext } from 'react';
 import { NavLink, useHistory } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
+import { useHttp } from '../../hooks/http.hook';
+import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import { PAGES_IDS, LOGS_IDS, CurrentPageContext } from '../../context/CurrentPageContext';
-import { GetDataCredentials } from '../../constants';
+import { GetDataCredentials, ServerAPI, CURR_APP_ABBREV_NAME } from '../../constants';
 import { Layout, Menu, Popover, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
+import Loader from '../Loader';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -18,16 +21,24 @@ export const Navbar = () => {
   const history = useHistory();
   const auth = useContext(AuthContext);
   const currPage = useContext(CurrentPageContext);
+  const { loading, request } = useHttp();
+  const message = useCustomMessage();
 
   /**
    * Обработка запроса пользователя на выход из системы
    *
    * @param {object} event
    */
-  const logoutHandler = (event) => {
+  const logoutHandler = async (event) => {
     event.preventDefault();
-    auth.logout();
-    history.push('/');
+    try {
+      // Отправляем запрос на выход из системы на сервер
+      await request(ServerAPI.LOGOUT, 'POST', { applicationAbbreviation: CURR_APP_ABBREV_NAME });
+      auth.logout();
+      history.push('/');
+    } catch (e) {
+      message(MESSAGE_TYPES.ERROR, e.message);
+    }
   }
 
   const userInfo = (
@@ -91,7 +102,9 @@ export const Navbar = () => {
           <Menu.Item key={LOGS_IDS.USERS_ACTIONS}><NavLink to="/dy58UsersLogs">действий пользователей ДУ-58</NavLink></Menu.Item>
         </SubMenu>
         <Menu.Item key={PAGES_IDS.HELP}><NavLink to="/help">Помощь</NavLink></Menu.Item>
-        <Menu.Item key={PAGES_IDS.EXIT}><a href="/" onClick={logoutHandler}>Выйти</a></Menu.Item>
+        <Menu.Item key={PAGES_IDS.EXIT}>
+          {loading ? <Loader /> : <a href="/" onClick={logoutHandler}>Выйти</a>}
+        </Menu.Item>
       </Menu>
     </Header>
   );

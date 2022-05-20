@@ -56,10 +56,8 @@ const ECDTrainSectorBlocksBlock = (props) => {
             const blockObj = blocks.find((block) => block[BLOCK_FIELDS.NAME] === val);
             return blockObj[BLOCK_FIELDS.KEY];
           })
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
-
       message(MESSAGE_TYPES.SUCCESS, res.message);
 
       setTableDataCallback((value) => value.map((ecdSector) => {

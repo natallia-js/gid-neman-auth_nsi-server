@@ -54,8 +54,7 @@ const DNCTrainSectorsBlock = (props) => {
         {
           name: newSectorTitle,
           dncSectorId: record[DNCSECTOR_FIELDS.KEY],
-        },
-        { Authorization: `Bearer ${auth.token}` }
+        }
       );
 
       message(MESSAGE_TYPES.SUCCESS, res.message);

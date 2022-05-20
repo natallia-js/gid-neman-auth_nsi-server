@@ -70,25 +70,18 @@ export const OrderPatternsPage = () => {
     setDataLoaded(false);
     try {
       // Делаем запрос на сервер с целью получения информации по созданным шаблонам распоряжений
-      let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST',
-        { getChildPatterns: true },
-        { Authorization: `Bearer ${auth.token}` }
-      );
+      let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST', { getChildPatterns: true });
       let tableData = res.map((orderPattern) => getAppOrderPatternObjFromDBOrderPatternObj(orderPattern));
       setOrderPatterns(tableData);
 
       // Делаем запрос на сервер с целью получения информации по службам
-      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
       tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
       setServices(tableData);
 
       // Делаем запрос на сервер с целью получения списков возможных смысловых значений
       // элементов шаблонов распоряжений
-      res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'GET');
       tableData = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref));
       setOrderPatternElRefs(tableData);
 

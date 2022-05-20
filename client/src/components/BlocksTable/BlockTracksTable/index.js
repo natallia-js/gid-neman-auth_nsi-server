@@ -62,15 +62,10 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
    */
   const handleAddNewBlockTrack = async (track) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о пути
-      const res = await request(ServerAPI.ADD_BLOCK_TRACK_DATA, 'POST', { blockId, ...track }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_BLOCK_TRACK_DATA, 'POST', { blockId, ...track });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((block) => {
           if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
@@ -81,17 +76,14 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
           return block;
         })
       );
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setBlockTrackFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -103,15 +95,10 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
    */
   const handleDelBlockTrack = async (blockTrackId) => {
     setRecsBeingProcessed((value) => [...value, blockTrackId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о пути перегона
-      const res = await request(ServerAPI.DEL_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((block) => {
           if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
@@ -121,11 +108,9 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
           return block;
         })
       );
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== blockTrackId));
   }
 
@@ -182,12 +167,8 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о пути перегона
-      const res = await request(ServerAPI.MOD_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_BLOCK_TRACK_DATA, 'POST', { id: blockTrackId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableDataCallback((value) =>
         value.map((block) => {
           if (String(block[BLOCK_FIELDS.KEY]) === String(blockId)) {
@@ -201,12 +182,9 @@ const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
           return block;
         })
       );
-
       finishEditing();
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });

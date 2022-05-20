@@ -83,19 +83,14 @@ const BlocksTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по перегонам
-      let res = await request(ServerAPI.GET_BLOCKS_FULL_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      let res = await request(ServerAPI.GET_BLOCKS_FULL_DATA, 'GET');
       const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
       setTableData(tableData);
 
       // -------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null);
 
       // Хочу, чтобы станции в выпадающих списках были отсортированы по алфавиту
       const stationsData = res.map((station) => getAppStationObjFromDBStationObj(station));
@@ -140,29 +135,20 @@ const BlocksTable = () => {
    */
   const handleAddNewBlock = async (block) => {
     setRecsBeingAdded((value) => value + 1);
-
     try {
       // Делаем запрос на сервер с целью добавления информации о перегоне
-      const res = await request(ServerAPI.ADD_BLOCK_DATA, 'POST', { ...block }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_BLOCK_DATA, 'POST', { ...block });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newBlock = getAppBlockObjFromDBBlockObj(res.block);
-
       setTableData([...tableData, newBlock]);
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
         setBlockFieldsErrs(errs);
       }
     }
-
     setRecsBeingAdded((value) => value - 1);
   }
 
@@ -174,21 +160,14 @@ const BlocksTable = () => {
    */
   const handleDelBlock = async (blockId) => {
     setRecsBeingProcessed((value) => [...value, blockId]);
-
     try {
       // Делаем запрос на сервер с целью удаления всей информации о перегоне
-      const res = await request(ServerAPI.DEL_BLOCK_DATA, 'POST', { id: blockId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_BLOCK_DATA, 'POST', { id: blockId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((block) => block[BLOCK_FIELDS.KEY] !== blockId));
-
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-
     setRecsBeingProcessed((value) => value.filter((id) => id !== blockId));
   }
 
@@ -286,25 +265,19 @@ const BlocksTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о перегоне
-      const res = await request(ServerAPI.MOD_BLOCK_DATA, 'POST', { id: blockId, ...modifiedData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_BLOCK_DATA, 'POST', { id: blockId, ...modifiedData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((block) => {
         if (block[BLOCK_FIELDS.KEY] === blockId) {
           return { ...block, ...getAppBlockObjFromDBBlockObj(res.block) };
         }
         return block;
       })
-
       setTableData(newTableData);
       finishEditing();
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
-
       if (e.errors) {
         const errs = {};
         e.errors.forEach((e) => { errs[e.param] = e.msg; });
@@ -340,9 +313,7 @@ const BlocksTable = () => {
   /*const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
+      let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'GET');
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

@@ -21,9 +21,8 @@ const isUserAuthenticated = (req) => {
   if (!userSession || !userSession.userToken) {
     return { err: true, status: UNAUTHORIZED, message: UNAUTHORIZED_ERR_MESS };
   }
-  const token = userSession.userToken;
   try {
-    const decoded = jwt.verify(token, jwtSecret);
+    const decoded = jwt.verify(userSession.userToken, jwtSecret);
     req.user = decoded;
   } catch (error) {
     addError({
@@ -262,4 +261,7 @@ function checkUserAuthenticated(req) {
   return { err: false };
 }
 
-module.exports = checkUserAuthenticated;
+module.exports = {
+  isUserAuthenticated,
+  checkUserAuthenticated,
+};

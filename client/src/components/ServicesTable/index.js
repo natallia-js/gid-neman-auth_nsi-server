@@ -67,12 +67,8 @@ const ServicesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по службам
-      let res = await request(ServerAPI.GET_SERVICES_DATA, 'GET', null, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      let res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
       const tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
-
       setTableData(tableData);
       setLoadDataErr(null);
 
@@ -111,14 +107,9 @@ const ServicesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью добавления информации о службе
-      const res = await request(ServerAPI.ADD_SERVICE_DATA, 'POST', { ...service }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.ADD_SERVICE_DATA, 'POST', { ...service });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newService = getAppServiceObjFromDBServiceObj(res.service);
-
       setTableData([...tableData, newService]);
 
     } catch (e) {
@@ -145,12 +136,8 @@ const ServicesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью удаления всей информации о службе
-      const res = await request(ServerAPI.DEL_SERVICE_DATA, 'POST', { id: serviceId }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.DEL_SERVICE_DATA, 'POST', { id: serviceId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       setTableData(tableData.filter((service) => service[SERVICE_FIELDS.KEY] !== serviceId));
 
     } catch (e) {
@@ -214,19 +201,14 @@ const ServicesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о службе
-      const res = await request(ServerAPI.MOD_SERVICE_DATA, 'POST', { id: serviceId, ...rowData }, {
-        Authorization: `Bearer ${auth.token}`
-      });
-
+      const res = await request(ServerAPI.MOD_SERVICE_DATA, 'POST', { id: serviceId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-
       const newTableData = tableData.map((service) => {
         if (service[SERVICE_FIELDS.KEY] === serviceId) {
           return { ...service, ...rowData };
         }
         return service;
       });
-
       setTableData(newTableData);
       finishEditing();
 
