@@ -23,7 +23,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  *
  * Данный запрос доступен любому лицу.
  */
-router.get(
+router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_SERVICES; next(); },
@@ -56,7 +56,8 @@ router.get(
  *
  * Параметры тела запроса:
  * abbrev - аббревиатура службы (обязательна),
- * title - наименование службы (обязательно)
+ * title - наименование службы (обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/add',
@@ -105,7 +106,8 @@ router.post(
  *
  * Параметры тела запроса:
  * id - id службы (обязателен),
-  */
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
 router.post(
   '/del',
   // определяем действие, которое необходимо выполнить
@@ -191,6 +193,7 @@ router.post(
  * id - идентификатор службы (обязателен),
  * abbrev - аббревиатура службы (не обязательна),
  * title - наименование службы (не обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/mod',

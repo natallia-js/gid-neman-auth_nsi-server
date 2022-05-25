@@ -1,6 +1,5 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 import { Table, Form, Button } from 'antd';
 import EditableTableCell from '../../EditableTableCell';
 import NewBlockTrackModal from '../../NewBlockTrackModal';
@@ -16,9 +15,6 @@ import getAppBlockTrackObjFromDBBlockTrackObj from '../../../mappers/getAppBlock
 const BlockTracksTable = ({ blockId, blockTracks, setTableDataCallback }) => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы путей
   const [form] = Form.useForm();

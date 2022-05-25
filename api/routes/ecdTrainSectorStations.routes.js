@@ -26,6 +26,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Параметры тела запроса:
  * trainSectorId - id поездного участка ЭЦД (обязателен),
  * stationIds - массив id станций (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/modStationsList',
@@ -163,7 +164,8 @@ router.post(
  * Параметры тела запроса:
  * trainSectorId - id поездного участка ЭЦД (обязателен),
  * stationId - id станции (обязателен),
-  */
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
  router.post(
   '/del',
   // определяем действие, которое необходимо выполнить
@@ -210,6 +212,7 @@ router.post(
  * stationId - id станции (обязателен),
  * posInTrainSector - позиция станции в рамках поездного участка (не обязателен),
  * belongsToSector - принадлежность станции участку ЭЦД (не обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/mod',

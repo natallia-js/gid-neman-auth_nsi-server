@@ -22,7 +22,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  *
  * Данный запрос доступен любому лицу.
  */
-router.get(
+router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_POSTS; next(); },
@@ -55,7 +55,8 @@ router.get(
  *
  * Параметры тела запроса:
  * abbrev - аббревиатура должности (обязательна),
- * title - наименование должности (обязательно)
+ * title - наименование должности (обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/add',
@@ -104,7 +105,8 @@ router.post(
  *
  * Параметры тела запроса:
  * id - id должности (обязателен),
-  */
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
 router.post(
   '/del',
   // определяем действие, которое необходимо выполнить
@@ -188,6 +190,7 @@ router.post(
  * id - идентификатор должности (обязателен),
  * abbrev - аббревиатура должности (не обязательна),
  * title - наименование должности (не обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/mod',

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('config');
 const {
   UNAUTHORIZED, 
+  USER_GONE,
   UNAUTHORIZED_ERR_MESS,
   CONFIG_JWT_SECRET_PARAM_NAME,
 } = require('../constants');
@@ -17,19 +18,46 @@ const jwtSecret = config.get(CONFIG_JWT_SECRET_PARAM_NAME);
  * получения необходимых данных о данном пользователе (+ полномочий) в запросе, который он сделал.
  */
 const isUserAuthenticated = (req) => {
-  const userSession = req && req.session ? req.session : null;
-  if (!userSession || !userSession.userToken) {
+  // Поскольку в рамках браузера мы допускаем работу одновременно с несколькими приложениями
+  // ГИД НЕМАН (и одновременно нескольких пользователей), то запрос на выполнение действия, требующего
+  // аутентифицированности пользователя, должен в обязательном порядке содержать аббревиатуру
+  // приложения ГИД НЕМАН, с которого данный запрос был отправлен.
+  const { applicationAbbreviation } = req.body;
+  if (!applicationAbbreviation) {
     return { err: true, status: UNAUTHORIZED, message: UNAUTHORIZED_ERR_MESS };
   }
+  // В сессии пользователя ищем элемент массива, относящийся к приложению applicationAbbreviation
+  let appSessionArrayElement = req.session.appsUsers
+    ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
+    : null;
+  if (!appSessionArrayElement) {
+    // Если по приложению applicationAbbreviation нет данных в сессии, то смотрим, есть ли данные в этой же
+    // сессии по другим приложениям ГИД НЕМАН. Если есть, то берем первое попавшееся и входим в приложение
+    // applicationAbbreviation от имени пользователя, который вошел в это первое попавшееся приложение
+    appSessionArrayElement = req.session?.appsUsers?.length ? req.session.appsUsers[0] : null;
+    if (!appSessionArrayElement) {
+      return { err: true, status: USER_GONE, message: UNAUTHORIZED_ERR_MESS };
+    } else {
+      // Записываем в сессию информацию о входе пользователя в приложение applicationAbbreviation
+      if (!req.session.appsUsers) {
+        req.session.appsUsers = [];
+      }
+      req.session.appsUsers.push({
+        userId: appSessionArrayElement.userId,
+        application: applicationAbbreviation,
+        userToken: appSessionArrayElement.userToken,
+      });
+    }
+  }
   try {
-    const decoded = jwt.verify(userSession.userToken, jwtSecret);
+    const decoded = jwt.verify(appSessionArrayElement.userToken, jwtSecret);
     req.user = decoded;
   } catch (error) {
     addError({
       errorTime: new Date(),
       action: 'Проверка аутентифицированности пользователя',
       error: error.message,
-      actionParams: { userSession },
+      actionParams: appSessionArrayElement,
     });
     return { err: true, status: UNAUTHORIZED, message: UNAUTHORIZED_ERR_MESS };
   }

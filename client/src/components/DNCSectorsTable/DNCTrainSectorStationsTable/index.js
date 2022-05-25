@@ -1,11 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import EditableTableCell from '../../EditableTableCell';
 import dncTrainSectorStationsTableColumns from './DNCTrainSectorStationsTableColumns';
 import { ServerAPI, DNCSECTOR_FIELDS, STATION_FIELDS, TRAIN_SECTOR_FIELDS } from '../../../constants';
 import { Table, Form } from 'antd';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 
 
 /**
@@ -34,9 +33,6 @@ const DNCTrainSectorStationsTable = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);

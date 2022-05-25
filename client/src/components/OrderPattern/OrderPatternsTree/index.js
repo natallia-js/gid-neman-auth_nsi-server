@@ -1,11 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Tree, Row, Col, Popconfirm, Button, Space, Typography, Input, Select } from 'antd';
 import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS, InterfaceDesign, ServerAPI } from '../../../constants';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { DownSquareTwoTone } from '@ant-design/icons';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import objectId from '../../../generators/objectId.generator';
@@ -56,9 +55,6 @@ export const OrderPatternsTree = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();

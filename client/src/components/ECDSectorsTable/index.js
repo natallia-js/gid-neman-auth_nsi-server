@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewECDSectorModal from '../NewECDSectorModal';
@@ -54,9 +53,6 @@ const ECDSectorsTable = () => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
-
   // Для редактирования данных таблицы участков ЭЦД
   const [form] = Form.useForm();
 
@@ -98,7 +94,7 @@ const ECDSectorsTable = () => {
       // объекта участка ЭЦД будет определен массив объектов поездных участков ЭЦД и массив
       // структурных подразделений ЭЦД; для каждого поездного участка ЭЦД будет определен
       // массив объектов соответствующих станций)
-      let res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET');
+      let res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'POST', {});
       const tableData = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
         .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
@@ -106,7 +102,7 @@ const ECDSectorsTable = () => {
       // -------------------
 
       // Теперь получаем информацию о смежных участках ЭЦД
-      res = await request(ServerAPI.GET_ADJACENTECDSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_ADJACENTECDSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ЭЦД
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -125,7 +121,7 @@ const ECDSectorsTable = () => {
       // -------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'POST', {});
       const dncSectors = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
         .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
@@ -134,7 +130,7 @@ const ECDSectorsTable = () => {
       // -------------------
 
       // Теперь обращаемся к серверу за информацией о ближайших участках ДНЦ и ЭЦД
-      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива ближайших участков ДНЦ
       // для соответствующего участка ЭЦД
       res.forEach((data) => {
@@ -155,7 +151,7 @@ const ECDSectorsTable = () => {
 
       // Получаем информацию о всех станциях
 
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET');
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
       setStations(res
         .map((station) => getAppStationObjFromDBStationObj(station))
         .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
@@ -165,7 +161,7 @@ const ECDSectorsTable = () => {
 
       // Получаем информацию о всех перегонах
 
-      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET');
+      res = await request(ServerAPI.GET_BLOCKS_DATA, 'POST', {});
       setBlocks(res
         .map((block) => getAppBlockObjFromDBBlockObj(block))
         .sort((a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()))
@@ -185,7 +181,7 @@ const ECDSectorsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

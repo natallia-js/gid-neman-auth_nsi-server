@@ -1,6 +1,5 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Form, Button, Input, Row, Col } from 'antd';
 import { ServerAPI, USER_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
@@ -13,9 +12,6 @@ const ChangePasswordBlock = ({
 }) => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования пароля пользователя
   const [newPwdForm] = Form.useForm();

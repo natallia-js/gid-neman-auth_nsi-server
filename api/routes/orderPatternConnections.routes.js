@@ -30,7 +30,8 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  *                               если не задан, то значение параметра должно быть пустым массивом),
  *   каждый элемент - объект с параметрами:
  *   baseParamId - идентификатор параметра базового шаблона (обязателен),
- *   childParamId - идентификатор параметра дочернего шаблона (обязателен)
+ *   childParamId - идентификатор параметра дочернего шаблона (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/setChildPattern',
@@ -125,6 +126,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Параметры тела запроса:
  * basePatternId - идентификатор базового шаблона (обязателен),
  * childPatternId - идентификатор дочернего шаблона (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/delChildPattern',

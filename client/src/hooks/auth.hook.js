@@ -77,7 +77,7 @@ export const useAuth = () => {
    */
   useEffect(() => {
     // Отправляем серверу запрос на вход в систему через сессию
-    request(ServerAPI.WHO_AM_I, 'GET')
+    request(ServerAPI.WHO_AM_I, 'POST', {})
       .then((responseData) => {
         if (responseData) {
           login({

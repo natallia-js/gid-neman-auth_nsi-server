@@ -1,6 +1,5 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import { Typography, Row, Col, Button } from 'antd';
 import { ServerAPI, BLOCK_FIELDS, TRAIN_SECTOR_FIELDS, DNCSECTOR_FIELDS } from '../../constants';
@@ -24,9 +23,6 @@ const DNCTrainSectorBlocksBlock = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();

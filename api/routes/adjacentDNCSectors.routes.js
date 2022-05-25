@@ -21,8 +21,10 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех смежных участков ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * 
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
-router.get(
+router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_DNC_SECTORS; next(); },
@@ -56,6 +58,7 @@ router.get(
  *
  * Параметры тела запроса:
  * sectorId - id участка ДНЦ (обязателен)
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/definitData',
@@ -119,6 +122,7 @@ router.get(
  * Параметры тела запроса:
  * sectorID - id участка ДНЦ (обязательно),
  * adjSectorIDs - массив id смежных участков ДНЦ (обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/add',
@@ -217,7 +221,8 @@ router.post(
  * Параметры тела запроса:
  * sectorID1 - id участка ДНЦ (обязательно),
  * sectorID2 - id смежного участка ДНЦ (обязательно),
-  */
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
 router.post(
   '/del',
   // определяем действие, которое необходимо выполнить
@@ -275,7 +280,8 @@ router.post(
  * Параметры тела запроса:
  * sectorId - идентификатор участка ДНЦ (обязателен),
  * adjacentSectIds - массив идентификаторов участков ДНЦ, которые необходимо связать с данным
- *                   (обязателен; если нет смежных участков, то массив должен быть пустым)
+ *                   (обязателен; если нет смежных участков, то массив должен быть пустым),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/changeAdjacentSectors',

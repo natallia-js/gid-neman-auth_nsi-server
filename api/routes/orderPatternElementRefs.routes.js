@@ -14,8 +14,10 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * шаблонов распоряжений. Возвращается вся информация, содержащаяся в коллекции.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * 
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
- router.get(
+ router.post(
   '/fullData',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS; next(); },
@@ -44,8 +46,10 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * в виде массива строк - названий смысловых элементов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * 
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
- router.get(
+ router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS_AS_STRING_ARRAYS; next(); },

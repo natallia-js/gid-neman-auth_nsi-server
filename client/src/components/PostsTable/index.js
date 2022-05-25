@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewPostModal from '../NewPostModal';
@@ -30,9 +29,6 @@ const PostsTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы служб
   const [form] = Form.useForm();
@@ -70,7 +66,7 @@ const PostsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по должностям
-      let res = await request(ServerAPI.GET_POSTS_DATA, 'GET');
+      let res = await request(ServerAPI.GET_POSTS_DATA, 'POST', {});
       const tableData = res.map((post) => getAppPostObjFromDBPostObj(post));
       setTableData(tableData);
       setLoadDataErr(null);
@@ -81,7 +77,7 @@ const PostsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

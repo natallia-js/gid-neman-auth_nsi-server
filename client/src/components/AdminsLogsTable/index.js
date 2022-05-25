@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useContext, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Button, DatePicker, Form, Pagination, Table, Typography } from 'antd';
 import { ServerAPI } from '../../constants';
 import getAppAdminLogObjFromDBAdminLogObj from '../../mappers/getAppAdminLogObjFromDBAdminLogObj';
@@ -30,9 +29,6 @@ const AdminsLogsTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Текущая страница таблицы
   const [currentTablePage, setCurrentTablePage] = useState(1);
@@ -95,7 +91,7 @@ const AdminsLogsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   useEffect(() => {

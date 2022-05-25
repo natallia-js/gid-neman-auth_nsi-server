@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Row, Col, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewDNCSectorModal from '../NewDNCSectorModal';
@@ -53,9 +52,6 @@ const DNCSectorsTable = () => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
-
   // Для редактирования данных таблицы участков ДНЦ
   const [form] = Form.useForm();
 
@@ -99,7 +95,7 @@ const DNCSectorsTable = () => {
       // (запрос возвратит информацию в виде массива объектов участков ДНЦ; для каждого
       // объекта участка ДНЦ будет определен массив объектов поездных участков ДНЦ; для
       // каждого поездного участка ДНЦ будет определен массив объектов соответствующих станций)
-      let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'GET');
+      let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'POST', {});
       const tableData = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
         .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
@@ -107,7 +103,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Теперь получаем информацию о смежных участках ДНЦ
-      res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ДНЦ
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -126,7 +122,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'POST', {});
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
         .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
@@ -135,7 +131,7 @@ const DNCSectorsTable = () => {
       // -------------------
 
       // Теперь обращаемся к серверу за информацией о ближайших участках ДНЦ и ЭЦД
-      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'GET');
+      res = await request(ServerAPI.GET_NEARESTDNCECDSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива ближайших участков ЭЦД
       // для соответствующего участка ДНЦ
       res.forEach((data) => {
@@ -156,7 +152,7 @@ const DNCSectorsTable = () => {
 
       // Получаем информацию о всех станциях
 
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET');
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
       setStations(res
         .map((station) => getAppStationObjFromDBStationObj(station))
         .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
@@ -166,7 +162,7 @@ const DNCSectorsTable = () => {
 
       // Получаем информацию о всех перегонах
 
-      res = await request(ServerAPI.GET_BLOCKS_DATA, 'GET');
+      res = await request(ServerAPI.GET_BLOCKS_DATA, 'POST', {});
       setBlocks(res
         .map((block) => getAppBlockObjFromDBBlockObj(block))
         .sort((a, b) => compareStrings(a[BLOCK_FIELDS.NAME].toLowerCase(), b[BLOCK_FIELDS.NAME].toLowerCase()))
@@ -186,7 +182,7 @@ const DNCSectorsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**
@@ -371,7 +367,7 @@ const DNCSectorsTable = () => {
   const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_DNCSECTORS_WITH_PENSI, 'GET');
+      let res = await request(ServerAPI.SYNC_DNCSECTORS_WITH_PENSI, 'POST', {});
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

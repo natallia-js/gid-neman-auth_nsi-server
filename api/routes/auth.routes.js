@@ -155,8 +155,10 @@ router.put(
  * При этом главный администратор ГИД Неман получит полный список всех пользователей,
  * иное же лицо получит полный список тех пользователей, которые закреплены за его службой
  * (включая его самого).
+ * 
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
-router.get(
+router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_USERS; next(); },
@@ -183,6 +185,20 @@ router.get(
       if (!isMainAdmin(req)) {
         // Ищем пользователей, принадлежащих заданной службе
         data = await User.find({ service: serviceName }, fieldsToExtract);
+        // Для каждого пользователя удаляем id тех ролей, которые доступны лишь главному администратору
+        let mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
+        mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
+        if (mainAdminRolesIds.length) {
+          data = data.map((userData) => ({
+            ...userData,
+            _doc: {
+              ...userData._doc,
+              roles: userData._doc.roles
+                ? userData._doc.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
+                : null,
+            },
+          }));
+        }
       } else {
         // Извлекаем информацию обо всех пользователях
         data = await User.find({}, fieldsToExtract);
@@ -371,6 +387,7 @@ const saveNewUserData = async (props) => {
  *              каждый элемент массива - строка с id участка ДНЦ,
  * ecdSectors - массив рабочих полигонов-участков ЭЦД (не обязателен),
  *              каждый элемент массива - строка с id участка ЭЦД,
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/register',
@@ -567,7 +584,8 @@ router.post(
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
- * roleId - идентификатор роли (обязателен)
+ * roleId - идентификатор роли (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/addRole',
@@ -815,28 +833,48 @@ router.post(
       // закодированные строки через точку, затем полученная строка хешируется алгоритмом, заданном в
       // header на основе секретного ключа).
       // Здесь производится synchronous sign with default (HMAC SHA256).
+      const token =
+        jwt.sign(
+          {
+            userId: user._id,
+            post: user.post,
+            name: user.name,
+            fatherName: user.fatherName,
+            surname: user.surname,
+            service: user.service,
+            roles: rolesAbbreviations,
+            credentials: appsCredentials,
+            stationWorkPoligons: stations,
+            dncSectorsWorkPoligons: dncSectors,
+            ecdSectorsWorkPoligons: ecdSectors,
+          },
+          jwtSecret,
+        );
 
-      const token = jwt.sign(
-        {
+      // Записываем данные о пользователе в сессию
+
+      if (!req.session.appsUsers) {
+        req.session.appsUsers = [];
+      }
+      // Для каждого приложения ГИД НЕМАН в сессиионном массиве appsUsers создается свой элемент при успешном
+      // входе пользователя в данное приложение ГИД НЕМАН
+      const currAppSessionArrayElement = req.session.appsUsers.find((el) => el.application === applicationAbbreviation);
+      if (currAppSessionArrayElement) {
+        if (currAppSessionArrayElement.userId !== user._id) {
+          currAppSessionArrayElement.userId = user._id;
+          currAppSessionArrayElement.userToken = token;
+          req.session.save();
+        }
+      } else {
+        req.session.appsUsers.push({
           userId: user._id,
-          post: user.post,
-          name: user.name,
-          fatherName: user.fatherName,
-          surname: user.surname,
-          service: user.service,
-          roles: rolesAbbreviations,
-          credentials: appsCredentials,
-          stationWorkPoligons: stations,
-          dncSectorsWorkPoligons: dncSectors,
-          ecdSectorsWorkPoligons: ecdSectors,
-        },
-        jwtSecret,
-      );
-
-      // Сохраняю зашифрованный token в пользовательской сессии (буду использовать зашифрованные в нем
-      // данные при выполнении пользователем запросов - чтобы что-то проверить)
-      req.session.userId = user._id;
-      req.session.userToken = token;
+          application: applicationAbbreviation,
+          // Сохраняю зашифрованный token в пользовательской сессии (буду использовать зашифрованные в нем
+          // данные при выполнении пользователем в дальнейшем запросов - чтобы что-то проверить)
+          userToken: token,
+        });
+        req.session.save();
+      }
 
       res.status(OK).json({
         token, // это уже не нужно, осталось для обратной совместимости (пользователь, получив это значение,
@@ -891,16 +929,22 @@ router.post(
  * "Достает" из пользовательской сессии данные и отправляет их пользователю
  * (помогает при перезагрузках страниц, чтобы пользователю не нужно было
  * заново проходить процедуру аутентификации).
+ * 
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
-router.get(
+router.post(
   '/whoAmI',
   async (req, res) => {
     const checkRes = isUserAuthenticated(req);
     if (checkRes.err) {
       res.status(checkRes.status).json({ message: checkRes.message });
     } else {
+      // Извлекаем из сессии данные о текущем пользователе, вошедшем в приложение applicationAbbreviation
+      // (здесь поиск ведем по id пользователя, а не по наименованию приложения - на самом деле, это не важно,
+      // т.к. нам нужен только токен пользователя, а он привязан к его id)
+      const currUserSessionArrayElement = req.session.appsUsers.find((el) => el.userId === req.user.userId);
       res.status(OK).json({
-        token: req.session.userToken,
+        token: currUserSessionArrayElement.userToken,
         userId: req.user.userId,
         userInfo: {
           name: req.user.name,
@@ -941,6 +985,7 @@ router.get(
  *     которые должны быть ЯВНО определены для выполнения ряда запросов (общий список всех полномочий
  *     закрепляется за пользователем в момент его входа в систему - т.е. когда пользователь делает login,
  *     но есть ряд взаимоисключающих полномочий - их необходимо указать явно)
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/startWorkWithoutTakingDuty',
@@ -957,6 +1002,15 @@ router.post(
       specialCredentials,
       applicationAbbreviation,
     } = req.body;
+
+    // После middleware hasUserRightToPerformAction/ здесь уже точно известно, что req.session.appsUsers
+    // содержит элемент для applicationAbbreviation - в него ниже внесем изменения
+    const appSessionArrayElement = req.session.appsUsers
+      ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
+      : null;
+    if (!appSessionArrayElement) {
+      res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
+    }
 
     try {
       // Ищем в БД пользователя, который прислал запрос
@@ -985,8 +1039,7 @@ router.post(
 
       // Включаем необходимую информацию (в зависимости от ситуации) в сессионный token пользователя
 
-      const token = req.session.userToken;
-      const decoded = jwt.verify(token, jwtSecret);
+      const decoded = jwt.verify(appSessionArrayElement.userToken, jwtSecret);
 
       let lastTakeDutyTime = null;
       let lastPassDutyTime = null;
@@ -1009,9 +1062,10 @@ router.post(
         jwtSecret,
       );
 
-      req.session.userId = user._id;
-      req.session.userToken = newToken;
-
+      // Делаем изменения в пользовательской сессии
+      appSessionArrayElement.userToken = newToken;
+      req.session.save();
+ 
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
       // Логируем действие пользователя
@@ -1072,6 +1126,7 @@ router.post(
  *     которые должны быть ЯВНО определены для выполнения ряда запросов (общий список всех полномочий
  *     закрепляется за пользователем в момент его входа в систему - т.е. когда пользователь делает login,
  *     но есть ряд взаимоисключающих полномочий - их необходимо указать явно)
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/takeDuty',
@@ -1088,6 +1143,15 @@ router.post(
       specialCredentials,
       applicationAbbreviation,
     } = req.body;
+    
+    // После middleware hasUserRightToPerformAction/ здесь уже точно известно, что req.session.appsUsers
+    // содержит элемент для applicationAbbreviation - в него ниже внесем изменения
+    const appSessionArrayElement = req.session.appsUsers
+      ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
+      : null;
+    if (!appSessionArrayElement) {
+      res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
+    }
 
     // транзакция MongoDB
     const session = await mongoose.startSession();
@@ -1143,8 +1207,7 @@ router.post(
       // Включаем информацию о рабочем полигоне, временах принятия и сдачи на нем дежурства,
       // указанных в запросе специальных полномочиях в сессионный token пользователя
 
-      const token = req.session.userToken;
-      const decoded = jwt.verify(token, jwtSecret);
+      const decoded = jwt.verify(appSessionArrayElement.userToken, jwtSecret);
 
       const newToken = jwt.sign(
         {
@@ -1198,8 +1261,9 @@ router.post(
 
       await session.commitTransaction();
 
-      req.session.userId = user._id;
-      req.session.userToken = newToken;
+      // Делаем изменения в пользовательской сессии
+      appSessionArrayElement.userToken = newToken;
+      req.session.save();
 
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
@@ -1251,6 +1315,7 @@ router.post(
  * Никаких изменений в БД не производится.
  * Изменения вносятся лишь в token пользователя.
  * Только для пользователей, заявка на регистрацию которых подтверждена!
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/logout',
@@ -1262,6 +1327,15 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { applicationAbbreviation } = req.body;
 
+    // После middleware hasUserRightToPerformAction/ здесь уже точно известно, что req.session.appsUsers
+    // содержит элемент для applicationAbbreviation - его ниже удалим
+    const appSessionArrayElement = req.session.appsUsers
+      ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
+      : null;
+    if (!appSessionArrayElement) {
+      res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
+    }
+
     try {
       // Из системы выходит пользователь с id = req.user.userId,
       // рабочий полигон - объект workPoligon = req.user.workPoligon с полями type, id, workPlaceId
@@ -1272,7 +1346,19 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      req.session.destroy();
+      // Вносим изменения в объект сессии (удаляем данные о текущем пользователе во всех приложениях -
+      // т.е. пользователь, выходя из одного приложения, выходит и со всех остальных в рамках одной сессии)
+
+      // Приложения, данные которых будут храниться в сессии после выхода текущего пользователя
+      // (т.е. это те приложения, в которые зашел другой пользователь)
+      const otherAppsData = req.session.appsUsers.filter((el) => String(el.userId) !== String(user._id));
+      // Если иных приложений в сессии нет, то уничтожаем объект сессии
+      if (!otherAppsData.length) {
+        req.session.destroy();
+      } else {
+        req.session.appsUsers = otherAppsData;
+        req.session.save();
+      }
 
       res.status(OK).json({ message: 'Пользователь успешно вышел из системы' });
 
@@ -1304,6 +1390,7 @@ router.post(
 /**
  * Обработка запроса на выход из системы со сдачей дежурства.
  * Только для пользователей, завка на регистрацию которых подтверждена!
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/logoutWithDutyPass',
@@ -1314,6 +1401,15 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { applicationAbbreviation } = req.body;
+
+    // После middleware hasUserRightToPerformAction/ здесь уже точно известно, что req.session.appsUsers
+    // содержит элемент для applicationAbbreviation - его ниже удалим
+    const appSessionArrayElement = req.session.appsUsers
+      ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
+      : null;
+    if (!appSessionArrayElement) {
+      res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
+    }
 
     try {
       // Из системы выходит пользователь с id = req.user.userId, specialCredentials = req.user.specialCredentials,
@@ -1347,8 +1443,20 @@ router.post(
       lastTakePassDutyOnWorkPoligonInfo.lastPassDutyTime = lastPassDutyTime;
       await user.save();
 
-      req.session.destroy();
+      // Вносим изменения в объект сессии (удаляем данные о текущем пользователе во всех приложениях -
+      // т.е. пользователь, выходя из одного приложения, выходит и со всех остальных в рамках одной сессии)
 
+      // Приложения, данные которых будут храниться в сессии после выхода текущего пользователя
+      // (т.е. это те приложения, в которые зашел другой пользователь)
+      const otherAppsData = req.session.appsUsers.filter((el) => String(el.userId) !== String(user._id));
+      // Если иных приложений в сессии нет, то уничтожаем объект сессии
+      if (!otherAppsData.length) {
+        req.session.destroy();
+      } else {
+        req.session.appsUsers = otherAppsData;
+        req.session.save();
+      }
+      
       res.status(OK).json({ message: 'Пользователь успешно вышел из системы', lastPassDutyTime });
 
       // Логируем действие пользователя
@@ -1384,7 +1492,8 @@ router.post(
  * иное же лицо может удалить лишь того пользователя, который закреплен за его службой.
  *
  * Параметры тела запроса:
- * userId - идентификатор пользователя (обязателен)
+ * userId - идентификатор пользователя (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/del',
@@ -1475,7 +1584,8 @@ router.post(
  *
  * Параметры тела запроса:
  * userId - идентификатор пользователя (обязателен),
- * roleId - идентификатор роли (обязателен)
+ * roleId - идентификатор роли (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/delRole',
@@ -1563,6 +1673,7 @@ router.post(
  * service - наименование службы (не обязательно),
  * contactData - контактные данные (не обязательны),
  * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/mod',
@@ -1685,7 +1796,8 @@ router.post(
  * иное же лицо может подтвердить информацию лишь о том пользователе, который закреплен за его службой.
  *
  * Параметры тела запроса:
- * userId - идентификатор пользователя (обязателен)
+ * userId - идентификатор пользователя (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/confirm',

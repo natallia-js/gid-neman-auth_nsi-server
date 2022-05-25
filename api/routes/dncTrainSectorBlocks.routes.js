@@ -26,6 +26,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Параметры тела запроса:
  * trainSectorId - id поездного участка ДНЦ (обязателен),
  * blockIds - массив id перегонов (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/modBlocksList',
@@ -163,6 +164,7 @@ router.post(
  * Параметры тела запроса:
  * trainSectorId - id поездного участка ДНЦ (обязателен),
  * blockId - id перегона (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
   */
  router.post(
   '/del',
@@ -210,6 +212,7 @@ router.post(
  * blockId - id перегона (обязателен),
  * posInTrainSector - позиция перегона в рамках поездного участка (не обязателен),
  * belongsToSector - принадлежность перегона участку ДНЦ (не обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
   '/mod',

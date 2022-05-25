@@ -64,18 +64,19 @@ const SavableSelectMultiple = (props) => {
           tagRender={tagRender}
         >
           {
-            optionsToDisplay.map((item) => {
-              const labelToDisplay = item.label || item.value;
-              return (
-                <Option value={item.value} key={item.value}>
-                  {
-                    !item.subitem ?
-                    <span>{labelToDisplay}</span> :
-                    <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
-                  }
-                </Option>
-              );
-            })
+            optionsToDisplay
+              .map((item) => {
+                const labelToDisplay = item.label || item.value;
+                return (
+                  <Option value={item.value} key={item.value}>
+                    {
+                      !item.subitem ?
+                      <span>{labelToDisplay}</span> :
+                      <span style={{ marginLeft: 16 }}>{labelToDisplay}</span>
+                    }
+                  </Option>
+                );
+              })
           }
         </Select>
       </div>

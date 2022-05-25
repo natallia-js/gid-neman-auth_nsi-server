@@ -1,6 +1,5 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 import { Table, Form, Button } from 'antd';
 import EditableTableCell from '../../EditableTableCell';
 import NewAppCredModal from '../../NewAppCredModal';
@@ -16,9 +15,6 @@ import getAppApplicationCredObjFromDBApplicationCredObj from '../../../mappers/g
 const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы полномочий
   const [form] = Form.useForm();

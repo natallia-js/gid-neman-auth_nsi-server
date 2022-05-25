@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Button, Collapse, Form, Input, Select, Space, Table, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
@@ -73,9 +72,6 @@ const UsersTable = () => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
-
   // Для фильтрации данных в таблице пользователей
   const [filterForm] = Form.useForm();
 
@@ -118,7 +114,7 @@ const UsersTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
-      let res = await request(ServerAPI.GET_ALL_USERS, 'GET');
+      let res = await request(ServerAPI.GET_ALL_USERS, 'POST', {});
       const tableData = res
         .map((user) => getAppUserObjFromDBUserObj(user))
         // Неподтвержденные записи по пользователям выводим в начале списка
@@ -135,7 +131,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'GET');
+      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
       // Участки ДНЦ будем сортировать при отображении в списках выбора
       const dncSectors = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
@@ -149,7 +145,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
-      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'GET');
+      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
      // Участки ЭЦД будем сортировать при отображении в списках выбора
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
@@ -163,7 +159,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
-      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET');
+      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
       const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       // Станции будем сортировать при отображении в списках выбора
       const dataForStationsMultipleSelect = [];
@@ -189,7 +185,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по ролям
-      res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'GET');
+      res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'POST', {});
       // Роли отсортируем перед отображением в списках выбора
       const rolesData = res
         .map((role) => getAppRoleObjFromDBRoleObj(role))
@@ -203,7 +199,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по службам
-      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
+      res = await request(ServerAPI.GET_SERVICES_DATA, 'POST', {});
       // Хочу, чтобы службы в выпадающих списках были отсортированы по алфавиту
       const servicesData = res
         .map((service) => getAppServiceObjFromDBServiceObj(service))
@@ -219,7 +215,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по должностям
-      res = await request(ServerAPI.GET_POSTS_DATA, 'GET');
+      res = await request(ServerAPI.GET_POSTS_DATA, 'POST', {});
       // Хочу, чтобы должности в выпадающих списках были отсортированы по алфавиту
       const postsData = res
         .map((post) => getAppPostObjFromDBPostObj(post))
@@ -235,7 +231,7 @@ const UsersTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

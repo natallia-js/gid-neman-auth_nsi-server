@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tree, Row, Col, Input, Space, Typography, Radio, Button, Select, Popconfirm } from 'antd';
 import {
   ORDER_PATTERN_FIELDS,
@@ -10,7 +10,6 @@ import {
 import { DownSquareTwoTone } from '@ant-design/icons';
 import { OrderPatternSetConnectionsPreview } from '../OrderPatternSetConnectionsPreview';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { OrderPatternsNodeType } from '../constants';
 import { useSearchTree } from '../../../hooks/searchTree.hook';
@@ -76,9 +75,6 @@ export const CreateOrderPatternConnections = (props) => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
-
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
 
@@ -119,7 +115,7 @@ export const CreateOrderPatternConnections = (props) => {
         [ORDER_PATTERN_FIELDS.CATEGORY]: lastChangedOrdersCategoryTitle.newTitle,
       }));
     }
-  }, [lastChangedOrdersCategoryTitle]);
+  }, [lastChangedOrdersCategoryTitle, selectedBasePattern, selectedChildPattern]);
 
 
   /**
@@ -166,7 +162,7 @@ export const CreateOrderPatternConnections = (props) => {
         setNullSelectedElements(true);
       }
     }
-  }, [lastChangedOrderPattern]);
+  }, [lastChangedOrderPattern, selectedBasePattern, selectedChildPattern]);
 
 
   const onBaseAndChildPatternElementsSelected = () => {

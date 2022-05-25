@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Row, Col, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewBlockModal from '../NewBlockModal';
@@ -35,9 +34,6 @@ const BlocksTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы перегонов
   const [form] = Form.useForm();
@@ -83,14 +79,14 @@ const BlocksTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по перегонам
-      let res = await request(ServerAPI.GET_BLOCKS_FULL_DATA, 'GET');
+      let res = await request(ServerAPI.GET_BLOCKS_FULL_DATA, 'POST', {});
       const tableData = res.map((block) => getAppBlockObjFromDBBlockObj(block));
       setTableData(tableData);
 
       // -------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'GET', null);
+      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
 
       // Хочу, чтобы станции в выпадающих списках были отсортированы по алфавиту
       const stationsData = res.map((station) => getAppStationObjFromDBStationObj(station));
@@ -109,7 +105,7 @@ const BlocksTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**
@@ -313,7 +309,7 @@ const BlocksTable = () => {
   /*const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'GET');
+      let res = await request(ServerAPI.SYNC_BLOCKS_WITH_PENSI, 'POST', {});
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

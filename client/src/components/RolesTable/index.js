@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewRoleModal from '../NewRoleModal';
@@ -35,9 +34,6 @@ const RolesTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы ролей
   const [form] = Form.useForm();
@@ -75,14 +71,14 @@ const RolesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по ролям
-      const res = await request(ServerAPI.GET_ROLES_DATA, 'GET');
+      const res = await request(ServerAPI.GET_ROLES_DATA, 'POST', {});
       const tableData = res.map((role) => getAppRoleObjFromDBRoleObj(role));
       setTableData(tableData);
 
       // -------------------
 
       // Получаем также необходимую информацию по приложениям
-      const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'GET');
+      const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'POST', {});
       const appsTableData = appsData.map((app) => getAppApplicationObjFromDBApplicationObj(app));
       setAppCredAbbrs(appsTableData);
 
@@ -95,7 +91,7 @@ const RolesTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

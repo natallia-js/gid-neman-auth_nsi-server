@@ -5,7 +5,6 @@ import { CreateOrderPattern } from '../components/OrderPattern/CreateOrderPatter
 import { CreateOrderPatternConnections } from '../components/OrderPattern/CreateOrderPatternConnections';
 import { ServerAPI, ORDER_PATTERN_FIELDS } from '../constants';
 import { useHttp } from '../hooks/http.hook';
-import { AuthContext } from '../context/AuthContext';
 import getAppServiceObjFromDBServiceObj from '../mappers/getAppServiceObjFromDBServiceObj';
 import getAppOrderPatternElRefObjFromDBOrderPatternElRefObj from '../mappers/getAppOrderPatternElRefObjFromDBOrderPatternElRefObj';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
@@ -49,9 +48,6 @@ export const OrderPatternsPage = () => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
-
   const [lastChangedOrderPattern, setLastChangedOrderPattern] = useState(null);
   const [lastChangedOrdersCategoryTitle, setLastChangedOrdersCategoryTitle] = useState(null);
 
@@ -75,13 +71,13 @@ export const OrderPatternsPage = () => {
       setOrderPatterns(tableData);
 
       // Делаем запрос на сервер с целью получения информации по службам
-      res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
+      res = await request(ServerAPI.GET_SERVICES_DATA, 'POST', {});
       tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
       setServices(tableData);
 
       // Делаем запрос на сервер с целью получения списков возможных смысловых значений
       // элементов шаблонов распоряжений
-      res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'GET');
+      res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'POST', {});
       tableData = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref));
       setOrderPatternElRefs(tableData);
 
@@ -94,7 +90,7 @@ export const OrderPatternsPage = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

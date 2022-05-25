@@ -1,11 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import EditableTableCell from '../../EditableTableCell';
 import ecdStructuralDivisionsTableColumns from './ECDStructuralDivisionsTableColumns';
 import { Table, Form, Button } from 'antd';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { useHttp } from '../../../hooks/http.hook';
 import { ServerAPI, ECDSECTOR_FIELDS, ECD_STRUCTURAL_DIVISION_FIELDS } from '../../../constants';
-import { AuthContext } from '../../../context/AuthContext';
 import getAppECDStructuralDivisionFromDBECDStructuralDivisionObj from '../../../mappers/getAppECDStructuralDivisionFromDBECDStructuralDivisionObj';
 import NewECDStructuralDivisionModal from '../../NewECDStructuralDivisionModal';
 
@@ -31,9 +30,6 @@ const ECDStructuralDivisionsTable = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewDivisionModalVisible, setIsAddNewDivisionModalVisible] = useState(false);

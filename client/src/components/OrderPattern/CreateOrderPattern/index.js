@@ -1,11 +1,10 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, Row, Col, Button, Popconfirm, Form, Select, Input, Space } from 'antd';
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import { OrderTypes, SPECIAL_TRAIN_CATEGORIES } from '../constants';
 import { useHttp } from '../../../hooks/http.hook';
-import { AuthContext } from '../../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { OrderCategoryChooser } from '../OrderCategoryChooser';
 import objectId from '../../../generators/objectId.generator';
@@ -53,9 +52,6 @@ export const CreateOrderPattern = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();

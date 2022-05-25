@@ -1,8 +1,7 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Button, Form, Input, Typography, Row, Col } from 'antd';
 import { ServerAPI, ECDSECTOR_FIELDS, TRAIN_SECTOR_FIELDS } from '../../constants';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import ECDTrainSectorsTable from './ECDTrainSectorsTable';
 import getAppECDTrainSectorFromDBECDTrainSectorObj from '../../mappers/getAppECDTrainSectorFromDBECDTrainSectorObj';
@@ -25,9 +24,6 @@ const ECDTrainSectorsBlock = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();

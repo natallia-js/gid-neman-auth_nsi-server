@@ -5,6 +5,7 @@ const PROJECT_CONSTANTS = Object.freeze({
   ERR: 400,
   UNAUTHORIZED: 401,
   UNPROCESSABLE_ENTITY: 402,
+  USER_GONE: 410,
   UNKNOWN_ERR: 500,
   UNKNOWN_ERR_MESS: 'Что-то пошло не так, попробуйте снова',
   USER_NOT_FOUND_ERR_MESS: 'Пользователь не найден',

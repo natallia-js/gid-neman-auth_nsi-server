@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewAppModal from '../NewAppModal';
@@ -29,9 +28,6 @@ const AppsTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы приложений
   const [form] = Form.useForm();
@@ -68,7 +64,7 @@ const AppsTable = () => {
     setDataLoaded(false);
     try {
       // Делаем запрос на сервер с целью получения информации по приложениям
-      const res = await request(ServerAPI.GET_APPS_DATA, 'GET');
+      const res = await request(ServerAPI.GET_APPS_DATA, 'POST', {});
       const tableData = res.map((app) => getAppApplicationObjFromDBApplicationObj(app));
       setTableData(tableData);
       setLoadDataErr(null);
@@ -77,7 +73,7 @@ const AppsTable = () => {
       setLoadDataErr(e.message);
     }
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

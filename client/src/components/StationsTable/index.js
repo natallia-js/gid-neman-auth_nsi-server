@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Row, Col, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewStationModal from '../NewStationModal';
@@ -31,9 +30,6 @@ const StationsTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы станций
   const [form] = Form.useForm();
@@ -77,7 +73,7 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по станциям
-      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'GET');
+      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
       const tableData = res.map((station) => getAppStationObjFromDBStationObj(station));
       setTableData(tableData);
       setLoadDataErr(null);
@@ -88,7 +84,7 @@ const StationsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**
@@ -257,7 +253,7 @@ const StationsTable = () => {
   const handleSyncWithPENSI = async () => {
     setDataLoaded(false);
     try {
-      let res = await request(ServerAPI.SYNC_STATIONS_WITH_PENSI, 'GET');
+      let res = await request(ServerAPI.SYNC_STATIONS_WITH_PENSI, 'POST', {});
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setSyncDataResults(res.syncResults);
     } catch (e) {

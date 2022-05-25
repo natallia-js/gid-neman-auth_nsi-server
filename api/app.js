@@ -62,6 +62,9 @@ app.use(compression());
 // as a JSON Object. This method is called as a middleware.
 app.use(express.json({ extended: true }));
 
+// исключаем определенные методы запросов
+app.use(requestMethod);
+
 // CORS middleware
 app.use(cors({
   credentials: true, // to enable HTTP cookies over CORS
@@ -129,7 +132,6 @@ connectToMongoDB(mongoURI)
   console.log('MS SQL connection established');
 
   // Маршрутизация
-  app.use(requestMethod); // исключаем определенные методы запросов
   app.use('/api/auth', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/auth.routes'));
   app.use('/api/apps', require('./routes/apps.routes'));
   app.use('/api/roles', require('./routes/roles.routes'));

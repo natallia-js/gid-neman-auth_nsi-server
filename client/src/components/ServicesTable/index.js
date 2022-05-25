@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewServiceModal from '../NewServiceModal';
@@ -27,9 +26,6 @@ const ServicesTable = () => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для редактирования данных таблицы служб
   const [form] = Form.useForm();
@@ -67,7 +63,7 @@ const ServicesTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по службам
-      let res = await request(ServerAPI.GET_SERVICES_DATA, 'GET');
+      let res = await request(ServerAPI.GET_SERVICES_DATA, 'POST', {});
       const tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
       setTableData(tableData);
       setLoadDataErr(null);
@@ -78,7 +74,7 @@ const ServicesTable = () => {
     }
 
     setDataLoaded(true);
-  }, [auth.token, request]);
+  }, [request]);
 
 
   /**

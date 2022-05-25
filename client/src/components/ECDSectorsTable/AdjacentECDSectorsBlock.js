@@ -1,8 +1,7 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Typography, Row, Col } from 'antd';
 import { ServerAPI, ECDSECTOR_FIELDS, ADJACENT_ECDSECTOR_FIELDS } from '../../constants';
 import { useHttp } from '../../hooks/http.hook';
-import { AuthContext } from '../../context/AuthContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 
@@ -22,9 +21,6 @@ const AdjacentECDSectorsBlock = (props) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
-
-  // Получаем доступ к контекстным данным авторизации пользователя
-  const auth = useContext(AuthContext);
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();

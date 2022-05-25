@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { useHttp } from '../hooks/http.hook';
 import { MESSAGE_TYPES, useCustomMessage } from '../hooks/customMessage.hook';
 import { AuthContext } from '../context/AuthContext';
-import { ServerAPI, CURR_APP_ABBREV_NAME } from '../constants';
+import { ServerAPI } from '../constants';
 import { Form, Input, Button, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
@@ -31,10 +31,7 @@ export const AuthPage = () => {
   const loginHandler = async (loginData) => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const responseData = await request(ServerAPI.LOGIN, 'POST', {
-        ...loginData,
-        applicationAbbreviation: CURR_APP_ABBREV_NAME,
-      });
+      const responseData = await request(ServerAPI.LOGIN, 'POST', loginData);
 
       // Входим в систему
       auth.login({
@@ -54,7 +51,8 @@ export const AuthPage = () => {
   /**
    * Обрабатывает событие нажатия на кнопку входа в систему.
    */
-   const onFinish = (values) => {
+  const onFinish = (values) => {
+    
     loginHandler(values);
   };
 
@@ -78,6 +76,13 @@ export const AuthPage = () => {
                 required: true,
                 message: 'Пожалуйста, введите login администратора!',
               },
+              {
+                validator: async (_, login) => {
+                  if (login && !login.match(/^[A-Za-z0-9_]+$/)) {
+                    return Promise.reject(new Error('В login администратора допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'));
+                  }
+                },
+              },
             ]}
           >
             <Input
@@ -92,6 +97,13 @@ export const AuthPage = () => {
               {
                 required: true,
                 message: 'Пожалуйста, введите пароль администратора!',
+              },
+              {
+                validator: async (_, password) => {
+                  if (password && !password.match(/^[A-Za-z0-9_]+$/)) {
+                    return Promise.reject(new Error('В пароле допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'));
+                  }
+                },
               },
             ]}
           >
