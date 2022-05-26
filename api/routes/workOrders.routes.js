@@ -436,7 +436,11 @@ router.post(
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
-        workPoligon: `${workPoligon.type}, id=${workPoligon.id}, workPlaceId=${workPoligon.workPlaceId}`,
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: workPoligon.type,
+          workPoligonId: workPoligon.id,
+          workSubPoligonId: workPoligon.workPlaceId,
+        }),
         actionTime: confirmDateTime,
         action: 'Подтверждение распоряжения',
         actionParams: {
@@ -529,7 +533,11 @@ router.post(
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
-        workPoligon: `${userWorkPoligon.type}, id=${userWorkPoligon.id}, workPlaceId=${userWorkPoligon.workPlaceId}`,
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: userWorkPoligon.type,
+          workPoligonId: userWorkPoligon.id,
+          workSubPoligonId: userWorkPoligon.workPlaceId,
+        }),
         actionTime: confirmDateTime,
         action: 'Подтверждение распоряжения за других',
         actionParams: {
@@ -780,7 +788,11 @@ router.post(
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
-        workPoligon: `${userWorkPoligon.type}, id=${userWorkPoligon.id}, workPlaceId=${userWorkPoligon.workPlaceId}`,
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: userWorkPoligon.type,
+          workPoligonId: userWorkPoligon.id,
+          workSubPoligonId: userWorkPoligon.workPlaceId,
+        }),
         actionTime: confirmDateTime,
         action: 'Подтверждение распоряжения за других',
         actionParams: {

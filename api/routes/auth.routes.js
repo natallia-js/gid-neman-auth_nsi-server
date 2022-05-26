@@ -25,6 +25,7 @@ const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
 const { addDY58UserActionInfo, addAdminActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
+const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
 
 const router = Router();
 
@@ -1072,7 +1073,7 @@ router.post(
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         const logObject = {
           user: userPostFIOString(user),
-          workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+          workPoligon: await getUserWorkPoligonString({ workPoligonType, workPoligonId, workSubPoligonId }),
           actionTime: new Date(),
           action: 'Вход в систему без принятия дежурства',
           actionParams: {
@@ -1083,7 +1084,7 @@ router.post(
             specialCredentials,
             application: applicationAbbreviation,
           },
-        };        
+        };
         addDY58UserActionInfo(logObject);
       }
 
@@ -1271,7 +1272,7 @@ router.post(
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         const logObject = {
           user: userPostFIOString(user),
-          workPoligon: `${workPoligonType}, id=${workPoligonId}, workPlaceId=${workSubPoligonId}`,
+          workPoligon: await getUserWorkPoligonString({ workPoligonType, workPoligonId, workSubPoligonId }),
           actionTime: lastTakeDutyTime,
           action: 'Принятие дежурства',
           actionParams: {
@@ -1366,7 +1367,13 @@ router.post(
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         const logObject = {
           user: userPostFIOString(user),
-          workPoligon: req.user.workPoligon ? `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}` : '?',
+          workPoligon: req.user.workPoligon
+            ? await getUserWorkPoligonString({
+              workPoligonType: req.user.workPoligon.type,
+              workPoligonId: req.user.workPoligon.id,
+              workSubPoligonId: req.user.workPoligon.workPlaceId,
+            })
+            : '?',
           actionTime: new Date(),
           action: 'Выход из системы без сдачи дежурства',
           actionParams: { application: applicationAbbreviation, userId: user._id },
@@ -1463,7 +1470,13 @@ router.post(
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         const logObject = {
           user: userPostFIOString(user),
-          workPoligon: req.user.workPoligon ? `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}` : '?',
+          workPoligon: req.user.workPoligon
+            ? await getUserWorkPoligonString({
+              workPoligonType: req.user.workPoligon.type,
+              workPoligonId: req.user.workPoligon.id,
+              workSubPoligonId: req.user.workPoligon.workPlaceId,
+            })
+            : '?',
           actionTime: new Date(),
           action: 'Выход из системы со сдачей дежурства',
           actionParams: { application: applicationAbbreviation, userId: user._id },

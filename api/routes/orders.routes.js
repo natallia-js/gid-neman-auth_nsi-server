@@ -19,6 +19,7 @@ const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/pro
 const { getUserConciseFIOString, userPostFIOString } = require('../routes/additional/getUserTransformedData');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
+const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
 
 const router = Router();
 
@@ -374,7 +375,11 @@ const {
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
-        workPoligon: `${workPoligon.type}, id=${workPoligon.id}, workPlaceId=${workPoligon.workPlaceId}`,
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: workPoligon.type,
+          workPoligonId: workPoligon.id,
+          workSubPoligonId: workPoligon.workPlaceId,
+        }),
         actionTime: createDateTime,
         action: 'Издание распоряжения',
         actionParams: {
@@ -504,7 +509,11 @@ router.post(
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
-        workPoligon: `${req.user.workPoligon.type}, id=${req.user.workPoligon.id}, workPlaceId=${req.user.workPoligon.workPlaceId}`,
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: req.user.workPoligon.type,
+          workPoligonId: req.user.workPoligon.id,
+          workSubPoligonId: req.user.workPoligon.workPlaceId,
+        }),
         actionTime: new Date(),
         action: 'Редактирование распоряжения',
         actionParams: {
