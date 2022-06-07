@@ -181,25 +181,16 @@ router.post(
       confirmed: 1,
     };
     let data;
+    let mainAdminRolesIds;
 
     try {
       if (!isMainAdmin(req)) {
         // Ищем пользователей, принадлежащих заданной службе
         data = await User.find({ service: serviceName }, fieldsToExtract);
-        // Для каждого пользователя удаляем id тех ролей, которые доступны лишь главному администратору
-        let mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
+        // Ищем те роли, которые доступны лишь главному администратору.
+        // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
+        mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
         mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
-        if (mainAdminRolesIds.length) {
-          data = data.map((userData) => ({
-            ...userData,
-            _doc: {
-              ...userData._doc,
-              roles: userData._doc.roles
-                ? userData._doc.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
-                : null,
-            },
-          }));
-        }
       } else {
         // Извлекаем информацию обо всех пользователях
         data = await User.find({}, fieldsToExtract);
@@ -230,6 +221,9 @@ router.post(
       data = data.map((user) => {
         return {
           ...user._doc,
+          roles: user.roles && mainAdminRolesIds
+            ? user.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
+            : user.roles,
           stationWorkPoligons: stationWorkPoligons
             .filter((poligon) => poligon.SWP_UserID === String(user._id))
             .map((poligon) => ({ id: poligon.SWP_StID, workPlaceId: poligon.SWP_StWP_ID })),

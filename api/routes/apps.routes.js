@@ -33,7 +33,7 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  async (req, res) => {
+  async (_req, res) => {
     try {
       const data = await App.find();
       res.status(OK).json(data);

@@ -81,6 +81,7 @@ export const AuthPage = () => {
                   if (login && !login.match(/^[A-Za-z0-9_]+$/)) {
                     return Promise.reject(new Error('В login администратора допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'));
                   }
+                  return Promise.resolve();
                 },
               },
             ]}
@@ -103,11 +104,12 @@ export const AuthPage = () => {
                   if (password && !password.match(/^[A-Za-z0-9_]+$/)) {
                     return Promise.reject(new Error('В пароле допустимы только символы латинского алфавита, цифры и знак нижнего подчеркивания'));
                   }
+                  return Promise.resolve();
                 },
               },
             ]}
           >
-            <Input
+            <Input.Password
               prefix={<LockOutlined className="site-form-item-icon" />}
               type="password"
               placeholder="Пароль администратора"

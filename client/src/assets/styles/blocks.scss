@@ -72,3 +72,39 @@
   from { opacity: 1.0; }
   to { opacity: 0.0; }
 }
+
+/****************************************/
+
+@mixin help-text-style() {
+  line-height: 1.5;
+  margin-bottom: 3px;
+}
+
+@mixin help-paragraph-style() {
+  text-indent: 25px;
+}
+
+.help-text {
+  @include help-text-style();
+}
+
+.help-paragraph {
+  @include help-text-style();
+  @include help-paragraph-style();
+}
+
+.help-list {
+  @include help-text-style();
+  @include help-paragraph-style();
+  counter-reset: li;
+  list-style: none;
+}
+
+.help-list li:before {
+  content: "-";
+}
+
+.to-help-start-block {
+  margin-top: 0.5rem;
+  text-align: right;
+}

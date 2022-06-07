@@ -1,15 +1,35 @@
 <!DOCTYPE html>
+<!-- Определяем естественный язык страницы -->
+<!-- Note: You should use the html element rather than the body element, since the body element doesn't
+cover the text inside the document's head element -->
 <html lang="ru">
   <head>
+    <!-- Кодировка, то есть способ отображения кода страницы на экране пользователя -->
+    <!-- Note: it's about the interpretation of bytes in the document as characters -->
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <!-- Атрибут NAME — это информационно-управляющая часть, используется приложением-клиентом,
+    т.е. броузером или поисковым роботом. Данный атрибут содержит скрытую информацию, не входящую
+    в заголовок HTTP, и идентифицирует имя свойства. Значение данного атрибута может быть практически
+    любым, однако существует несколько стандартных общепризнанных значений -->
+    <!-- Viewport — это область, которую видит пользователь на экране, когда заходит на страницу сайта с любого устройства. -->
+    <!-- Метатег viewport не делает верстку адаптивной. Его предназначение — контроль масштаба отображения страницы. -->
+    <!-- Параметр width=device-width приравнивает ширину вьюпорта к CSS-ширине устройства. -->
+    <!-- CSS-разрешение зависит от плотности пикселей. -->
+    <!-- initial-scale — коэффициент масштабирования начального размера viewport. Принимает значения от 0.1 до 10.
+    Значение 1.0 задает отсутствие масштабирования. -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Предоставляет браузерам цвет CSS для настройки отображения страницы или окружающего пользовательского интерфейса -->
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
       content="Средство управления аккаунтами ГИД НЕМАН"
     />
+    <!-- Только при переходе внутри сайта реферером является ссылающаяся страница, во всех остальных случаях это будет домен сайта.
+    Если ссылающийся сайт в https протоколе, а прилинкованный - в http, то реферер вообще пропадает.-->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- Документ не кэшируется -->
+    <meta http-equiv="cache-control" content="no-cache" />
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
