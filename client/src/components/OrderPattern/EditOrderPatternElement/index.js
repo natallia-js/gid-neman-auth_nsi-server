@@ -210,7 +210,7 @@ export const EditOrderPatternElement = (props) => {
       case OrderPatternElementType.TIME:
         return <TimePicker format={TimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.TIME_OR_TILL_NOTICE:
-        return <TimeOrTillNoticeComponent />;
+        return <TimeOrTillNoticeComponent format={TimeFormat} size="small" />;
       case OrderPatternElementType.DATETIME:
         return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.DR_TRAIN_TABLE:

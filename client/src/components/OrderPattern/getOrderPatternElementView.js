@@ -9,6 +9,7 @@ import {
 import { EnterOutlined } from '@ant-design/icons';
 import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../constants';
 import drTrainTableColumns from './drTrainTableColumns';
+import TimeOrTillNoticeComponent from './TimeOrTillNoticeComponent';
 
 const { TextArea } = Input;
 
@@ -88,6 +89,17 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
           open={false}
+        />
+      </Tooltip>;
+    case OrderPatternElementType.TIME_OR_TILL_NOTICE:
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
+      >
+        <TimeOrTillNoticeComponent
+          format={TimeFormat}
+          size="small"
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
     case OrderPatternElementType.DATETIME:
