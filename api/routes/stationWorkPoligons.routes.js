@@ -66,10 +66,10 @@ router.post(
  * onlyOnline - (пока НЕ РАБОТАЕТ: данное поле отсутствует в БД!!!)
  *              true, если необходимо получить список лишь тех пользователей, которые в данный
  *              момент online; false - если необходимо получить список всех пользователей
- * apps - массив объектов с полями app (строка-условное наименование приложения ГИД Неман из коллекции apps) и
- *        creds - массив строк - наименований полномочий в соответствующем приложении;
- *        параметр apps используется для поиска для каждого пользователя дополнительной информации о его
- *        полномочиях (из заданного списка) в каждом из указанных приложений
+ * credsGroups - массив объектов с полями credsGroup (строка-условное наименование группы полномочий в приложениях
+ *        ГИД Неман из коллекции appcreds в БД) и creds - массив строк-наименований полномочий группы;
+ *        параметр credsGroups используется для поиска для каждого пользователя дополнительной информации о его
+ *        полномочиях (из заданного списка) в каждой из указанных групп
  * includeWorkPlaces - если true, то в выборку включаются все пользователи станций; если false, то
  *                     в выборку включаются только "главные" на станциях с рабочим полигоном "станция" и
  *                     не включаются пользователи с рабочим полигоном "рабочее место на станции",
@@ -87,11 +87,11 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { stationIds, onlyOnline, apps, includeWorkPlaces } = req.body;
+    const { stationIds, onlyOnline, credsGroups, includeWorkPlaces } = req.body;
 
     try {
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
-      const roles = await matchUserRolesToAppsAndCreds(apps);
+      const roles = await matchUserRolesToAppsAndCreds(credsGroups);
 
       const filter = {
         SWP_StID: stationIds,
@@ -149,7 +149,7 @@ router.post(
         errorTime: new Date(),
         action: 'Получение id всех пользователей, у которых рабочий полигон - станция с одним из заданных id',
         error: error.message,
-        actionParams: { stationIds, onlyOnline, apps, includeWorkPlaces },
+        actionParams: { stationIds, onlyOnline, credsGroups, includeWorkPlaces },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

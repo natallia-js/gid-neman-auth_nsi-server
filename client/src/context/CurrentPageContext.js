@@ -2,7 +2,7 @@ import { createContext } from 'react';
 
 export const PAGES_IDS = {
   USER_INFO: '0',
-  APPLICATIONS: '1',
+  APP_CREDS_GROUPS: '1',
   ROLES: '2',
   SERVICES: '3',
   POSTS: '4',

@@ -6,7 +6,7 @@ const {
   UNDEFINED_ACTION_ERR_MESS,
   CREDENTIALS_ERR_MESS,
 
-  GET_ALL_APPS_ACTION, GET_APPS_CREDENTIALS_ACTION, MOD_APP_ACTION, MOD_APP_CREDENTIAL_ACTION,
+  GET_ALL_APPS_CREDS_ACTION, GET_APPS_CREDS_ABBRS_ACTION, MOD_APP_CREDS_GROUP_ACTION, MOD_APP_CREDENTIAL_ACTION,
   GET_ALL_ROLES_ACTION, MOD_ROLE_ACTION, MOD_APP_CREDENTIALS_ACTION,
   MOD_POST_ACTION,
   MOD_SERVICE_ACTION,
@@ -42,15 +42,15 @@ const HOW_CHECK_CREDS = {
 
 /**
  * Проверка текущих полномочий пользователя с целью определения возможности выполнения определенного действия.
- * Полномочия проверяются без привязки к приложениям ГИД Неман, в общем списке "приложение-полномочия",
+ * Полномочия проверяются без привязки к группам полномочий ГИД Неман, в общем списке "группа-полномочия",
  * закрепленном за пользователем.
  */
 function checkGeneralCredentials(req) {
   // Ожидаем, что если req.action не указан, то нет необходимости проверять полномочия пользователя.
   // Если же req.action указан, то это должен быть объект с описанием тех полномочий, наличие которых необходимо
   // проверить у пользователя. Поле which данного объекта - одно из значений HOW_CHECK_CREDS.
-  // В процессе проверки не учитываем наименования приложений. Полагаем, что в рамках всех приложений нет
-  // полномочий с одинаковыми наименованиями.
+  // В процессе проверки не учитываем наименования групп полномочий. Полагаем, что в рамках всех групп полномочий нет
+  // групп с одинаковыми наименованиями.
   if (!req.action) {
     return { err: false };
   }
@@ -166,17 +166,17 @@ const hasUserRightToPerformAction = async (req, res, next) => {
 
     // Для системы НСИ и аутентификации
     // --------------------------------
-    // Приложения
-    case AUTH_NSI_ACTIONS.GET_ALL_APPS:
-      creds = [GET_ALL_APPS_ACTION];
+    // Группы полномочий в приложениях ГИД Неман
+    case AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS:
+      creds = [GET_ALL_APPS_CREDS_ACTION];
       break;
-    case AUTH_NSI_ACTIONS.GET_ALL_APPS_ABBR_DATA:
-      creds = [GET_APPS_CREDENTIALS_ACTION];
+    case AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS_ABBR_DATA:
+      creds = [GET_APPS_CREDS_ABBRS_ACTION];
       break;
-    case AUTH_NSI_ACTIONS.ADD_APP:
-    case AUTH_NSI_ACTIONS.DEL_APP:
-    case AUTH_NSI_ACTIONS.MOD_APP:
-      creds = [MOD_APP_ACTION];
+    case AUTH_NSI_ACTIONS.ADD_APP_CREDS_GROUP:
+    case AUTH_NSI_ACTIONS.DEL_APP_CREDS_GROUP:
+    case AUTH_NSI_ACTIONS.MOD_APP_CREDS_GROUP:
+      creds = [MOD_APP_CREDS_GROUP_ACTION];
       break;
     case AUTH_NSI_ACTIONS.ADD_APP_CREDENTIAL:
     case AUTH_NSI_ACTIONS.DEL_APP_CREDENTIAL:

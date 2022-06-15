@@ -1,40 +1,40 @@
 import { Typography, Popconfirm, Row, Col } from 'antd';
-import { APP_FIELDS } from '../../constants';
+import { APP_CREDS_GROUP_FIELDS } from '../../constants';
 import Loader from '../Loader';
 import compareStrings from '../../sorters/compareStrings';
 
 
 // Описание столбцов таблицы приложений
-const appsTableColumns = (props) => {
+const appCredsTableColumns = (props) => {
   const {
     isEditing,
     editingKey,
-    handleEditApp,
+    handleEditAppCredsGroup,
     handleCancelMod,
-    handleStartEditApp,
-    handleDelApp,
+    handleStartEditAppCredsGroup,
+    handleDelAppCredsGroup,
     recsBeingProcessed,
   } = props;
 
   return [
     {
-      title: 'Аббревиатура приложения',
-      dataIndex: APP_FIELDS.SHORT_TITLE,
-      key: APP_FIELDS.SHORT_TITLE,
+      title: 'Аббревиатура группы',
+      dataIndex: APP_CREDS_GROUP_FIELDS.SHORT_TITLE,
+      key: APP_CREDS_GROUP_FIELDS.SHORT_TITLE,
       width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => compareStrings(a[APP_FIELDS.SHORT_TITLE].toLowerCase(), b[APP_FIELDS.SHORT_TITLE].toLowerCase()),
+      sorter: (a, b) => compareStrings(a[APP_CREDS_GROUP_FIELDS.SHORT_TITLE].toLowerCase(), b[APP_CREDS_GROUP_FIELDS.SHORT_TITLE].toLowerCase()),
       className: 'main-col',
     },
     {
-      title: 'Полное наименование приложения',
-      dataIndex: APP_FIELDS.TITLE,
-      key: APP_FIELDS.TITLE,
+      title: 'Полное наименование группы',
+      dataIndex: APP_CREDS_GROUP_FIELDS.TITLE,
+      key: APP_CREDS_GROUP_FIELDS.TITLE,
       width: '40%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
-      sorter: (a, b) => compareStrings(a[APP_FIELDS.TITLE].toLowerCase(), b[APP_FIELDS.TITLE].toLowerCase()),
+      sorter: (a, b) => compareStrings(a[APP_CREDS_GROUP_FIELDS.TITLE].toLowerCase(), b[APP_CREDS_GROUP_FIELDS.TITLE].toLowerCase()),
     },
     {
       title: 'Операции',
@@ -46,11 +46,11 @@ const appsTableColumns = (props) => {
             <Col>
               <a
                 href="#!"
-                onClick={() => handleEditApp(record[APP_FIELDS.KEY])}
+                onClick={() => handleEditAppCredsGroup(record[APP_CREDS_GROUP_FIELDS.KEY])}
                 style={{
                   marginRight: 10,
                 }}
-                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY])}
+                disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY])}
               >
                 Сохранить
               </a>
@@ -67,13 +67,13 @@ const appsTableColumns = (props) => {
                   style={{
                     marginRight: 10,
                   }}
-                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY])}
+                  disabled={recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY])}
                 >
                   Отменить
                 </a>
               </Popconfirm>
             </Col>
-            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY]) &&
+            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY]) &&
               <Col>
                 <Loader />
               </Col>
@@ -83,8 +83,8 @@ const appsTableColumns = (props) => {
           <Row>
             <Col>
               <Typography.Link
-                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY]))}
-                onClick={() => handleStartEditApp(record)}
+                disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY]))}
+                onClick={() => handleStartEditAppCredsGroup(record)}
                 style={{
                   marginRight: 10,
                 }}
@@ -95,13 +95,13 @@ const appsTableColumns = (props) => {
             <Col>
               <Popconfirm
                 title="Удалить запись?"
-                onConfirm={() => handleDelApp(record[APP_FIELDS.KEY])}
+                onConfirm={() => handleDelAppCredsGroup(record[APP_CREDS_GROUP_FIELDS.KEY])}
                 okText="Да"
                 cancelText="Отмена"
               >
                 <a
                   href="#!"
-                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY]))}
+                  disabled={editingKey !== '' || (recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY]))}
                   style={{
                     marginRight: 10,
                   }}
@@ -110,7 +110,7 @@ const appsTableColumns = (props) => {
                 </a>
               </Popconfirm>
             </Col>
-            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_FIELDS.KEY]) &&
+            {recsBeingProcessed && recsBeingProcessed.includes(record[APP_CREDS_GROUP_FIELDS.KEY]) &&
               <Col>
                 <Loader />
               </Col>
@@ -122,4 +122,4 @@ const appsTableColumns = (props) => {
   ];
 };
 
-export default appsTableColumns;
+export default appCredsTableColumns;

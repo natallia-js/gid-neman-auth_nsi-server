@@ -26,7 +26,7 @@ const { check, body } = require('express-validator');
   return true;
 }
 
-const addAppValidationRules = () => {
+const addCredsGroupValidationRules = () => {
   return [
     check('shortTitle')
       .trim()
@@ -46,9 +46,9 @@ const addAppValidationRules = () => {
 
 const addCredValidationRules = () => {
   return [
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('englAbbreviation')
       .trim()
       .isLength({ min: 1 })
@@ -59,30 +59,30 @@ const addCredValidationRules = () => {
   ];
 };
 
-const delAppValidationRules = () => {
+const delCredsGroupValidationRules = () => {
   return [
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id удаляемого приложения'),
+      .withMessage('Не указан id удаляемой группы полномочий'),
   ];
 };
 
 const delCredValidationRules = () => {
   return [
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('credId')
       .exists()
       .withMessage('Не указан id полномочия')
   ];
 };
 
-const modAppValidationRules = () => {
+const modCredsGroupValidationRules = () => {
   return [
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('shortTitle')
       .if(body('shortTitle').exists())
       .trim()
@@ -104,9 +104,9 @@ const modAppValidationRules = () => {
 
 const modCredValidationRules = () => {
   return [
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('credId')
       .exists()
       .withMessage('Не указан id полномочия'),
@@ -121,10 +121,10 @@ const modCredValidationRules = () => {
 };
 
 module.exports = {
-  addAppValidationRules,
+  addCredsGroupValidationRules,
   addCredValidationRules,
-  delAppValidationRules,
+  delCredsGroupValidationRules,
   delCredValidationRules,
-  modAppValidationRules,
+  modCredsGroupValidationRules,
   modCredValidationRules,
 };

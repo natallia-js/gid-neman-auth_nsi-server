@@ -14,9 +14,9 @@ function isMainAdmin(req) {
  */
 function checkMainAdmin(req) {
   if (req && [
-    // Приложения
-    AUTH_NSI_ACTIONS.GET_ALL_APPS,
-    AUTH_NSI_ACTIONS.GET_ALL_APPS_ABBR_DATA,
+    // Группы полномочий в приложениях ГИД Неман
+    AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS,
+    AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS_ABBR_DATA,
     AUTH_NSI_ACTIONS.MOD_APP,
     AUTH_NSI_ACTIONS.MOD_APP_CREDENTIAL,
     

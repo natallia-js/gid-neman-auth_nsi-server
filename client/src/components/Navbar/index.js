@@ -65,8 +65,8 @@ export const Navbar = () => {
           </Popover>
         </Menu.Item>
         {
-          auth.hasUserCredential(GetDataCredentials.GET_ALL_APPS_ACTION) &&
-          <Menu.Item key={PAGES_IDS.APPLICATIONS}><NavLink to="/apps">Приложения</NavLink></Menu.Item>
+          auth.hasUserCredential(GetDataCredentials.GET_ALL_APPS_CREDS_ACTION) &&
+          <Menu.Item key={PAGES_IDS.APP_CREDS_GROUPS}><NavLink to="/apps">Группы полномочий</NavLink></Menu.Item>
         }
         {
           auth.hasUserCredential(GetDataCredentials.GET_ALL_ROLES_ACTION) &&

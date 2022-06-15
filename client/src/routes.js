@@ -4,7 +4,7 @@ import { AuthPage } from './pages/AuthPage';
 import { HelpPage } from './pages/HelpPage';
 import { UsersPage } from './pages/UsersPage';
 import { RolesPage } from './pages/RolesPage';
-import { AppsPage } from './pages/AppsPage';
+import { AppsCredsPage } from './pages/AppsCredsPage';
 import { BlocksPage } from './pages/BlocksPage';
 import { StationsPage } from './pages/StationsPage';
 import { DNCSectorsPage } from './pages/DNCSectorsPage';
@@ -34,7 +34,7 @@ export const useRoutes = (isAuthenticated, hasUserCredential) => {
     return (
       <Switch>
         <Route path="/apps" exact>
-          {hasUserCredential(GetDataCredentials.GET_ALL_APPS_ACTION) ? <AppsPage /> : <Redirect to="/roles" />}
+          {hasUserCredential(GetDataCredentials.GET_ALL_APPS_CREDS_ACTION) ? <AppsCredsPage /> : <Redirect to="/roles" />}
         </Route>
         <Route path="/roles" exact>
           {hasUserCredential(GetDataCredentials.GET_ALL_ROLES_ACTION) ? <RolesPage /> : <Redirect to="/services" />}

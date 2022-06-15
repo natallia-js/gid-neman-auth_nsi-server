@@ -17,7 +17,7 @@ const addRoleValidationRules = () => {
       .trim()
       .isIn([true, false])
       .withMessage('Возможность использования роли администратором нижнего уровня может быть лишь true / false'),
-    check('apps')
+    check('appsCreds')
       .isArray()
       .withMessage('Список приложений роли должен быть массивом'),
   ];
@@ -28,9 +28,9 @@ const addCredValidationRules = () => {
     check('roleId')
       .exists()
       .withMessage('Не указан id роли'),
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('credId')
       .exists()
       .withMessage('Не указан id полномочия'),
@@ -42,9 +42,9 @@ const changeCredsValidationRules = () => {
     check('roleId')
       .exists()
       .withMessage('Не указан id роли'),
-    check('appId')
+    check('credsGroupId')
       .exists()
-      .withMessage('Не указан id приложения'),
+      .withMessage('Не указан id группы полномочий'),
     check('newCredIds')
       .exists()
       .withMessage('Не указан массив id полномочий')
@@ -83,8 +83,8 @@ const modRoleValidationRules = () => {
       .trim()
       .isIn([true, false])
       .withMessage('Возможность использования роли администратором нижнего уровня может быть лишь true / false'),
-    check('apps')
-      .if(body('apps').exists())
+    check('appsCreds')
+      .if(body('appsCreds').exists())
       .isArray()
       .withMessage('Список приложений роли должен быть массивом'),
   ];

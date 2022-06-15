@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useHttp } from '../../hooks/http.hook';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
-import NewAppModal from '../NewAppModal';
-import { ServerAPI, APP_FIELDS } from '../../constants';
+import NewAppCredsGroupModal from '../NewAppCredsGroupModal';
+import { ServerAPI, APP_CREDS_GROUP_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
-import appsTableColumns from './AppsTableColumns';
-import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplicationObjFromDBApplicationObj';
+import appCredsTableColumns from './AppCredsTableColumns';
+import getAppCredsGroupObjFromDBCredsGroupObj from '../../mappers/getAppCredsGroupObjFromDBCredsGroupObj';
 import AppCredsTable from './AppCredsTable';
 import expandIcon from '../ExpandIcon';
 
@@ -14,13 +14,13 @@ const { Text, Title } = Typography;
 
 
 /**
- * Компонент таблицы с информацией о приложениях.
+ * Компонент таблицы с информацией о группах полномочий в приложениях ГИД Неман.
  */
-const AppsTable = () => {
-  // Информация по приложениям (массив объектов)
+const AppsCredsTable = () => {
+  // Информация по группам полномочий (массив объектов)
   const [tableData, setTableData] = useState(null);
 
-  // Ошибка загрузки данных о приложениях
+  // Ошибка загрузки данных о группах полномочий
   const [loadDataErr, setLoadDataErr] = useState(null);
 
   // Флаг окончания загрузки информации
@@ -29,22 +29,22 @@ const AppsTable = () => {
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
-  // Для редактирования данных таблицы приложений
+  // Для редактирования данных таблицы групп полномочий
   const [form] = Form.useForm();
 
   // Ключ редактируемой записи таблицы
   const [editingKey, setEditingKey] = useState('');
 
   // Флаг текущего состояния редактируемости записи в таблице
-  const isEditing = (record) => record[APP_FIELDS.KEY] === editingKey;
+  const isEditing = (record) => record[APP_CREDS_GROUP_FIELDS.KEY] === editingKey;
 
   // Видимо либо нет модальное окно добавления новой записи
   const [isAddNewAppModalVisible, setIsAddNewAppModalVisible] = useState(false);
 
-  // Ошибки добавления информации о новом приложении (разложенные по добавляемым полям)
+  // Ошибки добавления информации о новой группе полномочий (разложенные по добавляемым полям)
   const [appFieldsErrs, setAppFieldsErrs] = useState(null);
 
-  // Ошибки редактирования информации о приложении
+  // Ошибки редактирования информации о группе полномочий
   const [modAppFieldsErrs, setModAppFieldsErrs] = useState(null);
 
   const message = useCustomMessage();
@@ -63,9 +63,9 @@ const AppsTable = () => {
   const fetchData = useCallback(async () => {
     setDataLoaded(false);
     try {
-      // Делаем запрос на сервер с целью получения информации по приложениям
-      const res = await request(ServerAPI.GET_APPS_DATA, 'POST', {});
-      const tableData = res.map((app) => getAppApplicationObjFromDBApplicationObj(app));
+      // Запрашиваем у сервера все имеющиеся группы полномочий
+      const res = await request(ServerAPI.GET_APPS_CREDS_DATA, 'POST', {});
+      const tableData = res.map((app) => getAppCredsGroupObjFromDBCredsGroupObj(app));
       setTableData(tableData);
       setLoadDataErr(null);
     } catch (e) {
@@ -85,25 +85,25 @@ const AppsTable = () => {
 
 
   /**
-   * Чистит все сообщения добавления информации о приложении (ошибки и успех).
+   * Чистит все сообщения добавления информации о группе полномочий (ошибки и успех).
    */
-  const clearAddAppMessages = () => {
+  const clearAddAppCredsGroupMessages = () => {
     setAppFieldsErrs(null);
   }
 
 
   /**
-   * Добавляет информацию о приложении в БД.
+   * Добавляет информацию о группе полномочий в БД.
    *
-   * @param {object} app
+   * @param {object} groupData
    */
-  const handleAddNewApp = async (app) => {
+  const handleAddNewAppCredsGroup = async (groupData) => {
     setRecsBeingAdded((value) => value + 1);
     try {
-      // Делаем запрос на сервер с целью добавления информации о приложении
-      const res = await request(ServerAPI.ADD_APP_DATA, 'POST', { ...app, credentials: [] });
+      // Делаем запрос на сервер с целью добавления информации о группе полномочий
+      const res = await request(ServerAPI.ADD_APP_CREDS_GROUP_DATA, 'POST', { ...groupData, credentials: [] });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      setTableData([...tableData, getAppApplicationObjFromDBApplicationObj(res.app)]);
+      setTableData([...tableData, getAppCredsGroupObjFromDBCredsGroupObj(res.credsGroup)]);
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
       if (e.errors) {
@@ -117,21 +117,21 @@ const AppsTable = () => {
 
 
   /**
-   * Удаляет информацию о приложении из БД.
+   * Удаляет информацию о группе полномочий из БД.
    *
-   * @param {number} appId
+   * @param {number} groupId
    */
-  const handleDelApp = async (appId) => {
-    setRecsBeingProcessed((value) => [...value, appId]);
+  const handleDelAppCredsGroup = async (groupId) => {
+    setRecsBeingProcessed((value) => [...value, groupId]);
     try {
-      // Делаем запрос на сервер с целью удаления всей информации о приложении
-      const res = await request(ServerAPI.DEL_APP_DATA, 'POST', { appId });
+      // Делаем запрос на сервер с целью удаления всей информации о группе полномочий
+      const res = await request(ServerAPI.DEL_APP_CREDS_GROUP_DATA, 'POST', { credsGroupId: groupId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      setTableData(tableData.filter((app) => String(app[APP_FIELDS.KEY]) !== String(appId)));
+      setTableData(tableData.filter((app) => String(app[APP_CREDS_GROUP_FIELDS.KEY]) !== String(groupId)));
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
     }
-    setRecsBeingProcessed((value) => value.filter((id) => id !== appId));
+    setRecsBeingProcessed((value) => value.filter((id) => id !== groupId));
   }
 
 
@@ -140,13 +140,13 @@ const AppsTable = () => {
    *
    * @param {object} record
    */
-  const handleStartEditApp = (record) => {
+  const handleStartEditAppCredsGroup = (record) => {
     form.setFieldsValue({
-      [APP_FIELDS.SHORT_TITLE]: '',
-      [APP_FIELDS.TITLE]: '',
+      [APP_CREDS_GROUP_FIELDS.SHORT_TITLE]: '',
+      [APP_CREDS_GROUP_FIELDS.TITLE]: '',
       ...record,
     });
-    setEditingKey(record[APP_FIELDS.KEY]);
+    setEditingKey(record[APP_CREDS_GROUP_FIELDS.KEY]);
   };
 
 
@@ -169,11 +169,11 @@ const AppsTable = () => {
 
 
   /**
-   * Редактирует информацию о приложении в БД.
+   * Редактирует информацию о группе полномочий в БД.
    *
-   * @param {number} appId
+   * @param {number} groupId
    */
-  const handleEditApp = async (appId) => {
+  const handleEditAppCredsGroup = async (groupId) => {
     let rowData;
 
     try {
@@ -183,17 +183,17 @@ const AppsTable = () => {
       return;
     }
 
-    setRecsBeingProcessed((value) => [...value, appId]);
+    setRecsBeingProcessed((value) => [...value, groupId]);
 
     try {
-      // Делаем запрос на сервер с целью редактирования информации о приложении
-      const res = await request(ServerAPI.MOD_APP_DATA, 'POST', { appId, ...rowData });
+      // Делаем запрос на сервер с целью редактирования информации о группе полномочий
+      const res = await request(ServerAPI.MOD_APP_CREDS_GROUP_DATA, 'POST', { credsGroupId: groupId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const newTableData = tableData.map((app) => {
-        if (String(app[APP_FIELDS.KEY]) === String(res.app._id)) {
-          return { ...app, ...getAppApplicationObjFromDBApplicationObj(res.app) };
+      const newTableData = tableData.map((appCredsGroup) => {
+        if (String(appCredsGroup[APP_CREDS_GROUP_FIELDS.KEY]) === String(res.appCredsGroup._id)) {
+          return { ...appCredsGroup, ...getAppCredsGroupObjFromDBCredsGroupObj(res.appCredsGroup) };
         }
-        return app;
+        return appCredsGroup;
       })
       setTableData(newTableData);
       finishEditing();
@@ -207,36 +207,36 @@ const AppsTable = () => {
       }
     }
 
-    setRecsBeingProcessed((value) => value.filter((id) => id !== appId));
+    setRecsBeingProcessed((value) => value.filter((id) => id !== groupId));
   }
 
 
   // --------------------------------------------------------------
-  // Для работы с диалоговым окном ввода информации о новом приложении
+  // Для работы с диалоговым окном ввода информации о новой группе полномочий
 
   const showAddNewAppModal = () => {
     setIsAddNewAppModalVisible(true);
   };
 
-  const handleAddNewAppOk = (app) => {
-    handleAddNewApp(app);
+  const handleAddNewAppCredsGroupOk = (app) => {
+    handleAddNewAppCredsGroup(app);
   };
 
-  const handleAddNewAppCancel = () => {
+  const handleAddNewAppCredsGroupCancel = () => {
     setIsAddNewAppModalVisible(false);
   };
 
   // --------------------------------------------------------------
 
 
-  // Описание столбцов таблицы приложений
-  const columns = appsTableColumns({
+  // Описание столбцов таблицы группы полномочий
+  const columns = appCredsTableColumns({
     isEditing,
     editingKey,
-    handleEditApp,
+    handleEditAppCredsGroup,
     handleCancelMod,
-    handleStartEditApp,
-    handleDelApp,
+    handleStartEditAppCredsGroup,
+    handleDelAppCredsGroup,
     recsBeingProcessed,
   });
 
@@ -264,17 +264,17 @@ const AppsTable = () => {
 
   return (
     <>
-      <Title level={2} className="center top-margin-05">Приложения ГИД НЕМАН</Title>
+      <Title level={2} className="center top-margin-05">Группы полномочий в приложениях ГИД НЕМАН</Title>
 
       {loadDataErr ? <Text type="danger">{loadDataErr}</Text> :
 
       <Form form={form} component={false}>
-        <NewAppModal
+        <NewAppCredsGroupModal
           isModalVisible={isAddNewAppModalVisible}
-          handleAddNewAppOk={handleAddNewAppOk}
-          handleAddNewAppCancel={handleAddNewAppCancel}
+          handleAddNewAppCredsGroupOk={handleAddNewAppCredsGroupOk}
+          handleAddNewAppCredsGroupCancel={handleAddNewAppCredsGroupCancel}
           appFieldsErrs={appFieldsErrs}
-          clearAddAppMessages={clearAddAppMessages}
+          clearAddAppCredsGroupMessages={clearAddAppCredsGroupMessages}
           recsBeingAdded={recsBeingAdded}
         />
 
@@ -300,13 +300,13 @@ const AppsTable = () => {
           onRow={(record) => {
             return {
               onDoubleClick: () => {
-                if (!editingKey || editingKey !== record[APP_FIELDS.KEY]) {
-                  handleStartEditApp(record);
+                if (!editingKey || editingKey !== record[APP_CREDS_GROUP_FIELDS.KEY]) {
+                  handleStartEditAppCredsGroup(record);
                 }
               },
               onKeyUp: event => {
                 if (event.key === 'Enter') {
-                  handleEditApp(record[APP_FIELDS.KEY]);
+                  handleEditAppCredsGroup(record[APP_CREDS_GROUP_FIELDS.KEY]);
                 }
               },
             };
@@ -316,8 +316,8 @@ const AppsTable = () => {
               <div className="expandable-row-content">
                 <Title level={4}>Полномочия пользователей</Title>
                 <AppCredsTable
-                  appId={record[APP_FIELDS.KEY]}
-                  appCredentials={record[APP_FIELDS.CREDENTIALS]}
+                  appId={record[APP_CREDS_GROUP_FIELDS.KEY]}
+                  appCredentials={record[APP_CREDS_GROUP_FIELDS.CREDENTIALS]}
                   setTableDataCallback={setTableData}
                 />
               </div>
@@ -333,4 +333,4 @@ const AppsTable = () => {
 };
 
 
-export default AppsTable;
+export default AppsCredsTable;

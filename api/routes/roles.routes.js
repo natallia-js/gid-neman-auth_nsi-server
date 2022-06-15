@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
 const Role = require('../models/Role');
-const App = require('../models/App');
+const AppCred = require('../models/AppCred');
 const User = require('../models/User');
 const {
   addRoleValidationRules,
@@ -130,37 +130,37 @@ router.post(
 
 
 /**
- * Проверяет наличие в БД объекта приложения по его id и, если заданы,
- * соответствующих полномочий приложения по их id.
+ * Проверяет наличие в БД объекта группы полномочий в приложениях ГИД Неман по его id и, если заданы,
+ * соответствующих полномочий по их id.
  *
- * @param {Object} app - объект с полями appId (id приложения), creds (массив
- *                       идентификаторов полномочий в приложении)
+ * @param {Object} group - объект с полями groupId (id группы), creds (массив
+ *                         идентификаторов полномочий в группе)
  */
-const checkAppWithCredsExists = async (app) => {
-  if (!app || !app.appId) {
+const checkGroupWithCredsExists = async (group) => {
+  if (!group || !group.groupId) {
     return false;
   }
 
-  // Ищем приложение в БД (по id)
-  const candidate = await App.findOne({ _id: app.appId });
+  // Ищем группу полномочий в БД (по id)
+  const candidate = await AppCred.findOne({ _id: group.groupId });
 
   if (!candidate) {
     return false;
   }
 
-  // Если для переданного приложения не определены полномочия, то на этом
+  // Если для переданной группы не определены полномочия, то на этом
   // все проверки заканчиваем
-  if (!app.creds || !app.creds.length) {
+  if (!group.creds || !group.creds.length) {
     return true;
   }
 
-  // Если у найденного в БД приложения нет полномочий, то тоже все ясно
+  // Если у найденной в БД группы нет полномочий, то тоже все ясно
   if (!candidate.credentials || !candidate.credentials.length) {
     return false;
   }
 
-  // Смотрим, каждый ли элемент из списка переданных id полномочий определен для приложения в БД
-  for (let c of app.creds) {
+  // Смотрим, каждый ли элемент из списка переданных id полномочий определен для группы в БД
+  for (let c of group.creds) {
     if (!candidate.credentials.some(cred => String(cred._id) === String(c))) {
       return false;
     }
@@ -181,10 +181,10 @@ const checkAppWithCredsExists = async (app) => {
  * description - описание роли (не обязательно),
  * subAdminCanUse - true / false (возможность использования роли администратором нижнего уровня) - не обязательно,
  *                  по умолчанию true,
- * apps - массив приложений (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
+ * appsCreds - массив групп полномочий (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
  *        каждый элемент массива - объект с параметрами:
  *        _id - идентификатор объекта (может отсутствовать, в этом случае будет сгенерирован автоматически),
- *        appId - id приложения (обязателен),
+ *        credsGroupId - id группы (обязателен),
  *        creds - массив id полномочий (не обязательный параметр; если не задан, то должен быть пустой строкой),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -199,7 +199,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { _id, englAbbreviation, description, subAdminCanUse, apps } = req.body;
+    const { _id, englAbbreviation, description, subAdminCanUse, appsCreds } = req.body;
 
     try {
       // Ищем в БД роль, englAbbreviation которой совпадает с переданной пользователем
@@ -210,19 +210,19 @@ router.post(
         return res.status(ERR).json({ message: 'Роль с такой аббревиатурой уже существует' });
       }
 
-      // Проверяю приложения с полномочиями на присутствие в БД
-      for (let app of apps) {
-        if (!await checkAppWithCredsExists(app)) {
-          return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры приложений' });
+      // Проверяю группы полномочий на присутствие в БД
+      for (let app of appsCreds) {
+        if (!await checkGroupWithCredsExists(app)) {
+          return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры групп полномочий' });
         }
       }
 
       // Создаем в БД запись с данными о новой роли
       let role;
       if (_id) {
-        role = new Role({ _id, englAbbreviation, description, subAdminCanUse, apps });
+        role = new Role({ _id, englAbbreviation, description, subAdminCanUse, appsCreds });
       } else {
-        role = new Role({ englAbbreviation, description, subAdminCanUse, apps });
+        role = new Role({ englAbbreviation, description, subAdminCanUse, appsCreds });
       }
       await role.save();
 
@@ -233,7 +233,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление новой роли',
         error: error.message,
-        actionParams: { _id, englAbbreviation, description, subAdminCanUse, apps },
+        actionParams: { _id, englAbbreviation, description, subAdminCanUse, appsCreds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -242,13 +242,13 @@ router.post(
 
 
 /**
- * Обработка запроса на добавление в роль нового полномочия в приложении.
+ * Обработка запроса на добавление в роль нового полномочия в приложениях ГИД Неман.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
- * appId - идентификатор приложения (обязателен),
+ * credsGroupId - идентификатор группы полномочий (обязателен),
  * credId - идентификатор полномочия (обязателен),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -263,7 +263,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { roleId, appId, credId } = req.body;
+    const { roleId, credsGroupId, credId } = req.body;
 
     try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
@@ -275,24 +275,24 @@ router.post(
       }
 
       // Проверяю приложение с полномочием на присутствие в БД
-      if (!await checkAppWithCredsExists({ appId: appId, creds: [credId] })) {
-        return res.status(ERR).json({ message: 'Приложение и/или полномочие не существует в базе данных' });
+      if (!await checkGroupWithCredsExists({ groupId: credsGroupId, creds: [credId] })) {
+        return res.status(ERR).json({ message: 'Группа и/или полномочие не существует в базе данных' });
       }
 
-      // Проверяем, связано ли указанное приложение с указанной ролью
-      const appEl = candidate.apps.find(app => String(app.appId) === String(appId));
+      // Проверяем, связана ли указанная группа полномочий с указанной ролью
+      const appEl = candidate.appsCreds.find(elem => String(elem.credsGroupId) === String(credsGroupId));
       if (appEl) {
         if (!appEl.creds) {
           appEl.creds = [];
         }
-        // Проверяем, связано ли указанное полномочие приложения с указанной ролью
+        // Проверяем, связано ли указанное полномочие с указанной ролью
         if (appEl.creds.includes(credId)) {
-          return res.status(ERR).json({ message: 'Данное полномочие приложения уже определено для данной роли' });
+          return res.status(ERR).json({ message: 'Данное полномочие уже определено для данной роли' });
         } else {
           appEl.creds.push(credId);
         }
       } else {
-        candidate.apps.push({ appId, creds: [credId] });
+        candidate.appsCreds.push({ credsGroupId, creds: [credId] });
       }
 
       // Сохраняем в БД
@@ -305,7 +305,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление в роль нового полномочия в приложении',
         error: error.message,
-        actionParams: { roleId, appId, credId },
+        actionParams: { roleId, credsGroupId, credId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -314,13 +314,13 @@ router.post(
 
 
 /**
- * Обработка запроса на изменение списка полномочий в приложении для указанной роли.
+ * Обработка запроса на изменение списка полномочий для указанной роли.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
  * roleId - идентификатор роли (обязателен),
- * appId - идентификатор приложения (обязателен),
+ * credsGroupId - идентификатор группы полномочий (обязателен),
  * newCredIds - массив идентификаторов полномочий (обязателен; если нет полномочий, то
  *              массив должен быть пустым),
  * Обязательный параметр запроса - applicationAbbreviation!
@@ -336,7 +336,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { roleId, appId, newCredIds } = req.body;
+    const { roleId, credsGroupId, newCredIds } = req.body;
 
     try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
@@ -347,17 +347,17 @@ router.post(
         return res.status(ERR).json({ message: 'Роль не найдена' });
       }
 
-      // Проверяю приложение с полномочиями на присутствие в БД
-      if (!await checkAppWithCredsExists({ appId: appId, creds: newCredIds })) {
-        return res.status(ERR).json({ message: 'Приложение и/или полномочие не существует в базе данных' });
+      // Проверяю группу с полномочиями на присутствие в БД
+      if (!await checkGroupWithCredsExists({ groupId: credsGroupId, creds: newCredIds })) {
+        return res.status(ERR).json({ message: 'Группа и/или полномочие не существует в базе данных' });
       }
 
-      const appEl = candidate.apps.find(app => String(app.appId) === String(appId));
-      // Проверяем, связано ли указанное приложение с указанной ролью
+      const appEl = candidate.appsCreds.find(app => String(app.credsGroupId) === String(credsGroupId));
+      // Проверяем, связана ли указанная группа полномочий с указанной ролью
       if (appEl) {
         appEl.creds = newCredIds;
       } else {
-        candidate.apps.push({ appId, creds: newCredIds });
+        candidate.appsCreds.push({ credsGroupId, creds: newCredIds });
       }
 
       // Сохраняем в БД
@@ -370,7 +370,7 @@ router.post(
         errorTime: new Date(),
         action: 'Изменение списка полномочий в приложении',
         error: error.message,
-        actionParams: { roleId, appId, newCredIds },
+        actionParams: { roleId, credsGroupId, newCredIds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -460,9 +460,9 @@ router.post(
  * englAbbreviation - аббревиатура роли (не обязательна),
  * description - описание роли (не обязательно),
  * subAdminCanUse - true / false (возможность использования роли администратором нижнего уровня) - не обязательно,
- * apps - массив приложений (не обязателен; если задан и не пуст, то каждый элемент массива - объект с параметрами:
+ * appsCreds - массив групп полномочий (не обязателен; если задан и не пуст, то каждый элемент массива - объект с параметрами:
  *        _id - идентификатор объекта (может отсутствовать, в этом случае будет сгенерирован автоматически),
- *        appId - id приложения (обязателен),
+ *        credsGroupId - id группы (обязателен),
  *        creds - массив id полномочий (не обязательный параметр; если не задан, то должен быть пустой строкой),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -477,7 +477,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { roleId, englAbbreviation, apps } = req.body;
+    const { roleId, englAbbreviation, appsCreds } = req.body;
 
     try {
       // Ищем в БД роль, id которой совпадает с переданным пользователем
@@ -500,11 +500,11 @@ router.post(
         return res.status(ERR).json({ message: 'Роль с такой аббревиатурой уже существует' });
       }
 
-      // Проверяю приложения с полномочиями на присутствие в БД
-      if (apps) {
-        for (let app of apps) {
-          if (!await checkAppWithCredsExists(app)) {
-            return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры приложений' });
+      // Проверяю группы с полномочиями на присутствие в БД
+      if (appsCreds) {
+        for (let app of appsCreds) {
+          if (!await checkGroupWithCredsExists(app)) {
+            return res.status(ERR).json({ message: 'Для роли определены несуществующие параметры групп полномочий' });
           }
         }
       }
@@ -521,7 +521,7 @@ router.post(
         errorTime: new Date(),
         action: 'Редактирование роли',
         error: error.message,
-        actionParams: { roleId, englAbbreviation, apps },
+        actionParams: { roleId, englAbbreviation, appsCreds },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

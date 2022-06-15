@@ -13,8 +13,8 @@ const getAppRoleObjFromDBRoleObj = (dbRoleObj) => {
       [ROLE_FIELDS.ENGL_ABBREVIATION]: dbRoleObj.englAbbreviation,
       [ROLE_FIELDS.DESCRIPTION]: dbRoleObj.description,
       [ROLE_FIELDS.SUB_ADMIN_CAN_USE]: dbRoleObj.subAdminCanUse,
-      [ROLE_FIELDS.APPLICATIONS]: !dbRoleObj.apps ? [] :
-        dbRoleObj.apps.map((app) => getAppRoleAppObjFromDBRoleAppObj(app)),
+      [ROLE_FIELDS.APPS_CREDENTIALS]: !dbRoleObj.appsCreds ? [] :
+        dbRoleObj.appsCreds.map((app) => getAppRoleAppObjFromDBRoleAppObj(app)),
     }
   }
   return null;

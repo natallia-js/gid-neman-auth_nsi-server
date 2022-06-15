@@ -95,7 +95,6 @@
 
 .help-list {
   @include help-text-style();
-  @include help-paragraph-style();
   counter-reset: li;
   list-style: none;
 }

@@ -103,7 +103,7 @@ export const EditOrderPattern = (props) => {
                             >
                               {
                                 patternElement[ORDER_PATTERN_ELEMENT_FIELDS.KEY] !== editedPatternElementId ?
-                                'Редактировать' : 'Отменить редактирование'
+                                'Редактировать' : 'Завершить редактирование'
                               }
                             </a>
                           </p>
@@ -151,7 +151,7 @@ export const EditOrderPattern = (props) => {
       }
       {
         editedPatternElementId &&
-        <div className="order-pattern-border order-pattern-block">
+        <div className="order-pattern-border order-pattern-block" style={{ backgroundColor: 'var(--edit-order-pattern-element-block-color)' }}>
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Text strong>Редактирование элемента шаблона</Text>
             <EditOrderPatternElement

@@ -1,4 +1,4 @@
-import { APP_FIELDS } from '../constants';
+import { APP_CREDS_GROUP_FIELDS } from '../constants';
 
 /**
  * Преобразует объект приложения, полученный из БД, в объект приложения, с которым
@@ -9,8 +9,8 @@ import { APP_FIELDS } from '../constants';
 const getAppRoleAppObjFromDBRoleAppObj = (dbRoleAppObj) => {
   if (dbRoleAppObj) {
     return {
-      [APP_FIELDS.KEY]: dbRoleAppObj.appId,
-      [APP_FIELDS.CREDENTIALS]: dbRoleAppObj.creds || [],
+      [APP_CREDS_GROUP_FIELDS.KEY]: dbRoleAppObj.credsGroupId,
+      [APP_CREDS_GROUP_FIELDS.CREDENTIALS]: dbRoleAppObj.creds || [],
     };
   }
   return null;

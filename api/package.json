@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "start": "cross-env NODE_ENV=production node app.js",
-    "server": "cross-env NODE_ENV=development nodemon app.js",
+    "server": "cross-env NODE_ENV=development nodemon --inspect app.js",
     "client": "npm run start --prefix ../client",
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },

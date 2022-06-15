@@ -3,7 +3,7 @@ import { useHttp } from '../../../hooks/http.hook';
 import { Table, Form, Button } from 'antd';
 import EditableTableCell from '../../EditableTableCell';
 import NewAppCredModal from '../../NewAppCredModal';
-import { ServerAPI, APP_CRED_FIELDS, APP_FIELDS } from '../../../constants';
+import { ServerAPI, APP_CRED_FIELDS, APP_CREDS_GROUP_FIELDS } from '../../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import appCredsTableColumns from './AppCredsTableColumns';
 import getAppApplicationCredObjFromDBApplicationCredObj from '../../../mappers/getAppApplicationCredObjFromDBApplicationCredObj';
@@ -60,14 +60,14 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
     setRecsBeingAdded((value) => value + 1);
     try {
       // Делаем запрос на сервер с целью добавления информации о полномочии
-      const res = await request(ServerAPI.ADD_APP_CRED_DATA, 'POST', { appId, ...cred });
+      const res = await request(ServerAPI.ADD_APP_CRED_DATA, 'POST', { credsGroupId: appId, ...cred });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableDataCallback((value) =>
         value.map((app) => {
-          if (String(app[APP_FIELDS.KEY]) === String(appId)) {
-            const newAppCreds = app[APP_FIELDS.CREDENTIALS].slice();
+          if (String(app[APP_CREDS_GROUP_FIELDS.KEY]) === String(appId)) {
+            const newAppCreds = app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].slice();
             newAppCreds.push(getAppApplicationCredObjFromDBApplicationCredObj(res.cred));
-            app[APP_FIELDS.CREDENTIALS] = newAppCreds;
+            app[APP_CREDS_GROUP_FIELDS.CREDENTIALS] = newAppCreds;
           }
           return app;
         })
@@ -93,13 +93,13 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
     setRecsBeingProcessed((value) => [...value, credId]);
     try {
       // Делаем запрос на сервер с целью удаления всей информации о полномочии
-      const res = await request(ServerAPI.DEL_APP_CRED_DATA, 'POST', { appId, credId });
+      const res = await request(ServerAPI.DEL_APP_CRED_DATA, 'POST', { credsGroupId: appId, credId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableDataCallback((value) =>
         value.map((app) => {
-          if (String(app[APP_FIELDS.KEY]) === String(appId)) {
-            app[APP_FIELDS.CREDENTIALS] =
-              app[APP_FIELDS.CREDENTIALS].filter((cred) => String(cred[APP_CRED_FIELDS.KEY]) !== String(credId))
+          if (String(app[APP_CREDS_GROUP_FIELDS.KEY]) === String(appId)) {
+            app[APP_CREDS_GROUP_FIELDS.CREDENTIALS] =
+              app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].filter((cred) => String(cred[APP_CRED_FIELDS.KEY]) !== String(credId))
           }
           return app;
         })
@@ -163,12 +163,12 @@ const AppCredsTable = ({ appId, appCredentials, setTableDataCallback }) => {
 
     try {
       // Делаем запрос на сервер с целью редактирования информации о полномочии
-      const res = await request(ServerAPI.MOD_APP_CRED_DATA, 'POST', { appId, credId, ...rowData });
+      const res = await request(ServerAPI.MOD_APP_CRED_DATA, 'POST', { credsGroupId: appId, credId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableDataCallback((value) =>
         value.map((app) => {
-          if (String(app[APP_FIELDS.KEY]) === String(appId)) {
-            app[APP_FIELDS.CREDENTIALS] = app[APP_FIELDS.CREDENTIALS].map((cred) => {
+          if (String(app[APP_CREDS_GROUP_FIELDS.KEY]) === String(appId)) {
+            app[APP_CREDS_GROUP_FIELDS.CREDENTIALS] = app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].map((cred) => {
               if (String(cred[APP_CRED_FIELDS.KEY]) === String(credId)) {
                 return { ...cred, ...getAppApplicationCredObjFromDBApplicationCredObj(res.cred) };
               }

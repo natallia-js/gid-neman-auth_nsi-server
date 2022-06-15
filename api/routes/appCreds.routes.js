@@ -1,15 +1,15 @@
 const { Router } = require('express');
 const mongoose = require('mongoose');
-const App = require('../models/App');
+const AppCred = require('../models/AppCred');
 const Role = require('../models/Role');
 const {
-  addAppValidationRules,
+  addCredsGroupValidationRules,
   addCredValidationRules,
-  delAppValidationRules,
+  delCredsGroupValidationRules,
   delCredValidationRules,
-  modAppValidationRules,
+  modCredsGroupValidationRules,
   modCredValidationRules,
-} = require('../validators/apps.validator');
+} = require('../validators/appsCreds.validator');
 const validate = require('../validators/validate');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
@@ -21,7 +21,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обрабатывает запрос на получение списка всех приложений.
+ * Обрабатывает запрос на получение списка всех групп полномочий в приложениях ГИД Неман.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  * 
@@ -30,17 +30,17 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (_req, res) => {
     try {
-      const data = await App.find();
+      const data = await AppCred.find();
       res.status(OK).json(data);
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение списка всех приложений',
+        action: 'Получение списка всех групп полномочий в приложениях ГИД Неман',
         error: error.message,
         actionParams: {},
       });
@@ -51,9 +51,8 @@ router.post(
 
 
 /**
- * Обрабатывает запрос на получение списка аббревиатур всех приложений, их идентификаторов
- * и, для каждого приложения, - соответствующего списка полномочий пользователей
- * (id + аббревиатуры полномочий).
+ * Обрабатывает запрос на получение списка аббревиатур всех групп полномочий, их идентификаторов
+ * и, для каждой группы, - соответствующего списка полномочий пользователей (id + аббревиатуры полномочий).
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  * 
@@ -62,17 +61,17 @@ router.post(
 router.post(
   '/abbrData',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS_ABBR_DATA; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_APPS_CREDS_ABBR_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (_req, res) => {
     try {
-      const data = await App.find({}, { _id: 1, shortTitle: 1, credentials: { _id: 1, englAbbreviation: 1 } });
+      const data = await AppCred.find({}, { _id: 1, shortTitle: 1, credentials: { _id: 1, englAbbreviation: 1 } });
       res.status(OK).json(data);
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение списка всех приложений и соответствующих им полномочий пользователей',
+        action: 'Получение списка всех групп полномочий и соответствующих им полномочий пользователей',
         error: error.message,
         actionParams: {},
       });
@@ -83,14 +82,14 @@ router.post(
 
 
 /**
- * Обработка запроса на добавление нового приложения.
+ * Обработка запроса на добавление новой группы полномочий пользователей в приложениях ГИД Неман.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- *  _id - идентификатор приложения (может отсутствовать, в этом случае будет сгенерирован автоматически),
- * shortTitle - аббревиатура приложения (обязательна),
- * title - наименование приложения (обязательно),
+ *  _id - идентификатор группы полномочий (может отсутствовать, в этом случае будет сгенерирован автоматически),
+ * shortTitle - аббревиатура группы полномочий (обязательна),
+ * title - наименование группы полномочий (обязательно),
  * credentials - массив полномочий (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
  *               каждое полномочие - объект с параметрами:
  *               _id - идентификатор полномочия (может отсутствовать, в этом случае будет сгенерирован автоматически),
@@ -101,40 +100,40 @@ router.post(
 router.post(
   '/add',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_APP_CREDS_GROUP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   // проверка параметров запроса
-  addAppValidationRules(),
+  addCredsGroupValidationRules(),
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { _id, shortTitle, title, credentials } = req.body;
 
     try {
-      // Ищем в БД приложение, shortTitle которого совпадает с переданным пользователем
-      const candidate = await App.findOne({ shortTitle });
+      // Ищем в БД группу полномочий, shortTitle которой совпадает с переданной пользователем
+      const candidate = await AppCred.findOne({ shortTitle });
 
       // Если находим, то процесс создания продолжать не можем
       if (candidate) {
-        return res.status(ERR).json({ message: 'Приложение с такой аббревиатурой уже существует' });
+        return res.status(ERR).json({ message: 'Группа полномочий с такой аббревиатурой уже существует' });
       }
 
-      // Создаем в БД запись с данными о новом приложении
-      let app;
+      // Создаем в БД запись с данными о новой группе полномочий
+      let credsGroup;
       if (_id) {
-        app = new App({ _id, shortTitle, title, credentials });
+        credsGroup = new AppCred({ _id, shortTitle, title, credentials });
       } else {
-        app = new App({ shortTitle, title, credentials });
+        credsGroup = new AppCred({ shortTitle, title, credentials });
       }
-      await app.save();
+      await credsGroup.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', app });
+      res.status(OK).json({ message: 'Информация успешно сохранена', credsGroup });
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Добавление нового приложения',
+        action: 'Добавление новой группы полномочий',
         error: error.message,
         actionParams: { _id, shortTitle, title, credentials },
       });
@@ -145,12 +144,12 @@ router.post(
 
 
 /**
- * Обработка запроса на добавление нового полномочия приложения.
+ * Обработка запроса на добавление нового полномочия в группу полномочий.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- *   appId - идентификатор приложения (обязателен),
+ *   credsGroupId - идентификатор группы полномочий (обязателен),
  *   _id - идентификатор полномочия (может отсутствовать, в этом случае будет сгенерирован автоматически),
  *   englAbbreviation - аббревиатура полномочия (обязательна),
  *   description - описание полномочия (не обязательный параметр; если не задан, то должен быть пустой строкой)
@@ -167,21 +166,21 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { appId, _id, englAbbreviation, description } = req.body;
+    const { credsGroupId, _id, englAbbreviation, description } = req.body;
 
     try {
-      // Ищем в БД приложение, id которого совпадает с переданным пользователем
-      const candidate = await App.findOne({ _id: appId });
+      // Ищем в БД группу полномочий, id которой совпадает с переданной пользователем
+      const candidate = await AppCred.findOne({ _id: credsGroupId });
 
       // Если не находим, то процесс создания полномочия продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Не найдено приложение для добавляемого полномочия' });
+        return res.status(ERR).json({ message: 'Не найдена группа для добавляемого полномочия' });
       }
 
-      // Среди полномочий приложения ищем такое, englAbbreviation которого совпадает с переданным пользователем
+      // Среди полномочий группы ищем такое, englAbbreviation которого совпадает с переданным пользователем
       for (let cred of candidate.credentials) {
         if (cred.englAbbreviation === englAbbreviation) {
-          return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
+          return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже существует в указанной группе' });
         }
       }
 
@@ -215,9 +214,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Добавление нового полномочия приложения',
+        action: 'Добавление нового полномочия',
         error: error.message,
-        actionParams: { appId, _id, englAbbreviation, description },
+        actionParams: { credsGroupId, _id, englAbbreviation, description },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -226,22 +225,22 @@ router.post(
 
 
 /**
- * Обработка запроса на удаление приложения.
+ * Обработка запроса на удаление группы полномочий.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * appId - идентификатор приложения (обязателен),
+ * credsGroupId - идентификатор группы полномочий (обязателен),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/del',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_APP_CREDS_GROUP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   // проверка параметров запроса
-  delAppValidationRules(),
+  delCredsGroupValidationRules(),
   validate,
   async (req, res) => {
     // Действия выполняем в транзакции
@@ -249,24 +248,24 @@ router.post(
     session.startTransaction();
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { appId } = req.body;
+    const { credsGroupId } = req.body;
 
     try {
       // Удаляем в БД запись
-      const delRes = await App.deleteOne({ _id: appId }).session(session);
+      const delRes = await AppCred.deleteOne({ _id: credsGroupId }).session(session);
 
       let canContinue = true;
       let errMess;
       if (!delRes.deletedCount) {
         canContinue = false;
-        errMess = 'Приложение не найдено';
+        errMess = 'Группа полномочий не найдена';
       }
 
       if (canContinue) {
-        // Удалив приложение, необходимо удалить все ссылки на него в коллекции ролей
+        // Удалив группу, необходимо удалить все ссылки на нее в коллекции ролей
         await Role.updateMany(
           {},
-          { $pull: { apps: { appId } } },
+          { $pull: { appsCreds: { credsGroupId } } },
           { session },
         );
 
@@ -283,9 +282,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Удаление приложения',
+        action: 'Удаление группы полномочий',
         error: error.message,
-        actionParams: { appId },
+        actionParams: { credsGroupId },
       });
 
       await session.abortTransaction();
@@ -300,12 +299,12 @@ router.post(
 
 
 /**
- * Обработка запроса на удаление полномочия приложения.
+ * Обработка запроса на удаление полномочия из группы полномочий.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * appId - идентификатор приложения (обязателен),
+ * credsGroupId - идентификатор группы полномочий (обязателен),
  * credId - идентификатор полномочия (обязателен),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -324,16 +323,16 @@ router.post(
     session.startTransaction();
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { appId, credId } = req.body;
+    const { credsGroupId, credId } = req.body;
 
     try {
-      // Ищем в БД нужное приложение
-      const candidate = await App.findOne({ _id: appId }).session(session);
+      // Ищем в БД нужную группу полномочий
+      const candidate = await AppCred.findOne({ _id: credsGroupId }).session(session);
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
+        return res.status(ERR).json({ message: 'Указанная группа полномочий не существует в базе данных' });
       }
 
       // Ищем полномочие (по id) и удаляем его
@@ -342,7 +341,7 @@ router.post(
 
       if (prevCredLen === candidate.credentials.length) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное полномочие не определено для данного приложения в базе данных' });
+        return res.status(ERR).json({ message: 'Указанное полномочие не существует в указанной группе в базе данных' });
       }
 
       // By default, `save()` uses the associated session
@@ -350,8 +349,8 @@ router.post(
 
       // Удалив полномочие, необходимо удалить все ссылки на него в коллекции ролей
       await Role.updateMany(
-        { "apps.appId": appId },
-        { $pull: { "apps.$[].creds": credId } },
+        { "appsCreds.credsGroupId": credsGroupId },
+        { $pull: { "appsCreds.$[].creds": credId } },
         { session },
       );
 
@@ -362,9 +361,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Удаление полномочия приложения',
+        action: 'Удаление полномочия',
         error: error.message,
-        actionParams: { appId, credId },
+        actionParams: { credsGroupId, credId },
       });
 
       await session.abortTransaction();
@@ -379,14 +378,14 @@ router.post(
 
 
 /**
- * Обработка запроса на редактирование информации о приложении.
+ * Обработка запроса на редактирование информации о группе полномочий.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * appId - идентификатор приложения (обязателен),
- * shortTitle - аббревиатура приложения (не обязательна),
- * title - наименование приложения (не обязательно),
+ * credsGroupId - идентификатор группы полномочий (обязателен),
+ * shortTitle - аббревиатура группы полномочий (не обязательна),
+ * title - наименование группы полномочий (не обязательно),
  * credentials - массив полномочий (не обязателен; если задан и не пуст, то каждое полномочие - объект с параметрами:
  *               _id - идентификатор полномочия (может отсутствовать, в этом случае будет сгенерирован автоматически),
  *               englAbbreviation - аббревиатура полномочия (обязательна),
@@ -396,49 +395,49 @@ router.post(
 router.post(
   '/mod',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP; next(); },
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_APP_CREDS_GROUP; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   // проверка параметров запроса
-  modAppValidationRules(),
+  modCredsGroupValidationRules(),
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
     // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
-    const { appId, shortTitle } = req.body;
+    const { credsGroupId, shortTitle } = req.body;
 
     try {
-      // Ищем в БД приложение, id которого совпадает с переданным пользователем
-      let candidate = await App.findById(appId);
+      // Ищем в БД группу полномочий, id которой совпадает с переданным пользователем
+      let candidate = await AppCred.findById(credsGroupId);
 
       // Если не находим, то процесс редактирования продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
+        return res.status(ERR).json({ message: 'Указанная группа полномочий не существует в базе данных' });
       }
 
-      // Ищем в БД приложение, shortTitle которого совпадает с переданным пользователем
+      // Ищем в БД группу полномочий, shortTitle которой совпадает с переданным пользователем
       if (shortTitle || (shortTitle === '')) {
-        const antiCandidate = await App.findOne({ shortTitle });
+        const antiCandidate = await AppCred.findOne({ shortTitle });
 
-        // Если находим, то смотрим, то ли это самое приложение. Если нет, продолжать не можем.
+        // Если находим, то смотрим, та ли это самая группа. Если нет, продолжать не можем.
         if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
-          return res.status(ERR).json({ message: 'Приложение с такой аббревиатурой уже существует' });
+          return res.status(ERR).json({ message: 'Группа полнмочий с такой аббревиатурой уже существует' });
         }
       }
 
       // Редактируем в БД запись
-      delete req.body.appId;
+      delete req.body.credsGroupId;
       candidate = Object.assign(candidate, req.body);
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', app: candidate });
+      res.status(OK).json({ message: 'Информация успешно изменена', appCredsGroup: candidate });
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Редактирование информации о приложении',
+        action: 'Редактирование информации о группе полномочий',
         error: error.message,
-        actionParams: { appId, shortTitle },
+        actionParams: { credsGroupId, shortTitle },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -447,12 +446,12 @@ router.post(
 
 
 /**
- * Обработка запроса на редактирование информации о полномочии приложения.
+ * Обработка запроса на редактирование информации о конкретном полномочии группы полномочий.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- *   appId - идентификатор приложения (обязателен),
+ *   credsGroupId - идентификатор группы полномочий (обязателен),
  *   credId - идентификатор полномочия (обязателен),
  *   englAbbreviation - аббревиатура полномочия (не обязательна),
  *   description - описание полномочия (не обязательно),
@@ -469,22 +468,22 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { appId, credId, englAbbreviation, description } = req.body;
+    const { credsGroupId, credId, englAbbreviation, description } = req.body;
 
     try {
-      // Ищем в БД нужное приложение
-      const candidate = await App.findOne({ _id: appId });
+      // Ищем в БД нужную группу полномочий
+      const candidate = await AppCred.findOne({ _id: credsGroupId });
 
       // Если не находим, то процесс редактирования полномочия продолжать не можем
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанное приложение не существует в базе данных' });
+        return res.status(ERR).json({ message: 'Указанная группа полномочий не существует в базе данных' });
       }
 
-      // Среди полномочий приложения ищем такое, englAbbreviation которого совпадает с переданным пользователем
+      // Среди полномочий группы ищем такое, englAbbreviation которого совпадает с переданным пользователем
       if (englAbbreviation) {
         for (let cred of candidate.credentials) {
           if ((cred.englAbbreviation === englAbbreviation) && (String(cred._id) !== String(credId))) {
-            return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже определено для данного приложения' });
+            return res.status(ERR).json({ message: 'Полномочие с такой аббревиатурой уже существует в указанной группе' });
           }
         }
       }
@@ -495,7 +494,7 @@ router.post(
         if (String(cred._id) === String(credId)) {
           found = true;
 
-          delete req.body.appId;
+          delete req.body.credsGroupId;
           delete req.body.credId;
           cred = Object.assign(cred, req.body);
 
@@ -504,7 +503,7 @@ router.post(
       }
 
       if (!found) {
-        return res.status(ERR).json({ message: 'Указанное полномочие не существует для данного приожения в базе данных' });
+        return res.status(ERR).json({ message: 'Указанное полномочие не существует в указанной группе в базе данных' });
       }
 
       await candidate.save();
@@ -520,9 +519,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Редактирование информации о полномочии приложения',
+        action: 'Редактирование информации о полномочии',
         error: error.message,
-        actionParams: { appId, credId, englAbbreviation, description },
+        actionParams: { credsGroupId, credId, englAbbreviation, description },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

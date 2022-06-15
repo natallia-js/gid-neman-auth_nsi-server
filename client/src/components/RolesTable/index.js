@@ -3,11 +3,11 @@ import { useHttp } from '../../hooks/http.hook';
 import { Table, Form, Button, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewRoleModal from '../NewRoleModal';
-import { ServerAPI, APP_CRED_FIELDS, APP_FIELDS, ROLE_FIELDS } from '../../constants';
+import { ServerAPI, APP_CRED_FIELDS, APP_CREDS_GROUP_FIELDS, ROLE_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import rolesTableColumns from './RolesTableColumns';
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
-import getAppApplicationObjFromDBApplicationObj from '../../mappers/getAppApplicationObjFromDBApplicationObj';
+import getAppCredsGroupObjFromDBCredsGroupObj from '../../mappers/getAppCredsGroupObjFromDBCredsGroupObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
@@ -79,7 +79,7 @@ const RolesTable = () => {
 
       // Получаем также необходимую информацию по приложениям
       const appsData = await request(ServerAPI.GET_APPS_ABBR_DATA, 'POST', {});
-      const appsTableData = appsData.map((app) => getAppApplicationObjFromDBApplicationObj(app));
+      const appsTableData = appsData.map((app) => getAppCredsGroupObjFromDBCredsGroupObj(app));
       setAppCredAbbrs(appsTableData);
 
       // -------------------
@@ -119,7 +119,7 @@ const RolesTable = () => {
     setRecsBeingAdded((value) => value + 1);
     try {
       // Делаем запрос на сервер с целью добавления информации о роли
-      const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, apps: [] });
+      const res = await request(ServerAPI.ADD_ROLE_DATA, 'POST', { ...role, appsCreds: [] });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData([...tableData, getAppRoleObjFromDBRoleObj(res.role)]);
 
@@ -232,28 +232,28 @@ const RolesTable = () => {
    *
    * @param {object} param - объект с полями:
    *   roleId - id текущей роли,
-   *   appId - id приложения, к которому относится список полномочий,
+   *   credsGroupId - id группы, к которой относится список полномочий,
    *   credAbbrs - массив аббревиатур выбранных полномочий
    */
-  const handleModRoleCreds = async ({ roleId, appId, credIds }) => {
-    if (!roleId || !appId || !credIds) {
+  const handleModRoleCreds = async ({ roleId, credsGroupId, credIds }) => {
+    if (!roleId || !credsGroupId || !credIds) {
       return;
     }
     try {
       // Отправляем запрос об изменении списка полномочий на сервер
-      const res = await request(ServerAPI.MOD_ROLE_CREDS, 'POST', { roleId, appId, newCredIds: credIds });
+      const res = await request(ServerAPI.MOD_ROLE_CREDS, 'POST', { roleId, credsGroupId, newCredIds: credIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       setTableData((roles) => roles.map((role) => {
         if (String(role[ROLE_FIELDS.KEY]) !== String(roleId)) {
           return role;
         }
-        let application = role[ROLE_FIELDS.APPLICATIONS].find((app) => String(app[APP_FIELDS.KEY]) === String(appId));
+        let application = role[ROLE_FIELDS.APPS_CREDENTIALS].find((app) => String(app[APP_CREDS_GROUP_FIELDS.KEY]) === String(credsGroupId));
         if (application) {
-          application[APP_FIELDS.CREDENTIALS] = credIds;
+          application[APP_CREDS_GROUP_FIELDS.CREDENTIALS] = credIds;
         } else {
-          role[ROLE_FIELDS.APPLICATIONS].push({
-            [APP_FIELDS.KEY]: appId,
-            [APP_FIELDS.CREDENTIALS]: credIds,
+          role[ROLE_FIELDS.APPS_CREDENTIALS].push({
+            [APP_CREDS_GROUP_FIELDS.KEY]: credsGroupId,
+            [APP_CREDS_GROUP_FIELDS.CREDENTIALS]: credIds,
           });
         }
         return role;
@@ -369,41 +369,41 @@ const RolesTable = () => {
           expandable={{
             expandedRowRender: record => (
               <div className="expandable-row-content">
-                <Title level={4}>Полномочия в приложениях</Title>
+                <Title level={4}>Полномочия в приложениях ГИД Неман</Title>
                 {
                   appCredAbbrs &&
                   appCredAbbrs.map((app) => (
-                    <React.Fragment key={`${record[ROLE_FIELDS.KEY]}${app[APP_FIELDS.KEY]}`}>
-                      <Title level={5}>{`Полномочия в ${app[APP_FIELDS.SHORT_TITLE]}:`}</Title>
+                    <React.Fragment key={`${record[ROLE_FIELDS.KEY]}${app[APP_CREDS_GROUP_FIELDS.KEY]}`}>
+                      <Title level={5}>{`Группа полномочий ${app[APP_CREDS_GROUP_FIELDS.SHORT_TITLE]}:`}</Title>
                       <SavableSelectMultiple
                         placeholder="Выберите полномочия"
                         options={
-                          (!app[APP_FIELDS.CREDENTIALS] || !app[APP_FIELDS.CREDENTIALS].length) ?
+                          (!app[APP_CREDS_GROUP_FIELDS.CREDENTIALS] || !app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].length) ?
                           [] :
-                          app[APP_FIELDS.CREDENTIALS].map((cred) => {
+                          app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].map((cred) => {
                             return {
                               value: cred[APP_CRED_FIELDS.ENGL_ABBREVIATION],
                             };
                           }).sort((a, b) => compareStrings(a.value.toLowerCase(), b.value.toLowerCase()))
                         }
                         selectedItems={
-                          (!app[APP_FIELDS.CREDENTIALS] || !app[APP_FIELDS.CREDENTIALS].length ||
-                           !record[ROLE_FIELDS.APPLICATIONS] || !record[ROLE_FIELDS.APPLICATIONS].length) ?
+                          (!app[APP_CREDS_GROUP_FIELDS.CREDENTIALS] || !app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].length ||
+                           !record[ROLE_FIELDS.APPS_CREDENTIALS] || !record[ROLE_FIELDS.APPS_CREDENTIALS].length) ?
                           [] :
-                          app[APP_FIELDS.CREDENTIALS].filter((cred) =>
-                            record[ROLE_FIELDS.APPLICATIONS].some(el =>
-                              (String(el[APP_FIELDS.KEY]) === String(app[APP_FIELDS.KEY])) &&
-                              el[APP_FIELDS.CREDENTIALS].includes(cred[APP_CRED_FIELDS.KEY])
+                          app[APP_CREDS_GROUP_FIELDS.CREDENTIALS].filter((cred) =>
+                            record[ROLE_FIELDS.APPS_CREDENTIALS].some(el =>
+                              (String(el[APP_CREDS_GROUP_FIELDS.KEY]) === String(app[APP_CREDS_GROUP_FIELDS.KEY])) &&
+                              el[APP_CREDS_GROUP_FIELDS.CREDENTIALS].includes(cred[APP_CRED_FIELDS.KEY])
                             )
                           ).map(cred => cred[APP_CRED_FIELDS.ENGL_ABBREVIATION])
                         }
                         saveChangesCallback={(selectedVals) => {
-                          const credIds = app[APP_FIELDS.CREDENTIALS]
+                          const credIds = app[APP_CREDS_GROUP_FIELDS.CREDENTIALS]
                             .filter(cred => selectedVals.includes(cred[APP_CRED_FIELDS.ENGL_ABBREVIATION]))
                             .map(cred => cred[APP_CRED_FIELDS.KEY]);
                           handleModRoleCreds({
                               roleId: record[ROLE_FIELDS.KEY],
-                              appId: app[APP_FIELDS.KEY],
+                              credsGroupId: app[APP_CREDS_GROUP_FIELDS.KEY],
                               credIds,
                           });
                         }}

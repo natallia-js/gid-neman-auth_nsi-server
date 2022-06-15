@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
-import { APP_FIELDS } from '../../constants';
+import { APP_CREDS_GROUP_FIELDS } from '../../constants';
 
 const { Text } = Typography;
 
@@ -8,22 +8,22 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Компонент модального окна добавления информации о новом приложении.
+ * Компонент модального окна добавления информации о новой группе полномочий в приложениях ГИД Неман.
  *
  * @param {object} params - свойства компонента:
  *   isModalVisible,
- *   handleAddNewAppOk,
- *   handleAddNewAppCancel,
+ *   handleAddNewAppCredsGroupOk,
+ *   handleAddNewAppCredsGroupCancel,
  *   appFieldsErrs,
- *   clearAddAppMessages,
+ *   clearAddAppCredsGroupMessages,
  *   recsBeingAdded,
  */
-const NewAppModal = ({
+const NewAppCredsGroupModal = ({
   isModalVisible,
-  handleAddNewAppOk,
-  handleAddNewAppCancel,
+  handleAddNewAppCredsGroupOk,
+  handleAddNewAppCredsGroupCancel,
   appFieldsErrs,
-  clearAddAppMessages,
+  clearAddAppCredsGroupMessages,
   recsBeingAdded,
 }) => {
 
@@ -35,7 +35,7 @@ const NewAppModal = ({
 
 
   /**
-   * Чистим поля ввода информации о новом приложении.
+   * Чистим поля ввода информации о новой группе полномочий.
    */
   const onReset = () => {
     form.resetFields();
@@ -44,7 +44,7 @@ const NewAppModal = ({
 
   const resetAll = () => {
     // Чистим все сообщения
-    clearAddAppMessages();
+    clearAddAppCredsGroupMessages();
     setRequiredShortTitleErrMess(null);
     setRequiredTitleErrMess(null);
   };
@@ -57,7 +57,7 @@ const NewAppModal = ({
    */
   const onFinish = (values) => {
     resetAll();
-    handleAddNewAppOk({ ...values });
+    handleAddNewAppCredsGroupOk({ ...values });
   };
 
 
@@ -65,7 +65,7 @@ const NewAppModal = ({
    * Обработка события отмены ввода информации.
    */
   const onCancel = () => {
-    handleAddNewAppCancel();
+    handleAddNewAppCredsGroupCancel();
     // Чистим поля ввода
     onReset();
     resetAll();
@@ -74,7 +74,7 @@ const NewAppModal = ({
 
   return (
     <Modal
-      title="Введите информацию о новом приложении"
+      title="Введите информацию о новой группе полномочий"
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
@@ -88,51 +88,51 @@ const NewAppModal = ({
       >
         <Form.Item
           label="Аббревиатура"
-          name={APP_FIELDS.SHORT_TITLE}
+          name={APP_CREDS_GROUP_FIELDS.SHORT_TITLE}
           rules={[
             {
               required: true,
               validator: async (_, value) => {
                 if (!value || value.length < 1) {
-                  setRequiredShortTitleErrMess('Пожалуйста, введите аббревиатуру приложения!');
+                  setRequiredShortTitleErrMess('Пожалуйста, введите аббревиатуру группы полномочий!');
                 } else {
                   setRequiredShortTitleErrMess(null);
                 }
               },
             },
           ]}
-          validateStatus={(appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess ? ERR_VALIDATE_STATUS : null}
-          help={(appFieldsErrs && appFieldsErrs[APP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess}
+          validateStatus={(appFieldsErrs && appFieldsErrs[APP_CREDS_GROUP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(appFieldsErrs && appFieldsErrs[APP_CREDS_GROUP_FIELDS.SHORT_TITLE]) || requiredShortTitleErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
-            placeholder="Введите аббревиатуру приложения"
+            placeholder="Введите аббревиатуру группы полномочий"
             allowClear
           />
         </Form.Item>
 
         <Form.Item
           label="Полное наименование"
-          name={APP_FIELDS.TITLE}
+          name={APP_CREDS_GROUP_FIELDS.TITLE}
           rules={[
             {
               required: true,
               validator: async (_, value) => {
                 if (!value || value.length < 1) {
-                  setRequiredTitleErrMess('Пожалуйста, введите полное наименование приложения!');
+                  setRequiredTitleErrMess('Пожалуйста, введите полное наименование группы полномочий!');
                 } else {
                   setRequiredTitleErrMess(null);
                 }
               },
             },
           ]}
-          validateStatus={(appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE]) || requiredTitleErrMess ? ERR_VALIDATE_STATUS : null}
-          help={(appFieldsErrs && appFieldsErrs[APP_FIELDS.TITLE]) || requiredTitleErrMess}
+          validateStatus={(appFieldsErrs && appFieldsErrs[APP_CREDS_GROUP_FIELDS.TITLE]) || requiredTitleErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(appFieldsErrs && appFieldsErrs[APP_CREDS_GROUP_FIELDS.TITLE]) || requiredTitleErrMess}
         >
           <Input
             autoComplete="off"
-            placeholder="Введите полное наименование приложения"
+            placeholder="Введите полное наименование группы полномочий"
             allowClear
           />
         </Form.Item>
@@ -158,4 +158,4 @@ const NewAppModal = ({
 };
 
 
-export default NewAppModal;
+export default NewAppCredsGroupModal;

@@ -2,7 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import { Row, Col, Menu, Typography } from 'antd';
 import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
 import Notes from '../components/Help/Notes';
-import ApplicationsDescription from '../components/Help/ApplicationsDescription';
+import ApplicationsCredentialsGroupsDescription from '../components/Help/ApplicationsCredentialsGroupsDescription';
 import RolesDescription from '../components/Help/RolesDescription';
 import ServicesDescription from '../components/Help/ServicesDescription';
 import PostsDescription from '../components/Help/PostsDescription';
@@ -26,7 +26,7 @@ export const HelpPage = () => {
 
   const helpMenuItems = [
     { label: 'Примечание', key: 'item-0', url: '#help-notes' },
-    { label: 'Приложения', key: 'item-1', url: '#applications-description' },
+    { label: 'Группы полномочий', key: 'item-1', url: '#applications-description' },
     { label: 'Роли', key: 'item-2', url: '#roles-description' },
     { label: 'Службы', key: 'item-3', url: '#services-description' },
     { label: 'Должности', key: 'item-4', url: '#posts-description' },
@@ -67,7 +67,7 @@ export const HelpPage = () => {
         <Title level={2} className="center top-margin-05" id="user-manual-start">Руководство пользователя</Title>
         <Notes />
         <ToHelpStartBlock />
-        <ApplicationsDescription />
+        <ApplicationsCredentialsGroupsDescription />
         <ToHelpStartBlock />
         <RolesDescription />
         <ToHelpStartBlock />

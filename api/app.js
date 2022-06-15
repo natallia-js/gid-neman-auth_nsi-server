@@ -133,7 +133,7 @@ connectToMongoDB(mongoURI)
 
   // Маршрутизация
   app.use('/api/auth', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/auth.routes'));
-  app.use('/api/apps', require('./routes/apps.routes'));
+  app.use('/api/appCreds', require('./routes/appCreds.routes'));
   app.use('/api/roles', require('./routes/roles.routes'));
   app.use('/api/workPoligons/stations', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/stationWorkPoligons.routes'));
   app.use('/api/workPoligons/dncSectors', (req, _res, next) => { req.sequelize = sequelize; next(); }, require('./routes/dncSectorWorkPoligons.routes'));
@@ -169,6 +169,7 @@ connectToMongoDB(mongoURI)
   app.use('/api/errorsLogs', require('./routes/errorsLogs.routes'));
   app.use('/api/serverLogs', require('./routes/serverLogs.routes'));
   app.use('/api/okna', require('./routes/okna.routes'));
+  app.use('/api/upload', require('./routes/files.routes'));
 
   // Запускаем https-сервер на заданном порту
   httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`));  

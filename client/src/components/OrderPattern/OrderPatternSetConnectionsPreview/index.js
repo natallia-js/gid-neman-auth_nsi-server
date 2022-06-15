@@ -13,6 +13,8 @@ const orderPatternElementsPossibleConnectionsByTypes = [
   { baseElementType: OrderPatternElementType.TEXT_AREA, childElementType: OrderPatternElementType.TEXT_AREA },
   { baseElementType: OrderPatternElementType.SELECT, childElementType: OrderPatternElementType.SELECT },
   { baseElementType: OrderPatternElementType.SELECT, childElementType: OrderPatternElementType.INPUT },
+  { baseElementType: OrderPatternElementType.MULTIPLE_SELECT, childElementType: OrderPatternElementType.MULTIPLE_SELECT },
+  { baseElementType: OrderPatternElementType.MULTIPLE_SELECT, childElementType: OrderPatternElementType.INPUT },
   { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.DATE },
   { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.DATETIME },
   { baseElementType: OrderPatternElementType.DATE, childElementType: OrderPatternElementType.INPUT },

@@ -9,7 +9,7 @@ export const CURR_APP_ABBREV_NAME = 'GidNemanAuthNSIUtil';
 // ----------------------------------------
 
 export const GetDataCredentials = Object.freeze({
-  GET_ALL_APPS_ACTION: 'GET_ALL_APPS_ACTION',
+  GET_ALL_APPS_CREDS_ACTION: 'GET_ALL_APPS_CREDS_ACTION',
   GET_ALL_ROLES_ACTION: 'GET_ALL_ROLES_ACTION',
   GET_ALL_USERS_ACTION: 'GET_ALL_USERS_ACTION',
   GET_ALL_STATIONS_ACTION: 'GET_ALL_STATIONS_ACTION',
@@ -25,14 +25,14 @@ export const GetDataCredentials = Object.freeze({
 // ----------------------------------------
 
 export const ServerAPI = Object.freeze({
-  GET_APPS_DATA: ServerAddress + '/api/apps/data',
-  GET_APPS_ABBR_DATA: ServerAddress + '/api/apps/abbrData',
-  ADD_APP_DATA: ServerAddress + '/api/apps/add',
-  ADD_APP_CRED_DATA: ServerAddress + '/api/apps/addCred',
-  DEL_APP_DATA: ServerAddress + '/api/apps/del',
-  DEL_APP_CRED_DATA: ServerAddress + '/api/apps/delCred',
-  MOD_APP_DATA: ServerAddress + '/api/apps/mod',
-  MOD_APP_CRED_DATA: ServerAddress + '/api/apps/modCred',
+  GET_APPS_CREDS_DATA: ServerAddress + '/api/appCreds/data',
+  GET_APPS_ABBR_DATA: ServerAddress + '/api/appCreds/abbrData',
+  ADD_APP_CREDS_GROUP_DATA: ServerAddress + '/api/appCreds/add',
+  ADD_APP_CRED_DATA: ServerAddress + '/api/appCreds/addCred',
+  DEL_APP_CREDS_GROUP_DATA: ServerAddress + '/api/appCreds/del',
+  DEL_APP_CRED_DATA: ServerAddress + '/api/appCreds/delCred',
+  MOD_APP_CREDS_GROUP_DATA: ServerAddress + '/api/appCreds/mod',
+  MOD_APP_CRED_DATA: ServerAddress + '/api/appCreds/modCred',
 
   LOGIN: ServerAddress + '/api/auth/login',
   WHO_AM_I: ServerAddress + '/api/auth/whoAmI',
@@ -158,7 +158,7 @@ export const ServerAPI = Object.freeze({
 
 // ----------------------------------------
 
-export const APP_FIELDS = Object.freeze({
+export const APP_CREDS_GROUP_FIELDS = Object.freeze({
   KEY: 'key',
   SHORT_TITLE: 'shortTitle',
   TITLE: 'title',
@@ -178,7 +178,7 @@ export const ROLE_FIELDS = Object.freeze({
   ENGL_ABBREVIATION: 'englAbbreviation',
   DESCRIPTION: 'description',
   SUB_ADMIN_CAN_USE: 'subAdminCanUse',
-  APPLICATIONS: 'apps',
+  APPS_CREDENTIALS: 'appsCreds',
 });
 
 // ----------------------------------------

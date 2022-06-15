@@ -18,7 +18,7 @@ const validate = require('../validators/validate');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Role = require('../models/Role');
-const App = require('../models/App');
+const AppCred = require('../models/AppCred');
 const { TStationWorkPoligon } = require('../models/TStationWorkPoligon');
 const { TDNCSectorWorkPoligon } = require('../models/TDNCSectorWorkPoligon');
 const { TECDSectorWorkPoligon } = require('../models/TECDSectorWorkPoligon');
@@ -77,11 +77,11 @@ router.put(
       // полномочия в утилите аутентификации и НСИ ГИД Неман.
 
       // Ищем в БД приложение, shortTitle которого совпадает с GidNemanAuthNSIUtil
-      let authApp = await App.findOne({ shortTitle: GidNemanAuthNSIUtil_ShortTitle });
+      let authApp = await AppCred.findOne({ shortTitle: GidNemanAuthNSIUtil_ShortTitle });
 
       // Если не находим, то создаем
       if (!authApp) {
-        authApp = new App({
+        authApp = new AppCred({
           shortTitle: GidNemanAuthNSIUtil_ShortTitle,
           title: GidNemanAuthNSIUtil_Title,
           credentials: Get_GidNemanAuthNSIUtil_AllCredentials().map(el => { return { englAbbreviation: el, description: '' } }),
@@ -97,9 +97,9 @@ router.put(
           englAbbreviation: MAIN_ADMIN_ROLE_NAME,
           description: MAIN_ADMIN_ROLE_DESCRIPTION,
           subAdminCanUse: false,
-          apps: [
+          appsCreds: [
             {
-              appId: authApp._id,
+              credsGroupId: authApp._id,
               creds: authApp.credentials.map(cred => cred._id)
             }
           ],
@@ -778,10 +778,10 @@ router.post(
           addUserRole(foundRole.englAbbreviation);
 
           // Для каждого приложения, соответствующего данной роли, ...
-          for (let app of foundRole.apps) {
+          for (let app of foundRole.appsCreds) {
 
             // ... определяем наличие данного приложения в коллекции приложений БД
-            const foundApp = await App.findById(app.appId);
+            const foundApp = await AppCred.findById(app.credsGroupId);
 
             if (!foundApp) {
               continue;

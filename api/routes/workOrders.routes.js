@@ -13,6 +13,7 @@ const {
 const isOrderAsserted = require('../routes/additional/isOrderAsserted');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
+const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
 
 const router = Router();
 

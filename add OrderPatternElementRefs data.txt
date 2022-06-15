@@ -36,6 +36,8 @@
   possibleRefs: [
     { refName: 'Дежурство сдал', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дежурство принял', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Для работы должно быть', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Категория работ', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения на закрытие перегона', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующей заявки', additionalOrderPlaceInfoForGID: false },
@@ -51,11 +53,21 @@
     { refName: 'Путь станции', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции отправления', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции прибытия', additionalOrderPlaceInfoForGID: true },
+    { refName: 'Работать при наличии', additionalOrderPlaceInfoForGID: false },
     { refName: 'Руководители', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция прибытия', additionalOrderPlaceInfoForGID: false },
     { refName: 'Точное место', additionalOrderPlaceInfoForGID: false },
+  ],
+},
+{
+  elementType: "multipleSelect",
+  possibleRefs: [
+    { refName: 'Объект работ', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
+    { refName: 'С чего производится работа', additionalOrderPlaceInfoForGID: false },
   ],
 },
 {

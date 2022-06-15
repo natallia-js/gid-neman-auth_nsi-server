@@ -533,7 +533,7 @@ export const OrderPatternsTree = (props) => {
                 editedPattern && editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS] &&
                 <Col span={24} className="order-pattern-border order-pattern-block">
                   <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    <Title level={4} className="center">Редактирование распоряжения</Title>
+                    <Title level={4} className="center">Редактирование информации о шаблоне документа</Title>
                     <Text strong>Наименование распоряжения</Text>
                     <Input
                       size="small"

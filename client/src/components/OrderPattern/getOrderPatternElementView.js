@@ -52,6 +52,20 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
           open={false}
         />
       </Tooltip>;
+    case OrderPatternElementType.MULTIPLE_SELECT:
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
+      >
+        <Select
+          mode="multiple"
+          size="small"
+          style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
+          showArrow
+          placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          open={false}
+        />
+      </Tooltip>;
     case OrderPatternElementType.DATE:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}

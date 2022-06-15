@@ -12,6 +12,7 @@ import { ElementSizeChooser } from '../EditOrderPatternElement/ElementSizeChoose
 import { ElementRefChooser } from '../EditOrderPatternElement/ElementRefChooser';
 import { EnterOutlined } from '@ant-design/icons';
 import drTrainTableColumns from '../drTrainTableColumns';
+import TimeOrTillNoticeComponent from '../TimeOrTillNoticeComponent';
 
 const { TextArea } = Input;
 
@@ -39,7 +40,7 @@ export const EditOrderPatternElement = (props) => {
       let elementSize = null;
       if (element && element.size) {
         elementSize = element.size;
-      } else if (elType === OrderPatternElementType.INPUT || elType === OrderPatternElementType.SELECT) {
+      } else if ([OrderPatternElementType.INPUT, OrderPatternElementType.SELECT, OrderPatternElementType.MULTIPLE_SELECT].includes(elType)) {
         elementSize = PossibleElementSizes.SMALL;
       } else {
         elementSize = PossibleElementSizes.AUTO;
@@ -194,11 +195,22 @@ export const EditOrderPatternElement = (props) => {
           open={false}
           style={{ width: ElementSizesCorrespondence[selectedPatternElement.size] }}
           size="small"
+          open={false}
+        />;
+      case OrderPatternElementType.MULTIPLE_SELECT:
+        return <Select
+          mode="multiple"
+          size="small"
+          style={{ width: ElementSizesCorrespondence[selectedPatternElement.size] }}
+          showArrow
+          open={false}
         />;
       case OrderPatternElementType.DATE:
         return <DatePicker format={DateFormat} size="small" placeholder="" />;
       case OrderPatternElementType.TIME:
         return <TimePicker format={TimeFormat} size="small" placeholder="" />;
+      case OrderPatternElementType.TIME_OR_TILL_NOTICE:
+        return <TimeOrTillNoticeComponent />;
       case OrderPatternElementType.DATETIME:
         return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.DR_TRAIN_TABLE:
@@ -236,13 +248,19 @@ export const EditOrderPatternElement = (props) => {
                 Текстовая область
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.SELECT}>
-                Выпадающий список
+                Нередактируемый список одиночного выбора
+              </Radio.Button>
+              <Radio.Button value={OrderPatternElementType.MULTIPLE_SELECT}>
+                Редактируемый список множественного выбора
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.DATE}>
                 Дата
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.TIME}>
                 Время
+              </Radio.Button>
+              <Radio.Button value={OrderPatternElementType.TIME_OR_TILL_NOTICE}>
+                Время/до уведомления
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.DATETIME}>
                 Дата-время
@@ -272,8 +290,8 @@ export const EditOrderPatternElement = (props) => {
         {/* Свойства выбранного элемента шаблона */}
         <Row>
         {
-          (selectedPatternElement.type === OrderPatternElementType.INPUT ||
-           selectedPatternElement.type === OrderPatternElementType.SELECT) &&
+          ([OrderPatternElementType.INPUT, OrderPatternElementType.SELECT,
+            OrderPatternElementType.MULTIPLE_SELECT].includes(selectedPatternElement.type)) &&
           <Col flex="100px">
             <ElementSizeChooser
               chosenSize={selectedPatternElement.size}

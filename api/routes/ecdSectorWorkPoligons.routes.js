@@ -65,10 +65,10 @@ router.post(
  * onlyOnline - (пока НЕ РАБОТАЕТ: данное поле отсутствует в БД!!!)
  *              true, если необходимо получить список лишь тех пользователей, которые в данный
  *              момент online; false - если необходимо получить список всех пользователей
- * apps - массив объектов с полями app (строка-условное наименование приложения ГИД Неман из коллекции apps) и
- *        creds - массив строк - наименований полномочий в соответствующем приложении;
- *        параметр apps используется для поиска для каждого пользователя дополнительной информации о его
- *        полномочиях (из заданного списка) в каждом из указанных приложений,
+ * credsGroups - массив объектов с полями credsGroup (строка-условное наименование группы полномочий в приложениях
+ *        ГИД Неман из коллекции appcreds в БД) и creds - массив строк-наименований полномочий группы;
+ *        параметр credsGroups используется для поиска для каждого пользователя дополнительной информации о его
+ *        полномочиях (из заданного списка) в каждой из указанных групп
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -82,11 +82,11 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { sectorIds, onlyOnline, apps } = req.body;
+    const { sectorIds, onlyOnline, credsGroups } = req.body;
 
     try {
       // Сюда помещу извлеченную и БД информацию о ролях, связанных с указанными в запросе приложениями
-      const roles = await matchUserRolesToAppsAndCreds(apps);
+      const roles = await matchUserRolesToAppsAndCreds(credsGroups);
 
       const users = await TECDSectorWorkPoligon.findAll({
         raw: true,
@@ -134,7 +134,7 @@ router.post(
         errorTime: new Date(),
         action: 'Получение информации обо всех пользователях, у которых рабочий полигон - участок ЭЦД с одним из заданных id',
         error: error.message,
-        actionParams: { sectorIds, onlyOnline, apps },
+        actionParams: { sectorIds, onlyOnline, credsGroups },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
