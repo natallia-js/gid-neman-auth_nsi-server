@@ -40,6 +40,7 @@ export const OrderPatternElementTypeShortTitles = Object.freeze({
   MULTIPLE_SELECT: 'р.с.м.в.',
   DATE: 'д.',
   TIME: 'в.',
+  TIME_OR_TILL_NOTICE: 'в./д.у.',
   DATETIME: 'д.-в.',
   DR_TRAIN_TABLE: 'т.п.ДР',
   LINEBREAK: 'п.с.',

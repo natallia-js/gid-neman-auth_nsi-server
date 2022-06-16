@@ -4,7 +4,7 @@ import { TimeFormat } from '../constants';
 
 
 /**
- * Компонент таблицы с информацией о связанных элементах шаблонов раяпоряжений.
+ * Компонент определения времени либо значения "до уведомления".
  */
 const TimeOrTillNoticeComponent = ({ format, size, placeholder }) => {
   const [time, setTime] = useState(null);
