@@ -26,6 +26,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * post - должность работника структурного подразделения ЭЦД (не обязательна),
  * fio - ФИО работника структурного подразделения ЭЦД (не обязательно),
  * ecdSectorId - id участка ЭЦД (обязателен),
+ * position - позиция структурного подразделения (не обязателен)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -39,7 +40,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { title, post, fio, ecdSectorId } = req.body;
+    const { title, post, fio, ecdSectorId, position } = req.body;
 
     try {
       // Создаем в БД запись
@@ -48,6 +49,7 @@ router.post(
         ECDSD_Post: post,
         ECDSD_FIO: fio,
         ECDSD_ECDSectorID: ecdSectorId,
+        ECDSD_Position: position || null,
       });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', newRecord });
@@ -114,6 +116,7 @@ router.post(
  * title - наименование структурного подразделения (не обязательно),
  * post - должность работника структурного подразделения ЭЦД (не обязательна),
  * fio - ФИО работника структурного подразделения ЭЦД (не обязательно),
+ * position - позиция структурного подразделения (не обязательно),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -127,7 +130,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, title, post, fio } = req.body;
+    const { id, title, post, fio, position } = req.body;
 
     try {
       // Ищем в БД структруное подразделение ЭЦД, id которого совпадает с переданным пользователем
@@ -149,6 +152,9 @@ router.post(
       }
       if (req.body.hasOwnProperty('fio')) {
         updateFields.ECDSD_FIO = fio;
+      }
+      if (req.body.hasOwnProperty('position')) {
+        updateFields.ECDSD_Position = position || null;
       }
 
       candidate.set(updateFields);

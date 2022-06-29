@@ -143,13 +143,17 @@ CREATE TABLE TECDStructuralDivisions
   ECDSD_ID int IDENTITY (1,1),
   ECDSD_Title nvarchar(32) NOT NULL,
   ECDSD_Post nvarchar(32),
-  ECDSD_FIO nvarchar(32),
+  ECDSD_FIO nvarchar(64),
   ECDSD_ECDSectorID int NOT NULL,
   CONSTRAINT XPK_TECDStructuralDivisions PRIMARY KEY CLUSTERED (ECDSD_ID ASC),
   CONSTRAINT XRef_TECDSectorFromStructuralDivision FOREIGN KEY (ECDSD_ECDSectorID) REFERENCES TECDSectors (ECDS_ID)
     ON DELETE NO ACTION
 	  ON UPDATE NO ACTION
 )
+go
+
+ALTER TABLE TECDStructuralDivisions
+ADD ECDSD_Position tinyint;
 go
 
 /* Вносим изменения в таблицу станций */

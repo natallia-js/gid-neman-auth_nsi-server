@@ -92,6 +92,8 @@ const otherToSendSchema = new Schema({
   placeTitle: { type: String, required: true },
   post: { type: String, required: false },
   fio: { type: String, required: false },
+  position: { type: Number, required: false },
+  existingStructuralDivision: { type: Boolean, required: false },
   sendOriginal: { type: Boolean, required: true },
   confirmDateTime: { type: Date, required: false, default: null },
 });

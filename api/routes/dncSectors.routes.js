@@ -12,6 +12,7 @@ const { TBlock } = require('../models/TBlock');
 const { TDNCSector } = require('../models/TDNCSector');
 const { TDNCTrainSector } = require('../models/TDNCTrainSector');
 const { TDNCTrainSectorStation } = require('../models/TDNCTrainSectorStation');
+const { TDNCTrainSectorBlock } = require('../models/TDNCTrainSectorBlock');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteDNCSector = require('../routes/deleteComplexDependencies/deleteDNCSector');
@@ -36,7 +37,7 @@ const {
  * которые, в свою очередь, содержат вложенные списки станций и перегонов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -46,8 +47,104 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (_req, res) => {
+    let data;
     try {
-      const data = await TDNCSector.findAll({
+      const dncSectors = await TDNCSector.findAll({
+        attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID', 'DNCS_PENSI_Code'],
+      });
+      if (dncSectors) {
+        data = dncSectors.map((sector) => ({
+          DNCS_ID: sector.dataValues.DNCS_ID,
+          DNCS_Title: sector.dataValues.DNCS_Title,
+          DNCS_DESCRIPTION: sector.dataValues.DNCS_DESCRIPTION,
+          DNCS_PENSI_ID: sector.dataValues.DNCS_PENSI_ID,
+          DNCS_PENSI_Code: sector.dataValues.DNCS_PENSI_Code,
+          TDNCTrainSectors: [],
+        }));
+        const trainSectors = await TDNCTrainSector.findAll({
+          attributes: ['DNCTS_ID', 'DNCTS_Title', 'DNCTS_DNCSectorID'],
+        });
+        if (trainSectors) {
+          trainSectors.forEach((trainSector) => {
+            const dncSector = data.find((sector) => sector.DNCS_ID === trainSector.dataValues.DNCTS_DNCSectorID);
+            if (dncSector) {
+              dncSector.TDNCTrainSectors.push({
+                DNCTS_ID: trainSector.dataValues.DNCTS_ID,
+                DNCTS_Title: trainSector.dataValues.DNCTS_Title,
+              });
+            }
+          });
+          const trainSectorsIds = trainSectors.map((trainSector) => trainSector.dataValues.DNCTS_ID);
+          // ------------- Станции поездных участков ДНЦ -----------------
+          const trainSectorsStations = await TDNCTrainSectorStation.findAll({
+            attributes: ['DNCTSS_TrainSectorID', 'DNCTSS_StationID', 'DNCTSS_StationPositionInTrainSector', 'DNCTSS_StationBelongsToDNCSector'],
+            where: { DNCTSS_TrainSectorID: trainSectorsIds },
+          });
+          const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.DNCTSS_StationID))];
+          const stations = await TStation.findAll({
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            where: { St_ID: stationsIds },
+          });
+          // ------------- Перегоны поездных участков ДНЦ -----------------
+          const trainSectorsBlocks = await TDNCTrainSectorBlock.findAll({
+            attributes: ['DNCTSB_TrainSectorID', 'DNCTSB_BlockID', 'DNCTSB_BlockPositionInTrainSector', 'DNCTSB_BlockBelongsToDNCSector'],
+            where: { DNCTSB_TrainSectorID: trainSectorsIds },
+          });
+          const blocksIds = [...new Set(trainSectorsBlocks.map((block) => block.dataValues.DNCTSB_BlockID))];
+          const blocks = await TBlock.findAll({
+            attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+            where: { Bl_ID: blocksIds },
+          });
+          // -------------- Сопоставляем станции и перегоны с поездными участками --------------
+          data.forEach((dncSector) => {
+            dncSector.TDNCTrainSectors.forEach((trainSector) => {
+              const trainSectorStationsIds = trainSectorsStations
+                .filter((stationInfo) => stationInfo.dataValues.DNCTSS_TrainSectorID === trainSector.DNCTS_ID)
+                .map((stationInfo) => stationInfo.dataValues.DNCTSS_StationID);
+
+              trainSector.TStations = stations
+                .filter((station) => trainSectorStationsIds.includes(station.dataValues.St_ID))
+                .map((station) => {
+                  const trainSectorStationInfo = trainSectorsStations
+                    .find((el) => el.dataValues.DNCTSS_TrainSectorID === trainSector.DNCTS_ID && el.dataValues.DNCTSS_StationID === station.dataValues.St_ID);
+                  return {
+                    St_ID: station.dataValues.St_ID,
+                    St_UNMC: station.dataValues.St_UNMC,
+                    St_Title: station.dataValues.St_Title,
+                    TDNCTrainSectorStation: {
+                      DNCTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.DNCTSS_StationPositionInTrainSector,
+                      DNCTSS_StationBelongsToDNCSector: trainSectorStationInfo.dataValues.DNCTSS_StationBelongsToDNCSector,
+                    },
+                  };
+                });
+
+              const trainSectorBlocksIds = trainSectorsBlocks
+                .filter((blockInfo) => blockInfo.dataValues.DNCTSB_TrainSectorID === trainSector.DNCTS_ID)
+                .map((blockInfo) => blockInfo.dataValues.DNCTSB_BlockID);
+
+              trainSector.TBlocks = blocks
+                .filter((block) => trainSectorBlocksIds.includes(block.dataValues.Bl_ID))
+                .map((block) => {
+                  const trainSectorBlockInfo = trainSectorsBlocks
+                    .find((el) => el.dataValues.DNCTSB_TrainSectorID === trainSector.DNCTS_ID && el.dataValues.DNCTSB_BlockID === block.dataValues.Bl_ID);
+                  return {
+                    Bl_ID: block.dataValues.Bl_ID,
+                    Bl_Title: block.dataValues.Bl_Title,
+                    Bl_StationID1: block.dataValues.Bl_StationID1,
+                    Bl_StationID2: block.dataValues.Bl_StationID2,
+                    TDNCTrainSectorBlock: {
+                      DNCTSB_BlockPositionInTrainSector: trainSectorBlockInfo.dataValues.DNCTSB_BlockPositionInTrainSector,
+                      DNCTSB_BlockBelongsToECDSector: trainSectorBlockInfo.dataValues.DNCTSB_BlockBelongsToDNCSector,
+                    },
+                  };
+                });
+            });
+          });
+        }
+      }
+
+
+      /*const data = await TDNCSector.findAll({
         attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID', 'DNCS_PENSI_Code'],
         include: [
           {
@@ -66,8 +163,10 @@ router.post(
             ],
           },
         ],
-      });
-      res.status(OK).json(data ? data.map(d => d.dataValues) : []);
+      });*/
+      //res.status(OK).json(data ? data.map(d => d.dataValues) : []);
+
+      res.status(OK).json(data || []);
 
     } catch (error) {
       addError({
@@ -205,7 +304,148 @@ router.post(
   async (req, res) => {
     const { sectorId } = req.body;
 
+    let data;
+
     try {
+      // Ищем участок ДНЦ
+      const dncSector = await TDNCSector.findOne({
+        attributes: ['DNCS_ID', 'DNCS_Title'],
+        where: { DNCS_ID: sectorId },
+      });
+
+      if (dncSector) {
+        data = {
+          DNCS_ID: dncSector.dataValues.DNCS_ID,
+          DNCS_Title: dncSector.dataValues.DNCS_Title,
+        };
+
+        // ------------- Поездные участки участка ДНЦ -----------------
+
+        // Ищем поездные участки участка ДНЦ
+        const trainSectors = await TDNCTrainSector.findAll({
+          attributes: ['DNCTS_ID', 'DNCTS_Title'],
+          where: { DNCTS_DNCSectorID: sectorId },
+        });
+
+        if (trainSectors) {
+          data.TDNCTrainSectors = trainSectors.map((trainSector) => ({
+            DNCTS_ID: trainSector.dataValues.DNCTS_ID,
+            DNCTS_Title: trainSector.dataValues.DNCTS_Title,
+            TStations: [],
+            TBlocks: [],
+          }));
+          const trainSectorsIds = trainSectors.map((trainSector) => trainSector.dataValues.DNCTS_ID);
+
+          // ------------- Станции поездных участков ДНЦ -----------------
+
+          // Ищем, какие станции входят в поездные участки участка ДНЦ
+          const trainSectorsStations = await TDNCTrainSectorStation.findAll({
+            attributes: ['DNCTSS_TrainSectorID', 'DNCTSS_StationID', 'DNCTSS_StationPositionInTrainSector', 'DNCTSS_StationBelongsToDNCSector'],
+            where: { DNCTSS_TrainSectorID: trainSectorsIds },
+          });
+          const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.DNCTSS_StationID))];
+          // Ищем станции всех поездных участков ДНЦ
+          const stations = await TStation.findAll({
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            where: { St_ID: stationsIds },
+          });
+
+          // ------------- Пути станций поездных участков ДНЦ -----------------
+
+          const trainSectorsStationsTracks = await TStationTrack.findAll({
+            attributes: ['ST_ID', 'ST_Name', 'ST_StationId'],
+            where: { ST_StationId: stationsIds },
+          });
+
+          stations.forEach((station) => {
+            station.dataValues.TStationTracks = trainSectorsStationsTracks
+              .filter((track) => track.dataValues.ST_StationId === station.dataValues.St_ID)
+              .map((track) => ({
+                ST_ID: track.dataValues.ST_ID,
+                ST_Name: track.dataValues.ST_Name,
+              }));
+          });
+
+          // ------------- Перегоны поездных участков ДНЦ -----------------
+
+          // Ищем, какие перегоны входят в поездные участки участка ДНЦ
+          const trainSectorsBlocks = await TDNCTrainSectorBlock.findAll({
+            attributes: ['DNCTSB_TrainSectorID', 'DNCTSB_BlockID', 'DNCTSB_BlockPositionInTrainSector', 'DNCTSB_BlockBelongsToDNCSector'],
+            where: { DNCTSB_TrainSectorID: trainSectorsIds },
+          });
+          const blocksIds = [...new Set(trainSectorsBlocks.map((block) => block.dataValues.DNCTSB_BlockID))];
+          // Ищем перегоны всех поездных участков ДНЦ
+          const blocks = await TBlock.findAll({
+            attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+            where: { Bl_ID: blocksIds },
+          });
+
+          // ------------- Пути перегонов поездных участков ДНЦ -----------------
+
+          const trainSectorsBlocksTracks = await TBlockTrack.findAll({
+            attributes: ['BT_ID', 'BT_Name', 'BT_BlockId'],
+            where: { BT_BlockId: blocksIds },
+          });
+
+          blocks.forEach((block) => {
+            block.dataValues.TBlockTracks = trainSectorsBlocksTracks
+              .filter((track) => track.dataValues.BT_BlockId === block.dataValues.Bl_ID)
+              .map((track) => ({
+                BT_ID: track.dataValues.BT_ID,
+                BT_Name: track.dataValues.BT_Name,
+              }));
+          });
+
+          // --- Включаем станции и перегоны в поездные участки ДНЦ выходного массива данных ---
+
+          data.TDNCTrainSectors.forEach((trainSector) => {
+            const trainSectorStationsIds = trainSectorsStations
+              .filter((stationInfo) => stationInfo.dataValues.DNCTSS_TrainSectorID === trainSector.DNCTS_ID)
+              .map((stationInfo) => stationInfo.dataValues.DNCTSS_StationID);
+
+            trainSector.TStations = stations
+              .filter((station) => trainSectorStationsIds.includes(station.dataValues.St_ID))
+              .map((station) => {
+                const trainSectorStationInfo = trainSectorsStations
+                  .find((el) => el.dataValues.DNCTSS_TrainSectorID === trainSector.DNCTS_ID && el.dataValues.DNCTSS_StationID === station.dataValues.St_ID);
+                return {
+                  St_ID: station.dataValues.St_ID,
+                  St_UNMC: station.dataValues.St_UNMC,
+                  St_Title: station.dataValues.St_Title,
+                  TStationTracks: station.dataValues.TStationTracks,
+                  TDNCTrainSectorStation: {
+                    DNCTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.DNCTSS_StationPositionInTrainSector,
+                    DNCTSS_StationBelongsToDNCSector: trainSectorStationInfo.dataValues.DNCTSS_StationBelongsToDNCSector,
+                  },
+                };
+              });
+
+            const trainSectorBlocksIds = trainSectorsBlocks
+              .filter((blockInfo) => blockInfo.dataValues.DNCTSB_TrainSectorID === trainSector.DNCTS_ID)
+              .map((blockInfo) => blockInfo.dataValues.DNCTSB_BlockID);
+
+            trainSector.TBlocks = blocks
+              .filter((block) => trainSectorBlocksIds.includes(block.dataValues.Bl_ID))
+              .map((block) => {
+                const trainSectorBlockInfo = trainSectorsBlocks
+                  .find((el) => el.dataValues.DNCTSB_TrainSectorID === trainSector.DNCTS_ID && el.dataValues.DNCTSB_BlockID === block.dataValues.Bl_ID);
+                return {
+                  Bl_ID: block.dataValues.Bl_ID,
+                  Bl_Title: block.dataValues.Bl_Title,
+                  Bl_StationID1: block.dataValues.Bl_StationID1,
+                  Bl_StationID2: block.dataValues.Bl_StationID2,
+                  TBlockTracks: block.dataValues.TBlockTracks,
+                  TDNCTrainSectorBlock: {
+                    DNCTSB_BlockPositionInTrainSector: trainSectorBlockInfo.dataValues.DNCTSB_BlockPositionInTrainSector,
+                    DNCTSB_BlockBelongsToDNCSector: trainSectorBlockInfo.dataValues.DNCTSB_BlockBelongsToDNCSector,
+                  },
+                };
+              });
+          });
+        }
+      }
+
+      /*
       const data = await TDNCSector.findOne({
         attributes: ['DNCS_ID', 'DNCS_Title'],
         where: { DNCS_ID: sectorId },
@@ -246,7 +486,8 @@ router.post(
             ],
           },
         ],
-      });
+      });*/
+
       res.status(OK).json(data);
 
     } catch (error) {
@@ -486,7 +727,7 @@ router.post(
  * Обрабатывает запрос на синхронизацию списка всех участков ДНЦ со списком участков ДНЦ ПЭНСИ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(

@@ -55,8 +55,10 @@ const ecdStructuralDivisionsTableColumns = (props) => {
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => {
-        if (!a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] || !b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION])
+        if (!a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] && b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION])
           return 1;
+        if (a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] && !b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION])
+          return -1;
         return a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] - b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]
       },
     },

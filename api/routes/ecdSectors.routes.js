@@ -13,6 +13,7 @@ const { TECDSector } = require('../models/TECDSector');
 const { TECDTrainSector } = require('../models/TECDTrainSector');
 const { TECDStructuralDivision } = require('../models/TECDStructuralDivision');
 const { TECDTrainSectorStation } = require('../models/TECDTrainSectorStation');
+const { TECDTrainSectorBlock } = require('../models/TECDTrainSectorBlock');
 const { TStationTrack } = require('../models/TStationTrack');
 const { TBlockTrack } = require('../models/TBlockTrack');
 const deleteECDSector = require('../routes/deleteComplexDependencies/deleteECDSector');
@@ -37,7 +38,7 @@ const {
  * - структурных подразделений;
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -47,8 +48,113 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (_req, res) => {
+    let data;
     try {
-      const data = await TECDSector.findAll({
+      const ecdSectors = await TECDSector.findAll({
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+      });
+      if (ecdSectors) {
+        // ------------- Структурные подразделения участков ЭЦД -----------------
+        const ecdSectorsStructuralDivisions = await TECDStructuralDivision.findAll({
+          attributes: ['ECDSD_ID', 'ECDSD_Title', 'ECDSD_Post', 'ECDSD_FIO', 'ECDSD_ECDSectorID', 'ECDSD_Position'],
+        });
+        // ------------- Поездные участки участков ЭЦД -----------------
+        const trainSectors = await TECDTrainSector.findAll({
+          attributes: ['ECDTS_ID', 'ECDTS_Title', 'ECDTS_ECDSectorID'],
+        });
+        // ------------- Итоговый массив участков ЭЦД --------------
+        data = ecdSectors.map((sector) => ({
+          ECDS_ID: sector.dataValues.ECDS_ID,
+          ECDS_Title: sector.dataValues.ECDS_Title,
+          TECDTrainSectors: !trainSectors ? [] :
+            trainSectors
+              .filter((trainSector) => trainSector.dataValues.ECDTS_ECDSectorID === sector.dataValues.ECDS_ID)
+              .map((trainSector) => ({
+                ECDTS_ID: trainSector.dataValues.ECDTS_ID,
+                ECDTS_Title: trainSector.dataValues.ECDTS_Title,
+              })),
+          TECDStructuralDivisions: !ecdSectorsStructuralDivisions ? [] :
+            ecdSectorsStructuralDivisions
+              .filter((division) => division.dataValues.ECDSD_ECDSectorID === sector.dataValues.ECDS_ID)
+              .map((division) => ({
+                ECDSD_ID: division.dataValues.ECDSD_ID,
+                ECDSD_Title: division.dataValues.ECDSD_Title,
+                ECDSD_Post: division.dataValues.ECDSD_Post,
+                ECDSD_FIO: division.dataValues.ECDSD_FIO,
+                ECDSD_Position: division.dataValues.ECDSD_Position,
+              })),
+        }));
+        if (trainSectors) {
+          const trainSectorsIds = trainSectors.map((trainSector) => trainSector.dataValues.ECDTS_ID);
+          // ------------- Станции поездных участков ЭЦД -----------------
+          const trainSectorsStations = await TECDTrainSectorStation.findAll({
+            attributes: ['ECDTSS_TrainSectorID', 'ECDTSS_StationID', 'ECDTSS_StationPositionInTrainSector', 'ECDTSS_StationBelongsToECDSector'],
+            where: { ECDTSS_TrainSectorID: trainSectorsIds },
+          });
+          const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.ECDTSS_StationID))];
+          const stations = await TStation.findAll({
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            where: { St_ID: stationsIds },
+          });
+          // ------------- Перегоны поездных участков ЭЦД -----------------
+          const trainSectorsBlocks = await TECDTrainSectorBlock.findAll({
+            attributes: ['ECDTSB_TrainSectorID', 'ECDTSB_BlockID', 'ECDTSB_BlockPositionInTrainSector', 'ECDTSB_BlockBelongsToECDSector'],
+            where: { ECDTSB_TrainSectorID: trainSectorsIds },
+          });
+          const blocksIds = [...new Set(trainSectorsBlocks.map((block) => block.dataValues.ECDTSB_BlockID))];
+          const blocks = await TBlock.findAll({
+            attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+            where: { Bl_ID: blocksIds },
+          });
+          // -------------- Сопоставляем станции и перегоны с поездными участками --------------
+          data.forEach((ecdSector) => {
+            ecdSector.TECDTrainSectors.forEach((trainSector) => {
+              const trainSectorStationsIds = trainSectorsStations
+                .filter((stationInfo) => stationInfo.dataValues.ECDTSS_TrainSectorID === trainSector.ECDTS_ID)
+                .map((stationInfo) => stationInfo.dataValues.ECDTSS_StationID);
+
+              trainSector.TStations = stations
+                .filter((station) => trainSectorStationsIds.includes(station.dataValues.St_ID))
+                .map((station) => {
+                  const trainSectorStationInfo = trainSectorsStations
+                    .find((el) => el.dataValues.ECDTSS_TrainSectorID === trainSector.ECDTS_ID && el.dataValues.ECDTSS_StationID === station.dataValues.St_ID);
+                  return {
+                    St_ID: station.dataValues.St_ID,
+                    St_UNMC: station.dataValues.St_UNMC,
+                    St_Title: station.dataValues.St_Title,
+                    TECDTrainSectorStation: {
+                      ECDTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.ECDTSS_StationPositionInTrainSector,
+                      ECDTSS_StationBelongsToECDSector: trainSectorStationInfo.dataValues.ECDTSS_StationBelongsToECDSector,
+                    },
+                  };
+                });
+
+              const trainSectorBlocksIds = trainSectorsBlocks
+                .filter((blockInfo) => blockInfo.dataValues.ECDTSB_TrainSectorID === trainSector.ECDTS_ID)
+                .map((blockInfo) => blockInfo.dataValues.ECDTSB_BlockID);
+
+              trainSector.TBlocks = blocks
+                .filter((block) => trainSectorBlocksIds.includes(block.dataValues.Bl_ID))
+                .map((block) => {
+                  const trainSectorBlockInfo = trainSectorsBlocks
+                    .find((el) => el.dataValues.ECDTSB_TrainSectorID === trainSector.ECDTS_ID && el.dataValues.ECDTSB_BlockID === block.dataValues.Bl_ID);
+                  return {
+                    Bl_ID: block.dataValues.Bl_ID,
+                    Bl_Title: block.dataValues.Bl_Title,
+                    Bl_StationID1: block.dataValues.Bl_StationID1,
+                    Bl_StationID2: block.dataValues.Bl_StationID2,
+                    TECDTrainSectorBlock: {
+                      ECDTSB_BlockPositionInTrainSector: trainSectorBlockInfo.dataValues.ECDTSB_BlockPositionInTrainSector,
+                      ECDTSB_BlockBelongsToECDSector: trainSectorBlockInfo.dataValues.ECDTSB_BlockBelongsToECDSector,
+                    },
+                  };
+                });
+            });
+          });
+        }
+      }
+
+      /*const data = await TECDSector.findAll({
         attributes: ['ECDS_ID', 'ECDS_Title'],
         include: [
           {
@@ -73,7 +179,9 @@ router.post(
           },
         ],
       });
-      res.status(OK).json(data.map(d => d.dataValues));
+      res.status(OK).json(data.map(d => d.dataValues));*/
+
+      res.status(OK).json(data || []);
 
     } catch (error) {
       addError({
@@ -212,7 +320,168 @@ router.post(
   async (req, res) => {
     const { sectorId } = req.body;
 
+    let data;
+
     try {
+      // Ищем участок ЭЦД
+      const ecdSector = await TECDSector.findOne({
+        attributes: ['ECDS_ID', 'ECDS_Title'],
+        where: { ECDS_ID: sectorId },
+      });
+
+      if (ecdSector) {
+        data = {
+          ECDS_ID: ecdSector.dataValues.ECDS_ID,
+          ECDS_Title: ecdSector.dataValues.ECDS_Title,
+          TECDStructuralDivisions: [],
+        };
+
+        // ------------- Структурные подразделения участка ЭЦД -----------------
+
+        const ecdSectorStructuralDivisions = await TECDStructuralDivision.findAll({
+          attributes: ['ECDSD_ID', 'ECDSD_Title', 'ECDSD_Post', 'ECDSD_FIO', 'ECDSD_Position'],
+          where: { ECDSD_ECDSectorID: sectorId },
+        });
+
+        if (ecdSectorStructuralDivisions) {
+          data.TECDStructuralDivisions = ecdSectorStructuralDivisions.map((division) => ({
+            ECDSD_ID: division.dataValues.ECDSD_ID,
+            ECDSD_Title: division.dataValues.ECDSD_Title,
+            ECDSD_Post: division.dataValues.ECDSD_Post,
+            ECDSD_FIO: division.dataValues.ECDSD_FIO,
+            ECDSD_Position: division.dataValues.ECDSD_Position,
+          }));
+        }
+
+        // ------------- Поездные участки участка ЭЦД -----------------
+
+        // Ищем поездные участки участка ЭЦД
+        const trainSectors = await TECDTrainSector.findAll({
+          attributes: ['ECDTS_ID', 'ECDTS_Title'],
+          where: { ECDTS_ECDSectorID: sectorId },
+        });
+
+        if (trainSectors) {
+          data.TECDTrainSectors = trainSectors.map((trainSector) => ({
+            ECDTS_ID: trainSector.dataValues.ECDTS_ID,
+            ECDTS_Title: trainSector.dataValues.ECDTS_Title,
+            TStations: [],
+            TBlocks: [],
+          }));
+          const trainSectorsIds = trainSectors.map((trainSector) => trainSector.dataValues.ECDTS_ID);
+
+          // ------------- Станции поездных участков ЭЦД -----------------
+
+          // Ищем, какие станции входят в поездные участки участка ЭЦД
+          const trainSectorsStations = await TECDTrainSectorStation.findAll({
+            attributes: ['ECDTSS_TrainSectorID', 'ECDTSS_StationID', 'ECDTSS_StationPositionInTrainSector', 'ECDTSS_StationBelongsToECDSector'],
+            where: { ECDTSS_TrainSectorID: trainSectorsIds },
+          });
+          const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.ECDTSS_StationID))];
+          // Ищем станции всех поездных участков ЭЦД
+          const stations = await TStation.findAll({
+            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            where: { St_ID: stationsIds },
+          });
+
+          // ------------- Пути станций поездных участков ЭЦД -----------------
+
+          const trainSectorsStationsTracks = await TStationTrack.findAll({
+            attributes: ['ST_ID', 'ST_Name', 'ST_StationId'],
+            where: { ST_StationId: stationsIds },
+          });
+
+          stations.forEach((station) => {
+            station.dataValues.TStationTracks = trainSectorsStationsTracks
+              .filter((track) => track.dataValues.ST_StationId === station.dataValues.St_ID)
+              .map((track) => ({
+                ST_ID: track.dataValues.ST_ID,
+                ST_Name: track.dataValues.ST_Name,
+              }));
+          });
+
+          // ------------- Перегоны поездных участков ЭЦД -----------------
+
+          // Ищем, какие перегоны входят в поездные участки участка ЭЦД
+          const trainSectorsBlocks = await TECDTrainSectorBlock.findAll({
+            attributes: ['ECDTSB_TrainSectorID', 'ECDTSB_BlockID', 'ECDTSB_BlockPositionInTrainSector', 'ECDTSB_BlockBelongsToECDSector'],
+            where: { ECDTSB_TrainSectorID: trainSectorsIds },
+          });
+          const blocksIds = [...new Set(trainSectorsBlocks.map((block) => block.dataValues.ECDTSB_BlockID))];
+          // Ищем перегоны всех поездных участков ЭЦД
+          const blocks = await TBlock.findAll({
+            attributes: ['Bl_ID', 'Bl_Title', 'Bl_StationID1', 'Bl_StationID2'],
+            where: { Bl_ID: blocksIds },
+          });
+
+          // ------------- Пути перегонов поездных участков ЭЦД -----------------
+
+          const trainSectorsBlocksTracks = await TBlockTrack.findAll({
+            attributes: ['BT_ID', 'BT_Name', 'BT_BlockId'],
+            where: { BT_BlockId: blocksIds },
+          });
+
+          blocks.forEach((block) => {
+            block.dataValues.TBlockTracks = trainSectorsBlocksTracks
+              .filter((track) => track.dataValues.BT_BlockId === block.dataValues.Bl_ID)
+              .map((track) => ({
+                BT_ID: track.dataValues.BT_ID,
+                BT_Name: track.dataValues.BT_Name,
+              }));
+          });
+
+          // --- Включаем станции и перегоны в поездные участки ЭЦД выходного массива данных ---
+
+          data.TECDTrainSectors.forEach((trainSector) => {
+            const trainSectorStationsIds = trainSectorsStations
+              .filter((stationInfo) => stationInfo.dataValues.ECDTSS_TrainSectorID === trainSector.ECDTS_ID)
+              .map((stationInfo) => stationInfo.dataValues.ECDTSS_StationID);
+
+            trainSector.TStations = stations
+              .filter((station) => trainSectorStationsIds.includes(station.dataValues.St_ID))
+              .map((station) => {
+                const trainSectorStationInfo = trainSectorsStations
+                  .find((el) => el.dataValues.ECDTSS_TrainSectorID === trainSector.ECDTS_ID && el.dataValues.ECDTSS_StationID === station.dataValues.St_ID);
+                return {
+                  St_ID: station.dataValues.St_ID,
+                  St_UNMC: station.dataValues.St_UNMC,
+                  St_Title: station.dataValues.St_Title,
+                  TStationTracks: station.dataValues.TStationTracks,
+                  TECDTrainSectorStation: {
+                    ECDTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.ECDTSS_StationPositionInTrainSector,
+                    ECDTSS_StationBelongsToECDSector: trainSectorStationInfo.dataValues.ECDTSS_StationBelongsToECDSector,
+                  },
+                };
+              });
+
+            const trainSectorBlocksIds = trainSectorsBlocks
+              .filter((blockInfo) => blockInfo.dataValues.ECDTSB_TrainSectorID === trainSector.ECDTS_ID)
+              .map((blockInfo) => blockInfo.dataValues.ECDTSB_BlockID);
+
+            trainSector.TBlocks = blocks
+              .filter((block) => trainSectorBlocksIds.includes(block.dataValues.Bl_ID))
+              .map((block) => {
+                const trainSectorBlockInfo = trainSectorsBlocks
+                  .find((el) => el.dataValues.ECDTSB_TrainSectorID === trainSector.ECDTS_ID && el.dataValues.ECDTSB_BlockID === block.dataValues.Bl_ID);
+                return {
+                  Bl_ID: block.dataValues.Bl_ID,
+                  Bl_Title: block.dataValues.Bl_Title,
+                  Bl_StationID1: block.dataValues.Bl_StationID1,
+                  Bl_StationID2: block.dataValues.Bl_StationID2,
+                  TBlockTracks: block.dataValues.TBlockTracks,
+                  TECDTrainSectorBlock: {
+                    ECDTSB_BlockPositionInTrainSector: trainSectorBlockInfo.dataValues.ECDTSB_BlockPositionInTrainSector,
+                    ECDTSB_BlockBelongsToECDSector: trainSectorBlockInfo.dataValues.ECDTSB_BlockBelongsToECDSector,
+                  },
+                };
+              });
+          });
+        }
+      }
+
+      /*
+      // Этот код ну очень медленно работает, вылелает даже иногда ошибка о нехватке памяти
+
       const data = await TECDSector.findOne({
         attributes: ['ECDS_ID', 'ECDS_Title'],
         where: { ECDS_ID: sectorId },
@@ -258,7 +527,8 @@ router.post(
             attributes: ['ECDSD_ID', 'ECDSD_Title', 'ECDSD_Post', 'ECDSD_FIO'],
           },
         ],
-      });
+      });*/
+
       res.status(OK).json(data);
 
     } catch (error) {

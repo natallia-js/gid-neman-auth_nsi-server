@@ -26,8 +26,8 @@ const config = require('config');
  *                                         такое рабочее место есть)
  * +   +    удаляем при общем удалении
  *
- * 2) Удаляем те цепочки распоряжений, хранящихся в ОСНОВНОЙ КОЛЛЕКЦИИ РАСПОРЯЖЕНИЙ, у которых последнее
- * распоряжение не является действующим и дата окончания его действия меньше указанной даты.
+ * 2) Удаляем распоряжения, хранящихся в ОСНОВНОЙ КОЛЛЕКЦИИ РАСПОРЯЖЕНИЙ, у которых дата ИЗДАНИЯ
+ * меньше указанной даты (т.е. не смотрим, действует распоряжение или нет).
  *
  * !!! Для корректной работы с программой необходимо, чтобы максимальное время хранения распоряжений в
  * коллекции рабочих распоряжений было меньше времени хранения распоряжений в основной коллекции распоряжений.
@@ -77,7 +77,7 @@ async function processDelDBData() {
 
   // 2)
   matchFilter = {
-    "orderChain.chainEndDateTime": { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) },
+    createDateTime: { $lt: new Date(todayTime - storeOrdersInDBInDays * daysToMillisecondsMultiplier) },
   };
   delRes = await Order.deleteMany(matchFilter);
   addServerActionInfo({

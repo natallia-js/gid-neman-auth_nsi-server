@@ -14,8 +14,8 @@ const addStructuralDivisionValidationRules = () => {
     check('fio')
       .if(body('fio').exists())
       .trim()
-      .isLength({ max: 32 })
-      .withMessage('Длина ФИО максимум 32 символа'),
+      .isLength({ max: 64 })
+      .withMessage('Длина ФИО максимум 64 символа'),
     check('ecdSectorId')
       .exists()
       .withMessage('Не указан id участка ЭЦД'),
@@ -48,8 +48,8 @@ const modStructuralDivisionValidationRules = () => {
     check('fio')
       .if(body('fio').exists())
       .trim()
-      .isLength({ max: 32 })
-      .withMessage('Длина ФИО максимум 32 символа'),
+      .isLength({ max: 64 })
+      .withMessage('Длина ФИО максимум 64 символа'),
   ];
 };
 

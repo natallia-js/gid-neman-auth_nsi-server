@@ -27,14 +27,19 @@ function createECDStructuralDivisionModel(sequelize) {
     },
     // ФИО лица структурного подразделения
     ECDSD_FIO: {
-      type: DataTypes.STRING(32),
+      type: DataTypes.STRING(64),
       allowNull: true,
     },
     // id участка ЭЦД
     ECDSD_ECDSectorID: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    }
+    },
+    // позиция записи
+    ECDSD_Position: {
+      type: DataTypes.TINYINT,
+      allowNull: true,
+    },
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance
