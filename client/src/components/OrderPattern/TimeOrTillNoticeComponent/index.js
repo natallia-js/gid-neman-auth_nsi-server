@@ -36,7 +36,7 @@ const TimeOrTillNoticeComponent = ({ format, size, placeholder }) => {
       />
       &#160; / &#160;
       <Checkbox checked={checked} onChange={onCheckedChange}>
-        до уведомления
+        уведомления
       </Checkbox>
     </div>
   )

@@ -48,6 +48,19 @@ const ecdStructuralDivisionsTableColumns = (props) => {
         (a[ECD_STRUCTURAL_DIVISION_FIELDS.FIO] || '').toLowerCase(), (b[ECD_STRUCTURAL_DIVISION_FIELDS.FIO] || '').toLowerCase()),
     },
     {
+      title: 'Позиция',
+      dataIndex: ECD_STRUCTURAL_DIVISION_FIELDS.POSITION,
+      key: ECD_STRUCTURAL_DIVISION_FIELDS.POSITION,
+      width: '20%',
+      editable: true,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => {
+        if (!a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] || !b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION])
+          return 1;
+        return a[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION] - b[ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]
+      },
+    },
+    {
       title: 'Операции',
       dataIndex: 'operation',
       render: (_, record) => {

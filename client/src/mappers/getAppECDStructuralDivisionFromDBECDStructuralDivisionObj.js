@@ -11,6 +11,7 @@ const getAppECDStructuralDivisionFromDBECDStructuralDivisionObj = (dbECDStructur
       [ECD_STRUCTURAL_DIVISION_FIELDS.NAME]: dbECDStructuralDivisionObj.ECDSD_Title,
       [ECD_STRUCTURAL_DIVISION_FIELDS.POST]: dbECDStructuralDivisionObj.ECDSD_Post,
       [ECD_STRUCTURAL_DIVISION_FIELDS.FIO]: dbECDStructuralDivisionObj.ECDSD_FIO,
+      [ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]: dbECDStructuralDivisionObj.ECDSD_Position,
     };
   }
   return null;

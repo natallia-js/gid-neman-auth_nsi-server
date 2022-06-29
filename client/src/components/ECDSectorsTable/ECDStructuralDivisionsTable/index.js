@@ -138,6 +138,7 @@ const ECDStructuralDivisionsTable = (props) => {
       [ECD_STRUCTURAL_DIVISION_FIELDS.NAME]: '',
       [ECD_STRUCTURAL_DIVISION_FIELDS.POST]: '',
       [ECD_STRUCTURAL_DIVISION_FIELDS.FIO]: '',
+      [ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]: '',
       ...record,
     });
     setEditingKey(record[ECD_STRUCTURAL_DIVISION_FIELDS.KEY]);
@@ -261,7 +262,9 @@ const ECDStructuralDivisionsTable = (props) => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: ![ECD_STRUCTURAL_DIVISION_FIELDS.POST, ECD_STRUCTURAL_DIVISION_FIELDS.FIO].includes(col.dataIndex),
+        required: ![ECD_STRUCTURAL_DIVISION_FIELDS.POST,
+                    ECD_STRUCTURAL_DIVISION_FIELDS.FIO,
+                    ECD_STRUCTURAL_DIVISION_FIELDS.POSITION].includes(col.dataIndex),
         errMessage: modDivisionFieldsErrs ? modDivisionFieldsErrs[col.dataIndex] : null,
       }),
     };

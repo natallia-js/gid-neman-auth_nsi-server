@@ -317,6 +317,7 @@ export const ECD_STRUCTURAL_DIVISION_FIELDS = Object.freeze({
   NAME: 'title',
   POST: 'post',
   FIO: 'fio',
+  POSITION: 'position',
 });
 
 // ----------------------------------------
