@@ -38,6 +38,7 @@
     { refName: 'Дежурство принял', additionalOrderPlaceInfoForGID: false },
     { refName: 'Для работы должно быть', additionalOrderPlaceInfoForGID: false },
     { refName: 'Категория работ', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Наряд допуск', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения на закрытие перегона', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующей заявки', additionalOrderPlaceInfoForGID: false },
@@ -64,8 +65,10 @@
 {
   elementType: "multipleSelect",
   possibleRefs: [
+    { refName: 'Объект', additionalOrderPlaceInfoForGID: false },
     { refName: 'Объект работ', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
+    { refName: 'Путь', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'С чего производится работа', additionalOrderPlaceInfoForGID: false },
   ],
