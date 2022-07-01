@@ -1,5 +1,5 @@
 const {
-  UNAUTHORIZED, 
+  UNAUTHORIZED,
   UNAUTHORIZED_ERR_MESS,
   USER_NOT_FOUND_ERR_MESS,
   NOT_ON_DUTY_ERR_MESS,
@@ -90,7 +90,7 @@ async function isOnDuty(req) {
     return { err: true, status: UNAUTHORIZED, message: UNAUTHORIZED_ERR_MESS };
   }
 };
-  
+
 /**
  * Для ряда запросов проверяет факт нахождения пользователя на дежурстве.
  */
@@ -98,12 +98,12 @@ async function checkOnDuty(req) {
   if (req && [
     // Пользователь
     AUTH_NSI_ACTIONS.LOGOUT_WITH_DUTY_PASS,
-    
+
     // Черновики распоряжений
     DY58_ACTIONS.ADD_ORDER_DRAFT,
     DY58_ACTIONS.DEL_ORDER_DRAFT,
     DY58_ACTIONS.MOD_ORDER_DRAFT,
-    
+
     // Распоряжения
     DY58_ACTIONS.ADD_ORDER,
     DY58_ACTIONS.MOD_ORDER,

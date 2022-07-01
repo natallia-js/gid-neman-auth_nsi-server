@@ -27,6 +27,7 @@ export const OrderPatternElementType = Object.freeze({
   DATE: 'date',
   TIME: 'time',
   TIME_OR_TILL_NOTICE: 'timeOrTillNotice',
+  CHECKBOX_AND_INPUT_OR_NOTHING: 'checkboxAndInputOrNothing',
   DATETIME: 'datetime',
   DR_TRAIN_TABLE: 'drTrainTable',
   LINEBREAK: 'linebreak',

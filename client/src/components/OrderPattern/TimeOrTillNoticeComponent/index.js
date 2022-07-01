@@ -10,7 +10,7 @@ const TimeOrTillNoticeComponent = ({ format, size, placeholder }) => {
   const [time, setTime] = useState(null);
   const [checked, setChecked] = useState(false);
   const timeFormat = format || TimeFormat;
-  const timePicketSize = size || "small";
+  const timePickerSize = size || "small";
   const timePickerPlaceholder = placeholder || "";
 
   const onTimeChange = (time) => {
@@ -29,7 +29,7 @@ const TimeOrTillNoticeComponent = ({ format, size, placeholder }) => {
     <div>
       <TimePicker
         format={timeFormat}
-        size={timePicketSize}
+        size={timePickerSize}
         placeholder={timePickerPlaceholder}
         value={time}
         onChange={onTimeChange}

@@ -13,6 +13,7 @@ import { ElementRefChooser } from '../EditOrderPatternElement/ElementRefChooser'
 import { EnterOutlined } from '@ant-design/icons';
 import drTrainTableColumns from '../drTrainTableColumns';
 import TimeOrTillNoticeComponent from '../TimeOrTillNoticeComponent';
+import CheckboxAndInputOrNothingComponent from '../CheckboxAndInputOrNothingComponent';
 
 const { TextArea } = Input;
 
@@ -211,6 +212,8 @@ export const EditOrderPatternElement = (props) => {
         return <TimePicker format={TimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.TIME_OR_TILL_NOTICE:
         return <TimeOrTillNoticeComponent format={TimeFormat} size="small" />;
+      case OrderPatternElementType.CHECKBOX_AND_INPUT_OR_NOTHING:
+        return <CheckboxAndInputOrNothingComponent checkboxText="Выдано запрещение ДСП" size="small" />
       case OrderPatternElementType.DATETIME:
         return <DatePicker showTime format={DateTimeFormat} size="small" placeholder="" />;
       case OrderPatternElementType.DR_TRAIN_TABLE:
@@ -261,6 +264,9 @@ export const EditOrderPatternElement = (props) => {
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.TIME_OR_TILL_NOTICE}>
                 Время/до уведомления
+              </Radio.Button>
+              <Radio.Button value={OrderPatternElementType.CHECKBOX_AND_INPUT_OR_NOTHING}>
+                Выдано запрещение ДСП
               </Radio.Button>
               <Radio.Button value={OrderPatternElementType.DATETIME}>
                 Дата-время

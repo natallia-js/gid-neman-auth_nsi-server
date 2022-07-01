@@ -10,6 +10,7 @@ import { EnterOutlined } from '@ant-design/icons';
 import { ORDER_PATTERN_ELEMENT_FIELDS } from '../../constants';
 import drTrainTableColumns from './drTrainTableColumns';
 import TimeOrTillNoticeComponent from './TimeOrTillNoticeComponent';
+import CheckboxAndInputOrNothingComponent from './CheckboxAndInputOrNothingComponent';
 
 const { TextArea } = Input;
 
@@ -102,6 +103,16 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
         />
       </Tooltip>;
+    case OrderPatternElementType.CHECKBOX_AND_INPUT_OR_NOTHING:
+      return <Tooltip
+        title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}
+        placement="bottom"
+      >
+        <CheckboxAndInputOrNothingComponent
+          size="small"
+          checkboxText="Выдано запрещение ДСП"
+        />
+      </Tooltip>
     case OrderPatternElementType.DATETIME:
       return <Tooltip
         title={element[ORDER_PATTERN_ELEMENT_FIELDS.REF]}

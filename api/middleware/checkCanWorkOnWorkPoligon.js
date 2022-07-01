@@ -28,7 +28,7 @@ module.exports = (req) => {
     const { workPoligonType, workPoligonId, workSubPoligonId } = req.body;
     const userData = req.user;
     let hasRight = true;
-  
+
     switch (workPoligonType) {
       case WORK_POLIGON_TYPES.STATION:
         if (

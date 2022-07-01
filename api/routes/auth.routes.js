@@ -156,7 +156,7 @@ router.put(
  * При этом главный администратор ГИД Неман получит полный список всех пользователей,
  * иное же лицо получит полный список тех пользователей, которые закреплены за его службой
  * (включая его самого).
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -924,7 +924,7 @@ router.post(
  * "Достает" из пользовательской сессии данные и отправляет их пользователю
  * (помогает при перезагрузках страниц, чтобы пользователю не нужно было
  * заново проходить процедуру аутентификации).
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -1060,7 +1060,7 @@ router.post(
       // Делаем изменения в пользовательской сессии
       appSessionArrayElement.userToken = newToken;
       req.session.save();
- 
+
       res.status(OK).json({ token: newToken, lastTakeDutyTime, lastPassDutyTime, workPoligon });
 
       // Логируем действие пользователя
@@ -1138,7 +1138,7 @@ router.post(
       specialCredentials,
       applicationAbbreviation,
     } = req.body;
-    
+
     // После middleware hasUserRightToPerformAction/ здесь уже точно известно, что req.session.appsUsers
     // содержит элемент для applicationAbbreviation - в него ниже внесем изменения
     const appSessionArrayElement = req.session.appsUsers
@@ -1457,7 +1457,7 @@ router.post(
         req.session.appsUsers = otherAppsData;
         req.session.save();
       }
-      
+
       res.status(OK).json({ message: 'Пользователь успешно вышел из системы', lastPassDutyTime });
 
       // Логируем действие пользователя
