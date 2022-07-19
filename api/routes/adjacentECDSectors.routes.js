@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   addAdjacentECDSectorsValidationRules,
   delAdjacentECDSectorValidationRules,
@@ -21,7 +22,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех смежных участков ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -58,6 +59,9 @@ router.post(
  *
  * Параметры тела запроса:
  * sectorId - id участка ЭЦД (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о смежных участках ЭЦД,
+ *   если false, то запрос возвращает всю запрошенную информацию о смежных участках ЭЦД
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о смежных участках)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -67,7 +71,7 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    const { sectorId } = req.body;
+    const { sectorId, onlyHash } = req.body;
 
     try {
       let data = await TAdjacentECDSector.findAll({
@@ -96,6 +100,11 @@ router.post(
         attributes: ['ECDS_ID', 'ECDS_Title'],
         where: { ECDS_ID: ecdSectorIds },
       });
+
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {

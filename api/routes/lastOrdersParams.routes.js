@@ -6,7 +6,7 @@ const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
-const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -19,7 +19,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Информация о типе, id рабочего полигона извлекается из токена пользователя.
  * Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
  * то информация извлекаться не будет.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(

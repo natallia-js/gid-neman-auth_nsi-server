@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   addECDToDNCValidationRules,
   addDNCToECDValidationRules,
@@ -24,7 +25,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех ближайших участков ДНЦ и ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -111,6 +112,9 @@ router.post(
  *
  * Параметры тела запроса:
  * sectorId - id участка ЭЦД (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о ближайших участках ДНЦ,
+ *   если false, то запрос возвращает всю запрошенную информацию о ближайших участках ДНЦ
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о ближайших участках)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -120,7 +124,7 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    const { sectorId } = req.body;
+    const { sectorId, onlyHash } = req.body;
     try {
       let dncSectorIds = await TNearestDNCandECDSector.findAll({
         raw: true,
@@ -134,11 +138,16 @@ router.post(
 
       dncSectorIds = dncSectorIds.map((element) => element.NDE_DNCSectorID);
 
-      const data = await TDNCSector.findAll({
+      let data = await TDNCSector.findAll({
         raw: true,
         attributes: ['DNCS_ID', 'DNCS_Title'],
         where: { DNCS_ID: dncSectorIds },
       });
+
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {

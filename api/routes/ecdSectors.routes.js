@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   getDefiniteECDSectorValidationRules,
   getDefiniteECDSectorsValidationRules,
@@ -306,6 +307,9 @@ router.post(
  *
  * Параметры тела запроса:
  * sectorId - id участка ЭЦД (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации об участке ЭЦД,
+ *   если false, то запрос возвращает всю запрошенную информацию об участке ЭЦД
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о запрашиваемом участке)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -318,7 +322,7 @@ router.post(
   getDefiniteECDSectorValidationRules(),
   validate,
   async (req, res) => {
-    const { sectorId } = req.body;
+    const { sectorId, onlyHash } = req.body;
 
     let data;
 
@@ -529,6 +533,10 @@ router.post(
         ],
       });*/
 
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {
