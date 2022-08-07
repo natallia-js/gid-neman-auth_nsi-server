@@ -62,6 +62,9 @@ router.post(
  *
  * Параметры тела запроса:
  * sectorId - id участка ДНЦ (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о ближайших участках ЭЦД,
+ *   если false, то запрос возвращает всю запрошенную информацию о ближайших участках ЭЦД
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о ближайших участках)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -71,7 +74,7 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    const { sectorId } = req.body;
+    const { sectorId, onlyHash } = req.body;
     try {
       let ecdSectorIds = await TNearestDNCandECDSector.findAll({
         raw: true,
@@ -85,11 +88,16 @@ router.post(
 
       ecdSectorIds = ecdSectorIds.map((element) => element.NDE_ECDSectorID);
 
-      const data = await TECDSector.findAll({
+      let data = await TECDSector.findAll({
         raw: true,
         attributes: ['ECDS_ID', 'ECDS_Title'],
         where: { ECDS_ID: ecdSectorIds },
       });
+
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {

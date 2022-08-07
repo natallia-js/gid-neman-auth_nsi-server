@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   addAdjacentDNCSectorsValidationRules,
   delAdjacentDNCSectorValidationRules,
@@ -21,7 +22,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех смежных участков ДНЦ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -58,6 +59,9 @@ router.post(
  *
  * Параметры тела запроса:
  * sectorId - id участка ДНЦ (обязателен)
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о смежных участках ДНЦ,
+ *   если false, то запрос возвращает всю запрошенную информацию о смежных участках ДНЦ
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о смежных участках)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -68,7 +72,7 @@ router.post(
   hasUserRightToPerformAction,
   // проверку параметра запроса sectorId не делаю: если он будет указан неверно, то запрос ничего не вернет
   async (req, res) => {
-    const { sectorId } = req.body;
+    const { sectorId, onlyHash } = req.body;
 
     try {
       let data = await TAdjacentDNCSector.findAll({
@@ -99,6 +103,10 @@ router.post(
         where: { DNCS_ID: dncSectorIds },
       });
 
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {
