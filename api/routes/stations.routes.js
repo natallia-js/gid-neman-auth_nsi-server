@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   getDefiniteStationValidationRules,
   getDefiniteStationsValidationRules,
@@ -32,7 +33,7 @@ const {
  * и рабочих мест.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -73,7 +74,7 @@ const {
  * Обрабатывает запрос на получение списка всех станций со вложенными списками путей.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -113,6 +114,9 @@ router.post(
  *
  * Параметры тела запроса:
  * stationId - id станции (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о станции,
+ *   если false, то запрос возвращает всю запрошенную информацию о станции
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о запрашиваемом участке)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -126,10 +130,10 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { stationId } = req.body;
+    const { stationId, onlyHash } = req.body;
 
     try {
-      const data = await TStation.findOne({
+      let data = await TStation.findOne({
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
         where: { St_ID: stationId },
         include: [{
@@ -142,6 +146,10 @@ router.post(
         }],
       });
 
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {
@@ -430,7 +438,7 @@ router.post(
  * Обрабатывает запрос на синхронизацию списка всех станций со списком станций ПЭНСИ.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(

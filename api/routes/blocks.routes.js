@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const crypto = require('crypto');
 const {
   addBlockValidationRules,
   delBlockValidationRules,
@@ -117,6 +118,9 @@ router.post(
  *
  * Параметры тела запроса:
  * stationId - id станции (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации о перегонах станции,
+ *   если false, то запрос возвращает всю запрошенную информацию о перегонах станции
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о запрашиваемых перегонах)
  * Обязательный параметр запроса - applicationAbbreviation!
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
@@ -129,10 +133,10 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { stationId } = req.body;
+    const { stationId, onlyHash } = req.body;
 
     try {
-      const data = await TBlock.findAll({
+      let data = await TBlock.findAll({
         attributes: ['Bl_ID', 'Bl_Title'],
         where: {
           [Op.or]: [{ Bl_StationID1: stationId }, { Bl_StationID2: stationId }],
@@ -158,6 +162,11 @@ router.post(
           attributes: ['BT_ID', 'BT_Name'],
         }],
       });
+
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {

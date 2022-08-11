@@ -238,6 +238,9 @@ router.post(
  *
  * Параметры тела запроса:
  * stationId - id станции (обязателен),
+ * onlyHash - если true, то ожидается, что запрос вернет только хэш-значение информации об участках ЭЦД,
+ *   если false, то запрос возвращает всю запрошенную информацию об участках ЭЦД
+ *   (параметр не обязателен; если не указан, то запрос возвращает информацию о запрашиваемых участках)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -248,7 +251,7 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { stationId } = req.body;
+    const { stationId, onlyHash } = req.body;
 
     try {
       const ecdTrainSectorsConnections = await TECDTrainSectorStation.findAll({
@@ -267,7 +270,7 @@ router.post(
         where: { ECDS_ID: ecdTrainSectors.map((item) => item.ECDTS_ECDSectorID) },
       });
 
-      const data = ecdSectors.map((ecdSector) => {
+      let data = ecdSectors.map((ecdSector) => {
         return {
           ...ecdSector,
           TTrainSectors: ecdTrainSectors
@@ -283,6 +286,10 @@ router.post(
         };
       });
 
+      if (onlyHash) {
+        const serializedData = JSON.stringify(data);
+        data = crypto.createHash('md5').update(serializedData).digest('hex');
+      }
       res.status(OK).json(data);
 
     } catch (error) {
