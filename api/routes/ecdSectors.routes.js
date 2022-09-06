@@ -307,7 +307,8 @@ router.post(
 
 /**
  * Обрабатывает запрос на получение конкретного участка ЭЦД со вложенными списками:
- * - поездных участков, которые, в свою очередь, содержат вложенные списки станций и перегонов;
+ * - поездных участков, которые, в свою очередь, содержат вложенные списки станций
+ * (отсортированы по позиции на участке) и перегонов (отсортированы по позиции на участке).
  * - структурных подразделений;
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
@@ -463,7 +464,8 @@ router.post(
                     ECDTSS_StationBelongsToECDSector: trainSectorStationInfo.dataValues.ECDTSS_StationBelongsToECDSector,
                   },
                 };
-              });
+              })
+              .sort((station1, station2) => station1.TECDTrainSectorStation.ECDTSS_StationPositionInTrainSector - station2.TECDTrainSectorStation.ECDTSS_StationPositionInTrainSector);
 
             const trainSectorBlocksIds = trainSectorsBlocks
               .filter((blockInfo) => blockInfo.dataValues.ECDTSB_TrainSectorID === trainSector.ECDTS_ID)
@@ -485,7 +487,8 @@ router.post(
                     ECDTSB_BlockBelongsToECDSector: trainSectorBlockInfo.dataValues.ECDTSB_BlockBelongsToECDSector,
                   },
                 };
-              });
+              })
+              .sort((block1, block2) => block1.TECDTrainSectorBlock.ECDTSB_BlockPositionInTrainSector - block2.TECDTrainSectorBlock.ECDTSB_BlockPositionInTrainSector);
           });
         }
       }

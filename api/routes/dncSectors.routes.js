@@ -292,7 +292,8 @@ router.post(
 
 /**
  * Обрабатывает запрос на получение конкретного участка ДНЦ со вложенными списками поездных участков,
- * которые, в свою очередь, содержат вложенные списки станций и перегонов.
+ * которые, в свою очередь, содержат вложенные списки станций (отсортированы по позиции на участке) и
+ * перегонов (отсортированы по позиции на участке).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -429,7 +430,8 @@ router.post(
                     DNCTSS_StationBelongsToDNCSector: trainSectorStationInfo.dataValues.DNCTSS_StationBelongsToDNCSector,
                   },
                 };
-              });
+              })
+              .sort((station1, station2) => station1.TDNCTrainSectorStation.DNCTSS_StationPositionInTrainSector - station2.TDNCTrainSectorStation.DNCTSS_StationPositionInTrainSector);
 
             const trainSectorBlocksIds = trainSectorsBlocks
               .filter((blockInfo) => blockInfo.dataValues.DNCTSB_TrainSectorID === trainSector.DNCTS_ID)
@@ -451,7 +453,8 @@ router.post(
                     DNCTSB_BlockBelongsToDNCSector: trainSectorBlockInfo.dataValues.DNCTSB_BlockBelongsToDNCSector,
                   },
                 };
-              });
+              })
+              .sort((block1, block2) => block1.TDNCTrainSectorBlock.DNCTSB_BlockPositionInTrainSector - block2.TDNCTrainSectorBlock.DNCTSB_BlockPositionInTrainSector);
           });
         }
       }

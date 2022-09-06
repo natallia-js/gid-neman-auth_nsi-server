@@ -166,6 +166,33 @@ const {
         ).session(session);
       }
 
+      // Если распоряжение:
+      // - издано ЭЦД и имеет только "иных" адресатов,
+      // - либо не имеет адресатов,
+      // - либо не рассылается ни одного оригинала распоряжения (только копии),
+      // то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
+      // дата-время создания распоряжения.
+      // В случае, когда распоряжение издано ЭЦД и имеет "иных" адресатов, сразу проставляем
+      // дату и время утверждения распоряжения за этих "иных" адресатов
+      const getOrderAssertDateTime = () => {
+        const case1 =
+          (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) &&
+          (otherToSend && otherToSend.length) &&
+          (!dncToSend || !dncToSend.length) &&
+          (!dspToSend || !dspToSend.length) &&
+          (!ecdToSend || !ecdToSend.length);
+        const case2 =
+          (!dncToSend || !dncToSend.length || !dncToSend.find((el) => el.sendOriginal)) &&
+          (!dspToSend || !dspToSend.length || !dspToSend.find((el) => el.sendOriginal)) &&
+          (!ecdToSend || !ecdToSend.length || !ecdToSend.find((el) => el.sendOriginal)) &&
+          (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal));
+        const assertDateTime = (case1 || case2) ? createDateTime : null;
+        if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR && otherToSend && otherToSend.length) {
+          otherToSend.forEach((el) => { el.confirmDateTime = createDateTime });
+        }
+        return assertDateTime;
+      };
+
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({
         _id: newOrderObjectId,
@@ -182,15 +209,7 @@ const {
           }),
         },
         createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
-        // если распоряжение не имеет адресатов либо не рассылается ни одного оригинала распоряжения (только
-        // копии), то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
-        // дата-время создания распоряжения
-        assertDateTime:
-          (!dncToSend || !dncToSend.length || !dncToSend.find((el) => el.sendOriginal)) &&
-          (!dspToSend || !dspToSend.length || !dspToSend.find((el) => el.sendOriginal)) &&
-          (!ecdToSend || !ecdToSend.length || !ecdToSend.find((el) => el.sendOriginal)) &&
-          (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal))
-          ? createDateTime : null,
+        assertDateTime: getOrderAssertDateTime(),
         dispatchedOnOrder,
       });
 
