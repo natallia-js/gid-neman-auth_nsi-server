@@ -28,6 +28,7 @@ export const OrderPatternsTree = (props) => {
     onEditOrderPattern,
     onDeleteOrderPattern,
     getNodeTitleByNodeKey,
+    onDropTreeNode,
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -437,6 +438,13 @@ export const OrderPatternsTree = (props) => {
   };
 
 
+  const onDrop = (info) => {
+    if (!info.dragNode || !info.node || (!info.dragNode.positionInPatternsCategory && info.dragNode.positionInPatternsCategory !== 0))
+      return;
+    onDropTreeNode(info.dragNode, info.node);
+  };
+
+
   return (
     !existingOrderAffiliationTree.length ?
 
@@ -455,9 +463,11 @@ export const OrderPatternsTree = (props) => {
           treeData={loop(existingOrderAffiliationTree)}
           expandedKeys={expandedKeys}
           autoExpandParent={autoExpandParent}
+          selectedKeys={selectedTreeKeys}
+          draggable
           onSelect={onSelect}
           onExpand={onExpand}
-          selectedKeys={selectedTreeKeys}
+          onDrop={onDrop}
         />
       </Col>
       <Col span={15}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { Tabs, Typography, Row, Col } from 'antd';
+import { Tabs, Typography, Row, Col, message } from 'antd';
 import { OrderPatternsTree } from '../components/OrderPattern/OrderPatternsTree';
 import { CreateOrderPattern } from '../components/OrderPattern/CreateOrderPattern';
 import { CreateOrderPatternConnections } from '../components/OrderPattern/CreateOrderPatternConnections';
@@ -125,6 +125,7 @@ export const OrderPatternsPage = () => {
           orderType: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
           orderCategory: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
         },
+        positionInPatternsCategory: orderPattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY],
       };
     };
 
@@ -169,7 +170,17 @@ export const OrderPatternsPage = () => {
           if (!theSameCategoryElement) {
             theSameTypeElement.children.push(getOrderPatternCategoryLeaf(orderPattern));
           } else {
-            theSameCategoryElement.children.push(getOrderPatternLeaf(orderPattern));
+            const orderPatternLeaf = getOrderPatternLeaf(orderPattern);
+            // Шаблоны в дереве должны сортироваться в рамках соответствующей категории распоряжений
+            if (orderPatternLeaf.positionInPatternsCategory === -1) {
+              theSameCategoryElement.children.push(orderPatternLeaf);
+            } else {
+              const insertIndex = theSameCategoryElement.children.findIndex((el) => el.positionInPatternsCategory > orderPatternLeaf.positionInPatternsCategory);
+              if (insertIndex === -1)
+                theSameCategoryElement.children.push(orderPatternLeaf);
+              else
+                theSameCategoryElement.children.splice(insertIndex, 0, orderPatternLeaf);
+            }
           }
         }
       }
@@ -285,6 +296,71 @@ export const OrderPatternsPage = () => {
     }
   };
 
+  const handleDropTreeNode = async (droppedNode, droppedOnNode) => {
+    // Проверка того, что есть что перемещать + перемещение идет не самого себя
+    if (!droppedNode || !droppedOnNode || droppedNode.key === droppedOnNode.key) {
+      return;
+    }
+    // Проверка того, что оба узла - листья
+    const positionInPatternsCategoryExists = (pos) => pos || pos === 0;
+    if (!positionInPatternsCategoryExists(droppedNode.positionInPatternsCategory) ||
+        !positionInPatternsCategoryExists(droppedOnNode.positionInPatternsCategory)) {
+      return;
+    }
+    // Проверка того, что листья принадлежат одной ветви
+    if (
+      droppedNode.additionalInfo.service !== droppedOnNode.additionalInfo.service ||
+      droppedNode.additionalInfo.orderType !== droppedOnNode.additionalInfo.orderType ||
+      droppedNode.additionalInfo.orderCategory !== droppedOnNode.additionalInfo.orderCategory
+    ) {
+      return;
+    }
+    // Теперь можно перемещать. Для этого достаточно лишь изменить значение positionInPatternsCategory у
+    // узла droppedNode, положив его равным значению этого же поля узла droppedOnNode, а у всех узлов,
+    // следующих за droppedOnNode, включая его самого, увеличить значение на 1
+    const moveToPosition = droppedOnNode.positionInPatternsCategory;
+    const dataToSendToServer = orderPatterns.filter((pattern) =>
+      // Нужная ветка дерева и те узлы, которым необходимо изменить значение positionInPatternsCategory
+      pattern[ORDER_PATTERN_FIELDS.SERVICE] === droppedNode.additionalInfo.service &&
+      pattern[ORDER_PATTERN_FIELDS.TYPE] === droppedNode.additionalInfo.orderType &&
+      pattern[ORDER_PATTERN_FIELDS.CATEGORY] === droppedNode.additionalInfo.orderCategory &&
+      (
+        pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key ||
+        pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] >= moveToPosition
+      )
+    ).map((pattern) => {
+      if (pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key)
+        return [pattern[ORDER_PATTERN_FIELDS.KEY], moveToPosition];
+      return [pattern[ORDER_PATTERN_FIELDS.KEY], pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] + 1];
+    });
+    try {
+      await request(ServerAPI.MOD_POSITIONS_IN_PATTERNS_CATEGORY, 'POST', { data: dataToSendToServer });
+      setOrderPatterns((value) => value.map((pattern) => {
+        // Не та ветка дерева
+        if (
+          pattern[ORDER_PATTERN_FIELDS.SERVICE] !== droppedNode.additionalInfo.service ||
+          pattern[ORDER_PATTERN_FIELDS.TYPE] !== droppedNode.additionalInfo.orderType ||
+          pattern[ORDER_PATTERN_FIELDS.CATEGORY] !== droppedNode.additionalInfo.orderCategory
+        ) {
+          return pattern;
+        }
+        // Для листьев нужной ветки ищем информацию о новом значении positionInPatternsCategory (эта информация
+        // может отсутствовать для ряда листьев, если для них ее не меняли)
+        const treeLeafNewPositionInfo = dataToSendToServer.find((el) => el[0] === pattern[ORDER_PATTERN_FIELDS.KEY]);
+        if (treeLeafNewPositionInfo) {
+          return {
+            ...pattern,
+            [ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY]: treeLeafNewPositionInfo[1],
+          }
+        }
+        return pattern;
+      }));
+    }
+    catch (e) {
+      message.error('Ошибка перемещения листьев дерева: ' + e.message);
+    }
+  };
+
 
   if (!dataLoaded) {
     return (
@@ -313,6 +389,7 @@ export const OrderPatternsPage = () => {
               onEditOrderPattern={handleEditOrderPattern}
               onDeleteOrderPattern={handleDeleteOrderPattern}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
+              onDropTreeNode={handleDropTreeNode}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>

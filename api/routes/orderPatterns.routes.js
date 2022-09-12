@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const mongoose = require('mongoose');
 const OrderPattern = require('../models/OrderPattern');
 const {
   addOrderPatternValidationRules,
@@ -36,7 +37,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * При этом главный администратор ГИД Неман получит полный список всех неприватных шаблонов распоряжений,
  * иное же лицо получит полный список тех неприватных шаблонов распоряжений, которые закреплены за его службой,
  * а также список тех шаблонов распоряжений (приватных), которые созданы данным пользователем.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -143,6 +144,7 @@ router.post(
     const {
       _id, service, type, category, title, specialTrainCategories,
       elements, isPersonalPattern, workPoligonId, workPoligonType,
+      positionInPatternsCategory,
     } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
@@ -171,6 +173,7 @@ router.post(
         specialTrainCategories,
         elements,
         lastPatternUpdater: req.user.userId,
+        positionInPatternsCategory,
       };
       if (Boolean(isPersonalPattern)) {
         newPatternObject.personalPattern = req.user.userId;
@@ -393,6 +396,65 @@ router.post(
         actionParams: { service, orderType, title, newTitle },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на редактирование позиций шаблонов документов в рамках категории документов.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * data - массив двумерных массивов: первый элемент вложенного массива - id шаблона, второй - номер позиции
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/modPositionsInPatternsCategory',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ORDER_PATTERNS_POSITIONS; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { data } = req.body;
+    // Служба, которой принадлежит лицо, запрашивающее действие. Пользователь может отредактировать позиции шаблонов
+    // документов только в том случае, если он редактирует их в рамках своей службы.
+    const serviceName = req.user.service;
+
+    try {
+      // Ищем нужные распоряжения
+      const findRes = await OrderPattern.find({ _id: data.map((el) => el[0]) });
+
+      if (!findRes || !findRes.length) {
+        return res.status(ERR).json({ message: 'Шаблоны распоряжений не найдены' });
+      }
+
+      if (!isMainAdmin(req) && findRes.find((el) => el.service !== serviceName)) {
+        return res.status(ERR).json({
+          message: `У Вас нет полномочий на редактирование позиций шаблонов распоряжений в службе ${serviceName}`,
+        });
+      }
+      // Производим переопределение позиций шаблонов распоряжений
+
+      for (let orderPattern of findRes) {
+        const newOrderPatternPosition = data.find((el) => el[0] === String(orderPattern._id))[1];
+        orderPattern.positionInPatternsCategory = newOrderPatternPosition;
+        await orderPattern.save();
+      }
+
+      res.status(OK).json({ message: 'Информация успешно изменена' });
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Редактирование позиций шаблонов распоряжений',
+        error: error.message,
+        actionParams: { serviceName, data },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
     }
   }
 );

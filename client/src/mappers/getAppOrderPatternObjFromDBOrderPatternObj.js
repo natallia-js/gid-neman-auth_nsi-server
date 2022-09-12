@@ -21,6 +21,7 @@ const getAppOrderPatternObjFromDBOrderPatternObj = (dbOrderPatternObj) => {
         dbOrderPatternObj.elements.map((element) => getAppOrderPatternElementObjFromDBOrderPatternElementObj(element)),
       [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: !dbOrderPatternObj.childPatterns ? [] :
         dbOrderPatternObj.childPatterns.map((childPattern) => getAppChildPatternObjFromDBChildPatternObj(childPattern)),
+      [ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY]: dbOrderPatternObj.positionInPatternsCategory,
     };
   }
   return null;

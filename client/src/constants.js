@@ -149,6 +149,7 @@ export const ServerAPI = Object.freeze({
   MOD_ORDER_CATEGORY_TITLE: ServerAddress + '/api/orderPatterns/modCategoryTitle',
   SET_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/setChildPattern',
   DEL_CHILD_ORDER_PATTERN: ServerAddress + '/api/orderPatternConnections/delChildPattern',
+  MOD_POSITIONS_IN_PATTERNS_CATEGORY: ServerAddress + '/api/orderPatterns/modPositionsInPatternsCategory',
 
   GET_ADMINS_LOGS_LIST: ServerAddress + '/api/adminsLogs/data',
   GET_DY58USERS_LOGS_LIST: ServerAddress + '/api/dy58UsersLogs/data',
@@ -331,6 +332,7 @@ export const ORDER_PATTERN_FIELDS = Object.freeze({
   SPECIAL_TRAIN_CATEGORIES: 'specialTrainCategories',
   ELEMENTS: 'elements',
   CHILD_PATTERNS: 'childPatterns',
+  POSITION_IN_PATTERNS_CATEGORY: 'positionInPatternsCategory',
 });
 
 export const ORDER_PATTERN_ELEMENT_FIELDS = Object.freeze({

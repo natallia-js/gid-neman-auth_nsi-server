@@ -398,6 +398,7 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     case AUTH_NSI_ACTIONS.DEL_ORDER_PATTERN:
     case AUTH_NSI_ACTIONS.MOD_ORDER_PATTERN:
     case AUTH_NSI_ACTIONS.MOD_ORDER_PATTERNS_CATEGORY_TITLE:
+    case AUTH_NSI_ACTIONS.MOD_ORDER_PATTERNS_POSITIONS:
       creds = [MOD_ORDER_PATTERN_ACTION];
       break;
     // Связи между шаблонами распоряжений
