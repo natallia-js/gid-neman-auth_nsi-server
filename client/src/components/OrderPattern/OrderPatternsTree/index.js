@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tree, Row, Col, Popconfirm, Button, Space, Typography, Input, Select } from 'antd';
+import { Tree, Row, Col, Popconfirm, Button, Popover, Space, Typography, Input, Select } from 'antd';
 import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS, InterfaceDesign, ServerAPI } from '../../../constants';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { OrderPatternPreview } from '../OrderPatternPreview';
@@ -15,6 +15,7 @@ import { useSearchTree } from '../../../hooks/searchTree.hook';
 const { Text, Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
+const { TreeNode } = Tree;
 
 
 /**
@@ -29,6 +30,7 @@ export const OrderPatternsTree = (props) => {
     onDeleteOrderPattern,
     getNodeTitleByNodeKey,
     onDropTreeNode,
+    onFixOrderPatternTreePosition,
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -438,11 +440,118 @@ export const OrderPatternsTree = (props) => {
   };
 
 
+  /**
+   * Сообщает "наверх" о желании пользователя переместить шаблон распоряжения в дереве шаблонов.
+   */
   const onDrop = (info) => {
     if (!info.dragNode || !info.node || (!info.dragNode.positionInPatternsCategory && info.dragNode.positionInPatternsCategory !== 0))
       return;
     onDropTreeNode(info.dragNode, info.node);
   };
+
+
+  /**
+   * Сообщает "наверх" о желании пользователя зафиксировать позицию шаблона распоряжения в дереве шаблонов.
+   */
+  const handleFixPatternTreePosition = (orderPatternNodeToFix) => {
+    if (!existingOrderAffiliationTree || !orderPatternNodeToFix)
+      return;
+    onFixOrderPatternTreePosition(orderPatternNodeToFix);
+  };
+
+
+  const generateOrderPatternTreeNodes =
+    loop(existingOrderAffiliationTree)
+      .map((service) => (
+        <TreeNode
+          isLeaf={false}
+          key={service.key}
+          title={
+            <span
+              style={{
+                color: "black"
+              }}
+            >
+              {service.title}
+            </span>
+          }
+          type={service.type}
+          selectable={false}
+        >
+          {service.children && service.children.map((orderType) => (
+            <TreeNode
+              isLeaf={false}
+              key={orderType.key}
+              title={
+                <span
+                  style={{
+                    color: "black"
+                  }}
+                >
+                  {orderType.title}
+                </span>
+              }
+              type={orderType.type}
+              selectable={false}
+            >
+              {orderType.children && orderType.children.map((orderCategory) => (
+                <TreeNode
+                  isLeaf={false}
+                  key={orderCategory.key}
+                  title={
+                    <span
+                      style={{
+                        color: "black"
+                      }}
+                    >
+                      {orderCategory.title}
+                    </span>
+                  }
+                  type={orderCategory.type}
+                  additionalInfo={orderCategory.additionalInfo}
+                >
+                  {orderCategory.children && orderCategory.children.map((pattern) => {
+                    let nodeTitle =
+                      <span
+                        style={{
+                          color: pattern.positionInPatternsCategory >= 0 ? "black" : "red"
+                        }}
+                      >
+                        {pattern.title}
+                      </span>;
+                    if (pattern.positionInPatternsCategory < 0) {
+                      const content = (
+                        <div>
+                          <a onClick={() => handleFixPatternTreePosition(pattern)}>Зафиксировать позицию</a>
+                        </div>
+                      );
+                      nodeTitle =
+                        <Popover content={content} trigger="contextMenu">
+                          {nodeTitle}
+                        </Popover>;
+                    }
+
+                    const orderPatternNode =
+                      <TreeNode
+                        isLeaf={true}
+                        key={pattern.key}
+                        title={nodeTitle}
+                        type={pattern.type}
+                        additionalInfo={pattern.additionalInfo}
+                        pattern={pattern.pattern}
+                        specialTrainCategories={pattern.specialTrainCategories}
+                        additionalInfo={pattern.additionalInfo}
+                        positionInPatternsCategory={pattern.positionInPatternsCategory}
+                      >
+                      </TreeNode>
+                    return orderPatternNode;
+                  })}
+                </TreeNode>
+              ))}
+            </TreeNode>
+          ))}
+        </TreeNode>
+      ));
 
 
   return (
@@ -460,7 +569,6 @@ export const OrderPatternsTree = (props) => {
         <Tree
           switcherIcon={<DownSquareTwoTone style={{ fontSize: InterfaceDesign.EXPANDED_ICON_SIZE }} />}
           showLine={true}
-          treeData={loop(existingOrderAffiliationTree)}
           expandedKeys={expandedKeys}
           autoExpandParent={autoExpandParent}
           selectedKeys={selectedTreeKeys}
@@ -468,7 +576,9 @@ export const OrderPatternsTree = (props) => {
           onSelect={onSelect}
           onExpand={onExpand}
           onDrop={onDrop}
-        />
+        >
+          {generateOrderPatternTreeNodes}
+        </Tree>
       </Col>
       <Col span={15}>
         { recsBeingProcessed > 0 && <Text type="warning">На сервер отправлено {recsBeingProcessed} запросов. Ожидаю ответ...</Text> }

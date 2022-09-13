@@ -101,6 +101,28 @@ export const OrderPatternsPage = () => {
   }, [fetchData]);
 
 
+  const NodeTypes = {
+    SERVICE: 'service',
+    ORDER_TYPE: 'orderType',
+    ORDER_CATEGORY: 'orderCategory',
+    ORDER_PATTERN: 'orderPattern',
+  };
+
+  const getTreeNodeKey = (nodeType, orderPattern) => {
+    switch (nodeType) {
+      case NodeTypes.SERVICE:
+        return orderPattern[ORDER_PATTERN_FIELDS.SERVICE];
+      case NodeTypes.ORDER_TYPE:
+        return `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}`;
+      case NodeTypes.ORDER_CATEGORY:
+        return `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`;
+      case NodeTypes.ORDER_PATTERN:
+        return orderPattern[ORDER_PATTERN_FIELDS.KEY];
+      default:
+        return null;
+    }
+  }
+
   /**
    *
    */
@@ -115,7 +137,7 @@ export const OrderPatternsPage = () => {
     const getOrderPatternLeaf = (orderPattern) => {
       return {
         title: orderPattern[ORDER_PATTERN_FIELDS.TITLE],
-        key: orderPattern[ORDER_PATTERN_FIELDS.KEY],
+        key: getTreeNodeKey(NodeTypes.ORDER_PATTERN, orderPattern),
         pattern: orderPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
         type: OrderPatternsNodeType.ORDER_PATTERN,
         specialTrainCategories: orderPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
@@ -132,7 +154,7 @@ export const OrderPatternsPage = () => {
     const getOrderPatternCategoryLeaf = (orderPattern) => {
       return {
         title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
-        key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}${orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]}`,
+        key: getTreeNodeKey(NodeTypes.ORDER_CATEGORY, orderPattern),
         type: OrderPatternsNodeType.ORDER_CATEGORY,
         additionalInfo: {
           service: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
@@ -145,7 +167,7 @@ export const OrderPatternsPage = () => {
     const getOrderPatternTypeLeaf = (orderPattern) => {
       return {
         title: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
-        key: `${orderPattern[ORDER_PATTERN_FIELDS.SERVICE]}${orderPattern[ORDER_PATTERN_FIELDS.TYPE]}`,
+        key: getTreeNodeKey(NodeTypes.ORDER_TYPE, orderPattern),
         type: OrderPatternsNodeType.ORDER_TYPE,
         children: [getOrderPatternCategoryLeaf(orderPattern)],
       };
@@ -157,7 +179,7 @@ export const OrderPatternsPage = () => {
       if (!theSameServiceElement) {
         treeData.push({
           title: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
-          key: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
+          key: getTreeNodeKey(NodeTypes.SERVICE, orderPattern),
           type: OrderPatternsNodeType.SERVICE,
           children: [getOrderPatternTypeLeaf(orderPattern)],
         });
@@ -171,15 +193,27 @@ export const OrderPatternsPage = () => {
             theSameTypeElement.children.push(getOrderPatternCategoryLeaf(orderPattern));
           } else {
             const orderPatternLeaf = getOrderPatternLeaf(orderPattern);
-            // Шаблоны в дереве должны сортироваться в рамках соответствующей категории распоряжений
+
+            // Шаблоны в дереве должны сортироваться в рамках соответствующей категории распоряжений.
+            // Сортировка производится по положительным значениям поля positionInPatternsCategory.
+            // Если значение поля positionInPatternsCategory отрицательное, то такой шаблон оказывается в конце списка.
+            // Шаблоны с отрицательными значениями positionInPatternsCategory не сортируются.
             if (orderPatternLeaf.positionInPatternsCategory === -1) {
               theSameCategoryElement.children.push(orderPatternLeaf);
             } else {
-              const insertIndex = theSameCategoryElement.children.findIndex((el) => el.positionInPatternsCategory > orderPatternLeaf.positionInPatternsCategory);
-              if (insertIndex === -1)
-                theSameCategoryElement.children.push(orderPatternLeaf);
-              else
-                theSameCategoryElement.children.splice(insertIndex, 0, orderPatternLeaf);
+              const firstElementWithGreaterPositionIndex = theSameCategoryElement.children.findIndex((el) => el.positionInPatternsCategory > orderPatternLeaf.positionInPatternsCategory);
+              if (firstElementWithGreaterPositionIndex === -1) {
+                // нужно проверить, не содержится ли в конце списка элемент с positionInPatternsCategory = -1;
+                // если содержится, то поместить новый элемент можно перед первым в списке элементом с positionInPatternsCategory = -1
+                const firstElementWithNegativePositionIndex = theSameCategoryElement.children.findIndex((el) => el.positionInPatternsCategory < 0);
+                if (firstElementWithNegativePositionIndex === -1)
+                  theSameCategoryElement.children.push(orderPatternLeaf);
+                else
+                  theSameCategoryElement.children.splice(firstElementWithNegativePositionIndex, 0, orderPatternLeaf);
+              }
+              else {
+                theSameCategoryElement.children.splice(firstElementWithGreaterPositionIndex, 0, orderPatternLeaf);
+              }
             }
           }
         }
@@ -296,54 +330,41 @@ export const OrderPatternsPage = () => {
     }
   };
 
-  const handleDropTreeNode = async (droppedNode, droppedOnNode) => {
-    // Проверка того, что есть что перемещать + перемещение идет не самого себя
-    if (!droppedNode || !droppedOnNode || droppedNode.key === droppedOnNode.key) {
-      return;
-    }
-    // Проверка того, что оба узла - листья
-    const positionInPatternsCategoryExists = (pos) => pos || pos === 0;
-    if (!positionInPatternsCategoryExists(droppedNode.positionInPatternsCategory) ||
-        !positionInPatternsCategoryExists(droppedOnNode.positionInPatternsCategory)) {
-      return;
-    }
-    // Проверка того, что листья принадлежат одной ветви
-    if (
-      droppedNode.additionalInfo.service !== droppedOnNode.additionalInfo.service ||
-      droppedNode.additionalInfo.orderType !== droppedOnNode.additionalInfo.orderType ||
-      droppedNode.additionalInfo.orderCategory !== droppedOnNode.additionalInfo.orderCategory
-    ) {
-      return;
-    }
-    // Теперь можно перемещать. Для этого достаточно лишь изменить значение positionInPatternsCategory у
-    // узла droppedNode, положив его равным значению этого же поля узла droppedOnNode, а у всех узлов,
-    // следующих за droppedOnNode, включая его самого, увеличить значение на 1
-    const moveToPosition = droppedOnNode.positionInPatternsCategory;
-    const dataToSendToServer = orderPatterns.filter((pattern) =>
-      // Нужная ветка дерева и те узлы, которым необходимо изменить значение positionInPatternsCategory
-      pattern[ORDER_PATTERN_FIELDS.SERVICE] === droppedNode.additionalInfo.service &&
-      pattern[ORDER_PATTERN_FIELDS.TYPE] === droppedNode.additionalInfo.orderType &&
-      pattern[ORDER_PATTERN_FIELDS.CATEGORY] === droppedNode.additionalInfo.orderCategory &&
-      (
-        pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key ||
-        pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] >= moveToPosition
-      )
-    ).map((pattern) => {
-      if (pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key)
-        return [pattern[ORDER_PATTERN_FIELDS.KEY], moveToPosition];
-      return [pattern[ORDER_PATTERN_FIELDS.KEY], pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] + 1];
-    });
+
+  /**
+   * Для заданного значения ключа узла дерева шаблонов распоряжений возвращает все шаблоны распоряжений,
+   * относящиеся к той же самой категории распоряжений, причем порядок следования возвращаемых шаблонов -
+   * такой же, как и в дереве шаблонов.
+   */
+  const getTheSameCategoryOrderPatternsInTree = (nodeKey) => {
+    const _node = orderPatterns.find((pattern) => pattern[ORDER_PATTERN_FIELDS.KEY] === nodeKey);
+    return existingOrderAffiliationTree
+      .find((node) => node.key === getTreeNodeKey(NodeTypes.SERVICE, _node)).children
+      .find((node) => node.key === getTreeNodeKey(NodeTypes.ORDER_TYPE, _node)).children
+      .find((node) => node.key === getTreeNodeKey(NodeTypes.ORDER_CATEGORY, _node)).children;
+  };
+
+
+  const patternBelongsToDesiredTreeBranch = (pattern, treeNode) =>
+    pattern[ORDER_PATTERN_FIELDS.SERVICE] === treeNode.additionalInfo.service &&
+    pattern[ORDER_PATTERN_FIELDS.TYPE] === treeNode.additionalInfo.orderType &&
+    pattern[ORDER_PATTERN_FIELDS.CATEGORY] === treeNode.additionalInfo.orderCategory;
+
+
+  /**
+   *
+   * @param {*} orderPattern - любой шаблон распоряжения, принадлежащий ветке дерева (категории распоряжений),
+   * в которой необходимо произвести изменения
+   * @param {*} dataToSendToServer - массив двумерных массивов: первый элемент - id распоряжения, второй - новое
+   * значение positionInPatternsCategory этого распоряжения в дереве распоряжений
+   */
+  const updateOrderPatternsRelativeCategoryPositions = async (treeNode, dataToSendToServer) => {
     try {
       await request(ServerAPI.MOD_POSITIONS_IN_PATTERNS_CATEGORY, 'POST', { data: dataToSendToServer });
       setOrderPatterns((value) => value.map((pattern) => {
         // Не та ветка дерева
-        if (
-          pattern[ORDER_PATTERN_FIELDS.SERVICE] !== droppedNode.additionalInfo.service ||
-          pattern[ORDER_PATTERN_FIELDS.TYPE] !== droppedNode.additionalInfo.orderType ||
-          pattern[ORDER_PATTERN_FIELDS.CATEGORY] !== droppedNode.additionalInfo.orderCategory
-        ) {
+        if (!patternBelongsToDesiredTreeBranch(pattern, treeNode))
           return pattern;
-        }
         // Для листьев нужной ветки ищем информацию о новом значении positionInPatternsCategory (эта информация
         // может отсутствовать для ряда листьев, если для них ее не меняли)
         const treeLeafNewPositionInfo = dataToSendToServer.find((el) => el[0] === pattern[ORDER_PATTERN_FIELDS.KEY]);
@@ -359,6 +380,98 @@ export const OrderPatternsPage = () => {
     catch (e) {
       message.error('Ошибка перемещения листьев дерева: ' + e.message);
     }
+  }
+
+
+  const handleDropTreeNode = async (droppedNode, droppedOnNode) => {
+    // Проверка того, что есть что перемещать + перемещение идет не самого себя
+    if (!droppedNode || !droppedOnNode || droppedNode.key === droppedOnNode.key) {
+      return;
+    }
+    // Проверка того, что оба узла - листья
+    const positionInPatternsCategoryExists = (pos) => pos || pos === 0;
+    if (!positionInPatternsCategoryExists(droppedNode.positionInPatternsCategory) ||
+        !positionInPatternsCategoryExists(droppedOnNode.positionInPatternsCategory)) {
+      return;
+    }
+    // Проверка того, что листья принадлежат одной ветви (одной категории распоряжений)
+    if (
+      droppedNode.additionalInfo.service !== droppedOnNode.additionalInfo.service ||
+      droppedNode.additionalInfo.orderType !== droppedOnNode.additionalInfo.orderType ||
+      droppedNode.additionalInfo.orderCategory !== droppedOnNode.additionalInfo.orderCategory
+    ) {
+      return;
+    }
+    // Теперь можно перемещать. Для этого достаточно лишь изменить значение positionInPatternsCategory у
+    // узла droppedNode, положив его равным значению этого же поля узла droppedOnNode, а у всех узлов,
+    // следующих за droppedOnNode, включая его самого, увеличить значение на 1.
+    // Если же значение positionInPatternsCategory у droppedOnNode отрицательное, то алгоритм другой. А именно:
+    // вначале всем узлам с отрицательным значением positionInPatternsCategory, начиная с первого в массиве
+    // узла и заканчивая элементом массива, соответствующим droppedOnNode, присваиваем положительное значение
+    // positionInPatternsCategory путем увеличения на 1 последнего неотрицательного значения positionInPatternsCategory.
+    // Далее запускаем обычный алгоритм (описанный выше).
+
+    let moveToPosition = droppedOnNode.positionInPatternsCategory;
+    if (moveToPosition < 0) {
+      const theSameCategoryPatternsInTree = getTheSameCategoryOrderPatternsInTree(droppedOnNode.key);
+      let lastPositivePos = -1;
+      for (let pattern of theSameCategoryPatternsInTree) {
+        if (pattern.key !== droppedOnNode.key) {
+          if (pattern.positionInPatternsCategory >= 0)
+            lastPositivePos = pattern.positionInPatternsCategory;
+          else {
+            const p = orderPatterns.find((pat) => pat[ORDER_PATTERN_FIELDS.KEY] === pattern.key);
+            p[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] = lastPositivePos + 1;
+            lastPositivePos += 1;
+          }
+        } else {
+          const p = orderPatterns.find((pat) => pat[ORDER_PATTERN_FIELDS.KEY] === pattern.key);
+          p[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] = lastPositivePos + 1;
+          moveToPosition = p[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY];
+          break;
+        }
+      }
+    }
+    const dataToSendToServer = orderPatterns.filter((pattern) =>
+      // Нужная ветка дерева и те узлы, которым необходимо изменить значение positionInPatternsCategory
+      patternBelongsToDesiredTreeBranch(pattern, droppedNode) &&
+      (
+        pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key ||
+        pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] >= moveToPosition
+      )
+    ).map((pattern) => {
+      if (pattern[ORDER_PATTERN_FIELDS.KEY] === droppedNode.key)
+        return [pattern[ORDER_PATTERN_FIELDS.KEY], moveToPosition];
+      return [pattern[ORDER_PATTERN_FIELDS.KEY], pattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY] + 1];
+    });
+
+    await updateOrderPatternsRelativeCategoryPositions(droppedNode, dataToSendToServer);
+  };
+
+
+  /**
+   * Позволяет зафиксировать позицию шаблона распоряжения в дереве шаблонов:
+   * отрицительное значение positionInPatternsCategory узла дерева делает положительным.
+   * Кроме того, положительное значение получают все узлы, которые предшествуют этому узлу
+   * в дереве и имеют отрицательное значение positionInPatternsCategory.
+   */
+  const handleFixOrderPatternTreePosition = async (orderPatternNodeToFix) => {
+    // Вначале ищем в дереве шаблонов нужную нам ветвь категорий шаблонов распоряжений - а точнее,
+    // все шаблоны распоряжений этой ветви
+    const theSameCategoryPatternsInTree = getTheSameCategoryOrderPatternsInTree(orderPatternNodeToFix.key);
+    let lastPositivePos = -1;
+    const dataToSendToServer = [];
+    for (let patternNode of theSameCategoryPatternsInTree) {
+      if (patternNode.positionInPatternsCategory >= 0) {
+        lastPositivePos = patternNode.positionInPatternsCategory;
+        continue;
+      }
+      lastPositivePos += 1;
+      dataToSendToServer.push([patternNode.key, lastPositivePos]);
+      if (patternNode.key === orderPatternNodeToFix.key)
+        break;
+    }
+    await updateOrderPatternsRelativeCategoryPositions(orderPatternNodeToFix, dataToSendToServer);
   };
 
 
@@ -390,6 +503,7 @@ export const OrderPatternsPage = () => {
               onDeleteOrderPattern={handleDeleteOrderPattern}
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
               onDropTreeNode={handleDropTreeNode}
+              onFixOrderPatternTreePosition={handleFixOrderPatternTreePosition}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
