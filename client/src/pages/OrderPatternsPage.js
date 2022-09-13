@@ -151,7 +151,7 @@ export const OrderPatternsPage = () => {
       };
     };
 
-    const getOrderPatternCategoryLeaf = (orderPattern) => {
+    const getOrderPatternCategoryNode = (orderPattern) => {
       return {
         title: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
         key: getTreeNodeKey(NodeTypes.ORDER_CATEGORY, orderPattern),
@@ -164,12 +164,12 @@ export const OrderPatternsPage = () => {
       };
     };
 
-    const getOrderPatternTypeLeaf = (orderPattern) => {
+    const getOrderPatternTypeNode = (orderPattern) => {
       return {
         title: orderPattern[ORDER_PATTERN_FIELDS.TYPE],
         key: getTreeNodeKey(NodeTypes.ORDER_TYPE, orderPattern),
         type: OrderPatternsNodeType.ORDER_TYPE,
-        children: [getOrderPatternCategoryLeaf(orderPattern)],
+        children: [getOrderPatternCategoryNode(orderPattern)],
       };
     };
 
@@ -181,16 +181,21 @@ export const OrderPatternsPage = () => {
           title: orderPattern[ORDER_PATTERN_FIELDS.SERVICE],
           key: getTreeNodeKey(NodeTypes.SERVICE, orderPattern),
           type: OrderPatternsNodeType.SERVICE,
-          children: [getOrderPatternTypeLeaf(orderPattern)],
+          children: [getOrderPatternTypeNode(orderPattern)],
         });
       } else {
         const theSameTypeElement = theSameServiceElement.children.find((type) => type.title === orderPattern[ORDER_PATTERN_FIELDS.TYPE]);
         if (!theSameTypeElement) {
-          theSameServiceElement.children.push(getOrderPatternTypeLeaf(orderPattern));
+          theSameServiceElement.children.push(getOrderPatternTypeNode(orderPattern));
         } else {
           const theSameCategoryElement = theSameTypeElement.children.find((category) => category.title === orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]);
           if (!theSameCategoryElement) {
-            theSameTypeElement.children.push(getOrderPatternCategoryLeaf(orderPattern));
+            const categoryNode = getOrderPatternCategoryNode(orderPattern);
+            const insertPos = theSameTypeElement.children.findIndex((category) => category.title > categoryNode.title);
+            if (insertPos === -1)
+              theSameTypeElement.children.push(categoryNode);
+            else
+              theSameTypeElement.children.splice(insertPos, 0, categoryNode);
           } else {
             const orderPatternLeaf = getOrderPatternLeaf(orderPattern);
 
