@@ -34,6 +34,12 @@ const SavableSelectMultiple = (props) => {
     setSelectedVals([...value]);
   }
 
+  // Для поиска информации в списке элементов компонента (учитываем, что список может быть как из
+  // объектов с полями label, value, так и только с полем value)
+  function handleFilterOption(input, option) {
+    return (option?.children?.props?.children || option.value).toLowerCase().includes(input.toLowerCase());
+  }
+
   useEffect(() => {
     // убираю из списка те пункты, которые выбрал пользователь
     setOptionsToDisplay(options.filter((option) => !selectedVals.includes(option.value)));
@@ -62,6 +68,7 @@ const SavableSelectMultiple = (props) => {
           value={selectedVals}
           onChange={handleChange}
           tagRender={tagRender}
+          filterOption={handleFilterOption}
         >
           {
             optionsToDisplay

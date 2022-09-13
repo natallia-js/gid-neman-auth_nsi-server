@@ -188,6 +188,7 @@ export const OrderPatternsPage = () => {
         if (!theSameTypeElement) {
           theSameServiceElement.children.push(getOrderPatternTypeNode(orderPattern));
         } else {
+          // Категории распоряжений сортируются по алфавиту в рамках соответствующего типа распоряжений
           const theSameCategoryElement = theSameTypeElement.children.find((category) => category.title === orderPattern[ORDER_PATTERN_FIELDS.CATEGORY]);
           if (!theSameCategoryElement) {
             const categoryNode = getOrderPatternCategoryNode(orderPattern);
