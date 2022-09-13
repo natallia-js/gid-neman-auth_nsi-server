@@ -84,6 +84,7 @@ const DY58_SERVER_CREDENTIALS = Object.freeze({
   DSP_Operator: 'DSP_Operator',
   ECD_FULL: 'ECD_FULL',
   REVISOR: 'REVISOR',
+  STATION_WORKS_MANAGER: 'STATION_WORKS_MANAGER',
 });
 
 
