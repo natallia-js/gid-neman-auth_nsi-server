@@ -32,6 +32,8 @@ export const EditOrderPatternElement = (props) => {
     orderPatternElRefs,
     submitOrderPatternElementCallback,
     okButtonText,
+    onNewOrderPatternElRef,
+    onDelOrderPatternElRef,
   } = props;
   // Исходный массив объектов допустимых элементов шаблона распоряжения. Все элементы, за исключением элемента такого
   // же типа, как у element (если он задан), принимают значения по умолчанию. Элемент же типа element
@@ -315,6 +317,8 @@ export const EditOrderPatternElement = (props) => {
               elementType={selectedPatternElement.type}
               chosenRef={selectedPatternElement.ref}
               handleChangeRefCallback={(value) => changePatternElementRef(value)}
+              onNewOrderPatternElRef={onNewOrderPatternElRef}
+              onDelOrderPatternElRef={onDelOrderPatternElRef}
             />
           </Col>
         }

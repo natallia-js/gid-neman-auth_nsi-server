@@ -24,6 +24,8 @@ export const EditOrderPattern = (props) => {
     setCursorAfterElementCallback,
     delPatternElementCallback,
     editPatternElementCallback,
+    onNewOrderPatternElRef,
+    onDelOrderPatternElRef,
   } = props;
   const [orderPatternArrays, setOrderPatternArrays] = useState([]);
   const [editedPatternElementId, setEditedPatternElementId] = useState(null);
@@ -161,6 +163,8 @@ export const EditOrderPattern = (props) => {
                 (editedPatternElement) => editPatternElementCallback(editedPatternElementId, editedPatternElement)
               }
               okButtonText="Применить редактирование"
+              onNewOrderPatternElRef={onNewOrderPatternElRef}
+              onDelOrderPatternElRef={onDelOrderPatternElRef}
             />
           </Space>
         </div>

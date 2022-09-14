@@ -31,6 +31,8 @@ export const OrderPatternsTree = (props) => {
     getNodeTitleByNodeKey,
     onDropTreeNode,
     onFixOrderPatternTreePosition,
+    onNewOrderPatternElRef,
+    onDelOrderPatternElRef,
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -685,12 +687,16 @@ export const OrderPatternsTree = (props) => {
                       setCursorAfterElementCallback={setCursorAfterElement}
                       delPatternElementCallback={delPatternElement}
                       editPatternElementCallback={editPatternElement}
+                      onNewOrderPatternElRef={onNewOrderPatternElRef}
+                      onDelOrderPatternElRef={onDelOrderPatternElRef}
                     />
                     <Text strong>Определите элементы шаблона</Text>
                     <EditOrderPatternElement
                       orderPatternElRefs={orderPatternElRefs}
                       submitOrderPatternElementCallback={addNewPatternElement}
                       okButtonText="Добавить в шаблон"
+                      onNewOrderPatternElRef={onNewOrderPatternElRef}
+                      onDelOrderPatternElRef={onDelOrderPatternElRef}
                     />
                     {
                       patternEdited &&

@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const mongoose = require('mongoose');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
@@ -6,7 +7,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
@@ -14,7 +15,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * шаблонов распоряжений. Возвращается вся информация, содержащаяся в коллекции.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -46,7 +47,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * в виде массива строк - названий смысловых элементов.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -70,6 +71,122 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
         action: 'Получение списка всех возможных смысловых значений элементов шаблонов распоряжений с привязкой к типу элемента',
         error: error.message,
         actionParams: {},
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на добавление нового смыслового значения указанного (существующего) типа
+ * элементов шаблонов распоряжений.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * elementTypeId - id типа элемента шаблона (обязателен),
+ * refName - наименование смыслового значения (обязательно),
+ * addDataForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
+ *   в ГИД (true) или не учитывать (false)
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/addMeaning',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ORDER_PATTERN_ELEMENT_REF; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { elementTypeId, refName, addDataForGID } = req.body;
+
+    try {
+      // Ищем в БД указанный тип элемента шаблона распоряжения
+      const candidate = await OrderPatternElementRef.findOne({ _id: elementTypeId });
+
+      // Если не находим, то процесс создания продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Не найден указанный тип элементов шаблонов распоряжений' });
+      }
+
+      if (!candidate.possibleRefs) {
+        candidate.possibleRefs = [];
+      } else {
+        if (candidate.possibleRefs.find((ref) => ref.refName === refName)) {
+          return res.status(ERR).json({ message: 'У данного типа элемента шаблона уже существует смысловое значение с таким названием' });
+        }
+      }
+
+      const newRef = {
+        _id: new mongoose.Types.ObjectId(),
+        refName,
+        additionalOrderPlaceInfoForGID: Boolean(addDataForGID),
+      };
+      candidate.possibleRefs.push(newRef);
+
+      await candidate.save();
+
+      res.status(OK).json({ message: 'Информация успешно сохранена', ref: { typeId: elementTypeId, ...newRef } });
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Добавление нового смыслового значения',
+        error: error.message,
+        actionParams: { elementTypeId, refName, addDataForGID },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на удаление смыслового значения указанного (существующего) типа
+ * элементов шаблонов распоряжений.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * elementTypeId - id типа элемента шаблона (обязателен),
+ * refId - id смыслового значения (обязателен),
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/delMeaning',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ORDER_PATTERN_ELEMENT_REF; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { elementTypeId, refId } = req.body;
+
+    try {
+      // Ищем в БД указанный тип элемента шаблона распоряжения
+      const candidate = await OrderPatternElementRef.findOne({ _id: elementTypeId });
+
+      // Если не находим, то процесс удаления продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Не найден указанный тип элементов шаблонов распоряжений' });
+      }
+      if (!candidate.possibleRefs || !candidate.possibleRefs.find((el) => String(el._id) === String(refId))) {
+        return res.status(ERR).json({ message: 'Не найдено указанное смысловое значение' });
+      }
+
+      candidate.possibleRefs = candidate.possibleRefs.filter((el) => String(el._id) !== String(refId));
+
+      await candidate.save();
+
+      res.status(OK).json({ message: 'Информация успешно удалена', data: { elementTypeId, refId } });
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Удаление смыслового значения',
+        error: error.message,
+        actionParams: { elementTypeId, refId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

@@ -42,7 +42,7 @@ const DNCTrainSectorBlocksTable = (props) => {
    * Действия, выполняемые по окончании процесса редактирования записи
    * (вне зависимости от результата редактирования).
    */
-   const finishEditing = () => {
+  const finishEditing = () => {
     setEditingKey('');
     setModDNCTrainSectorBlockFieldsErrs(null);
   };
@@ -51,7 +51,7 @@ const DNCTrainSectorBlocksTable = (props) => {
   /**
    * Отменяет редактирование текущей записи таблицы.
    */
-   const handleCancelMod = () => {
+  const handleCancelMod = () => {
     finishEditing();
   };
 

@@ -142,7 +142,9 @@ export const ServerAPI = Object.freeze({
   MOD_ECD_SECTORS_WORK_POLIGON_LIST: ServerAddress + '/api/workPoligons/ecdSectors/change',
 
   GET_ORDER_PATTERNS_LIST: ServerAddress + '/api/orderPatterns/data',
-  GET_ORDER_PATTERNS_ELEMENTS_REFS: ServerAddress + '/api/orderPatternElementRefs/data',
+  GET_ORDER_PATTERNS_ELEMENTS_REFS: ServerAddress + '/api/orderPatternElementRefs/fullData',
+  ADD_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/addMeaning',
+  DEL_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/delMeaning',
   ADD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/add',
   DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
   MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
@@ -347,6 +349,13 @@ export const ORDER_PATTERN_ELEMENT_REFS_FIELDS = Object.freeze({
   KEY: '_id',
   ELEMENT_TYPE: 'elementType',
   REFS: 'possibleRefs',
+});
+
+export const ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS = Object.freeze({
+  KEY: 'key',
+  NAME: 'refName',
+  IS_ORDER_PLACE_FOR_GID: 'additionalOrderPlaceInfoForGID',
+  MEANINGS: 'possibleMeanings',
 });
 
 export const CHILD_ORDER_PATTERN_FIELDS = Object.freeze({

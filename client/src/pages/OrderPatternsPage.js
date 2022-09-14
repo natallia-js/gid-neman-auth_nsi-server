@@ -1,9 +1,9 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { Tabs, Typography, Row, Col, message } from 'antd';
+import { Tabs, Typography, Row, Col } from 'antd';
 import { OrderPatternsTree } from '../components/OrderPattern/OrderPatternsTree';
 import { CreateOrderPattern } from '../components/OrderPattern/CreateOrderPattern';
 import { CreateOrderPatternConnections } from '../components/OrderPattern/CreateOrderPatternConnections';
-import { ServerAPI, ORDER_PATTERN_FIELDS } from '../constants';
+import { ServerAPI, ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_REFS_FIELDS, ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS } from '../constants';
 import { useHttp } from '../hooks/http.hook';
 import getAppServiceObjFromDBServiceObj from '../mappers/getAppServiceObjFromDBServiceObj';
 import getAppOrderPatternElRefObjFromDBOrderPatternElRefObj from '../mappers/getAppOrderPatternElRefObjFromDBOrderPatternElRefObj';
@@ -11,6 +11,7 @@ import getAppOrderPatternObjFromDBOrderPatternObj from '../mappers/getAppOrderPa
 import Loader from '../components/Loader';
 import { OrderPatternsNodeType } from '../components/OrderPattern/constants';
 import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
+import { MESSAGE_TYPES, useCustomMessage } from '../hooks/customMessage.hook';
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
@@ -53,6 +54,10 @@ export const OrderPatternsPage = () => {
 
   // Получаем доступ к контекстным данным текущей страницы
   const currPage = useContext(CurrentPageContext);
+
+  // Для вывода всплывающих сообщений
+  const message = useCustomMessage();
+
 
   useEffect(() => {
     currPage.changePageId(PAGES_IDS.ORDER_PATTERNS);
@@ -384,9 +389,9 @@ export const OrderPatternsPage = () => {
       }));
     }
     catch (e) {
-      message.error('Ошибка перемещения листьев дерева: ' + e.message);
+      message(MESSAGE_TYPES.ERROR, 'Ошибка перемещения листьев дерева: ' + e.message);
     }
-  }
+  };
 
 
   const handleDropTreeNode = async (droppedNode, droppedOnNode) => {
@@ -456,6 +461,43 @@ export const OrderPatternsPage = () => {
 
 
   /**
+   *
+   */
+  const handleNewOrderPatternElRef = (typeId, newRec) => {
+    if (orderPatternElRefs) {
+      setOrderPatternElRefs((value) => value.map((el) => {
+        if (el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY] === String(typeId)) {
+          return {
+            ...el,
+            [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: [
+              ...el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS],
+              newRec,
+            ],
+          };
+        }
+        return el;
+      }));
+    }
+  };
+
+
+  const handleDelOrderPatternElRef = (typeId, refId) => {
+    if (orderPatternElRefs) {
+      setOrderPatternElRefs((value) => value.map((el) => {
+        if (el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY] === String(typeId)) {
+          return {
+            ...el,
+            [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
+              .filter((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY] !== String(refId)),
+          };
+        }
+        return el;
+      }));
+    }
+  };
+
+
+  /**
    * Позволяет зафиксировать позицию шаблона распоряжения в дереве шаблонов:
    * отрицительное значение positionInPatternsCategory узла дерева делает положительным.
    * Кроме того, положительное значение получают все узлы, которые предшествуют этому узлу
@@ -510,6 +552,8 @@ export const OrderPatternsPage = () => {
               getNodeTitleByNodeKey={getNodeTitleByNodeKey}
               onDropTreeNode={handleDropTreeNode}
               onFixOrderPatternTreePosition={handleFixOrderPatternTreePosition}
+              onNewOrderPatternElRef={handleNewOrderPatternElRef}
+              onDelOrderPatternElRef={handleDelOrderPatternElRef}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
@@ -518,6 +562,8 @@ export const OrderPatternsPage = () => {
               services={services}
               existingOrderAffiliationTree={existingOrderAffiliationTree}
               onCreateOrderPattern={handleCreateOrderPattern}
+              onNewOrderPatternElRef={handleNewOrderPatternElRef}
+              onDelOrderPatternElRef={handleDelOrderPatternElRef}
             />
           </TabPane>
           <TabPane tab="Связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>
