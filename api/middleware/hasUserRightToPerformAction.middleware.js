@@ -411,6 +411,11 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     case AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS_AS_STRING_ARRAYS:
       creds = [GET_ALL_ORDER_PATTERNS_ACTION];
       break;
+    case AUTH_NSI_ACTIONS.ADD_ORDER_PATTERN_ELEMENT_REF:
+    case AUTH_NSI_ACTIONS.DEL_ORDER_PATTERN_ELEMENT_REF:
+    case AUTH_NSI_ACTIONS.MOD_ORDER_PATTERN_ELEMENT_REF:
+      creds = [MOD_ORDER_PATTERN_ACTION];
+      break;
     // Логи действий администраторов
     case AUTH_NSI_ACTIONS.GET_ADMINS_ACTIONS_LOGS:
       creds = [GET_ADMINS_LOGS_ACTION];
@@ -436,10 +441,12 @@ const hasUserRightToPerformAction = async (req, res, next) => {
       break;
     case DY58_ACTIONS.REPORT_ON_ORDER_DELIVERY:
     case DY58_ACTIONS.CONFIRM_ORDER:
-    case DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHER_RECEIVERS:
-    case DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHERS:
     case DY58_ACTIONS.DEL_CONFIRMED_ORDERS_FROM_CHAIN:
       creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL];
+      break;
+    case DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHER_RECEIVERS:
+    case DY58_ACTIONS.CONFIRM_ORDER_FOR_OTHERS:
+      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, STATION_WORKS_MANAGER];
       break;
     case DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER:
       creds = [DSP_FULL, DSP_Operator];

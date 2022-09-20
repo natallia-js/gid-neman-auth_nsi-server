@@ -54,6 +54,8 @@ const NewECDSectorModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredNameErrMess)
+      return;
     resetAll();
     handleAddNewECDSectorOk({ ...values });
   };

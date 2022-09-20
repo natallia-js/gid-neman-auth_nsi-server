@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Typography } from 'antd';
-import { BLOCK_TRACK_FIELDS } from '../../constants';
 
 const { Text } = Typography;
 
@@ -8,32 +7,25 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Компонент модального окна добавления информации о новом пути перегона.
- *
- * @param {object} params - свойства компонента:
- *   isModalVisible,
- *   handleAddNewBlockTrackOk,
- *   handleAddNewBlockTrackCancel,
- *   blockTrackFieldsErrs,
- *   clearAddBlockTrackMessages,
- *   recsBeingAdded,
+ * Компонент модального окна добавления информации о новом значении, которое может принимать элемент
+ * шаблона распоряжения, имеющий заданное смысловое значение.
  */
-const NewBlockTrackModal = ({
+const NewOrderPatternElementRefMeaningModal = ({
   isModalVisible,
-  handleAddNewBlockTrackOk,
-  handleAddNewBlockTrackCancel,
-  blockTrackFieldsErrs,
-  clearAddBlockTrackMessages,
+  handleAddNewRecOk,
+  handleAddNewRecCancel,
+  recFieldsErrs,
+  clearAddRecMessages,
   recsBeingAdded,
 }) => {
-
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
-  const [requiredTrackErrMess, setRequiredTrackErrMess] = useState(null);
+  const [requiredRefMeaningNameErrMess, setRequiredRefMeaningNameErrMess] = useState(null);
+
 
   /**
-   * Чистим поля ввода информации о новом пути.
+   * Чистим поля ввода информации о новом значении.
    */
   const onReset = () => {
     form.resetFields();
@@ -42,8 +34,8 @@ const NewBlockTrackModal = ({
 
   const resetAll = () => {
     // Чистим все сообщения
-    clearAddBlockTrackMessages();
-    setRequiredTrackErrMess(null);
+    clearAddRecMessages();
+    setRequiredRefMeaningNameErrMess(null);
   };
 
 
@@ -53,10 +45,10 @@ const NewBlockTrackModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
-    if (requiredTrackErrMess)
+    if (requiredRefMeaningNameErrMess)
       return;
     resetAll();
-    handleAddNewBlockTrackOk({ ...values });
+    handleAddNewRecOk({ ...values });
   };
 
 
@@ -64,7 +56,7 @@ const NewBlockTrackModal = ({
    * Обработка события отмены ввода информации.
    */
   const onCancel = () => {
-    handleAddNewBlockTrackCancel();
+    handleAddNewRecCancel();
     // Чистим поля ввода
     onReset();
     resetAll();
@@ -73,40 +65,40 @@ const NewBlockTrackModal = ({
 
   return (
     <Modal
-      title="Введите информацию о новом пути перегона"
+      title="Укажите новое допустимое значение элемента"
       visible={isModalVisible}
       footer={null}
       onCancel={onCancel}
     >
       <Form
         layout="vertical"
-        size="small"
+        size='small'
         form={form}
-        name="new-block-track-form"
+        name="new-order-pattern-ref-meaning-form"
         onFinish={onFinish}
       >
         <Form.Item
-          label="Наименование"
-          name={BLOCK_TRACK_FIELDS.NAME}
+          label="Значение"
+          name="Meaning"
           rules={[
             {
               required: true,
               validator: async (_, value) => {
                 if (!value || value.length < 1) {
-                  setRequiredTrackErrMess('Пожалуйста, введите наименование пути!');
+                  setRequiredRefMeaningNameErrMess('Пожалуйста, введите допустимое значение элемента!');
                 } else {
-                  setRequiredTrackErrMess(null);
+                  setRequiredRefMeaningNameErrMess(null);
                 }
               },
             },
           ]}
-          validateStatus={(blockTrackFieldsErrs && blockTrackFieldsErrs[BLOCK_TRACK_FIELDS.NAME]) || requiredTrackErrMess ? ERR_VALIDATE_STATUS : null}
-          help={(blockTrackFieldsErrs && blockTrackFieldsErrs[BLOCK_TRACK_FIELDS.NAME]) || requiredTrackErrMess}
+          validateStatus={(recFieldsErrs && recFieldsErrs.refMeaning) || requiredRefMeaningNameErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(recFieldsErrs && recFieldsErrs.refMeaning) || requiredRefMeaningNameErrMess}
         >
           <Input
             autoFocus={true}
             autoComplete="off"
-            placeholder="Введите наименование"
+            placeholder="Введите допустимое значение"
             allowClear
           />
         </Form.Item>
@@ -132,4 +124,4 @@ const NewBlockTrackModal = ({
 };
 
 
-export default NewBlockTrackModal;
+export default NewOrderPatternElementRefMeaningModal;

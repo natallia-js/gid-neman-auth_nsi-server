@@ -61,6 +61,8 @@ const NewBlockModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredNameErrMess || requiredStation1ErrMess || requiredStation2ErrMess)
+      return;
     resetAll();
     handleAddNewBlockOk({ ...values });
   };

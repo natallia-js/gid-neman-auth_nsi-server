@@ -129,6 +129,9 @@ const NewUserModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredLoginErrMess || requiredPasswordErrMess || requiredNameErrMess ||
+      requiredSurnameErrMess || requiredPostErrMess)
+      return;
     resetAll();
     handleAddNewUserOk({
       ...values,

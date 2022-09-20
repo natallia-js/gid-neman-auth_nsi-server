@@ -56,6 +56,8 @@ const NewServiceModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredAbbrevErrMess || requiredTitleErrMess)
+      return;
     resetAll();
     handleAddNewServiceOk({ ...values });
   };

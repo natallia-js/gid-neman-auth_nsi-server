@@ -56,6 +56,8 @@ const NewStationModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredCodeErrMess || requiredNameErrMess)
+      return;
     resetAll();
     handleAddNewStationOk({ ...values });
   };

@@ -4,6 +4,7 @@ const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const { addError } = require('../serverSideProcessing/processLogsActions');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
+const testUniqueArrayElements = require('../additional/testUniqueArrayElements');
 
 const router = Router();
 
@@ -87,19 +88,19 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Параметры тела запроса:
  * elementTypeId - id типа элемента шаблона (обязателен),
  * refName - наименование смыслового значения (обязательно),
- * addDataForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
- *   в ГИД (true) или не учитывать (false)
+ * additionalOrderPlaceInfoForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
+ *   в ГИД (true) или не учитывать (false) (не обязательно, по умолчанию false),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
-  '/addMeaning',
+  '/addRef',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.ADD_ORDER_PATTERN_ELEMENT_REF; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { elementTypeId, refName, addDataForGID } = req.body;
+    const { elementTypeId, refName, additionalOrderPlaceInfoForGID } = req.body;
 
     try {
       // Ищем в БД указанный тип элемента шаблона распоряжения
@@ -121,7 +122,7 @@ router.post(
       const newRef = {
         _id: new mongoose.Types.ObjectId(),
         refName,
-        additionalOrderPlaceInfoForGID: Boolean(addDataForGID),
+        additionalOrderPlaceInfoForGID: Boolean(additionalOrderPlaceInfoForGID),
       };
       candidate.possibleRefs.push(newRef);
 
@@ -134,7 +135,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление нового смыслового значения',
         error: error.message,
-        actionParams: { elementTypeId, refName, addDataForGID },
+        actionParams: { elementTypeId, refName, additionalOrderPlaceInfoForGID },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -154,7 +155,7 @@ router.post(
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
-  '/delMeaning',
+  '/delRef',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.DEL_ORDER_PATTERN_ELEMENT_REF; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -187,6 +188,79 @@ router.post(
         action: 'Удаление смыслового значения',
         error: error.message,
         actionParams: { elementTypeId, refId },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на редактирование смыслового значения указанного (существующего) типа
+ * элементов шаблонов распоряжений.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ *
+ * Параметры тела запроса:
+ * elementTypeId - id типа элемента шаблона (обязателен),
+ * refId - id смыслового значения (обязателен),
+ * refName - наименование смыслового значения (не обязательно),
+ * additionalOrderPlaceInfoForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
+ *   в ГИД (true) или не учитывать (false) (не обязательно),
+ * possibleMeanings - массив допустимых значений элемента шаблона распоряжения с заданным смысловым значением (не обязательно),
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/modRef',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.MOD_ORDER_PATTERN_ELEMENT_REF; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { elementTypeId, refId, refName, additionalOrderPlaceInfoForGID, possibleMeanings } = req.body;
+
+    try {
+      // Ищем в БД указанный тип элемента шаблона распоряжения
+      const candidate = await OrderPatternElementRef.findOne({ _id: elementTypeId });
+
+      // Если не находим, то процесс удаления продолжать не можем
+      if (!candidate) {
+        return res.status(ERR).json({ message: 'Не найден указанный тип элементов шаблонов распоряжений' });
+      }
+      const refCandidate = !candidate.possibleRefs ? null : candidate.possibleRefs.find((el) => String(el._id) === String(refId));
+      if (!refCandidate) {
+        return res.status(ERR).json({ message: 'Не найдено указанное смысловое значение типа элементов шаблонов распоряжений' });
+      }
+
+      // Если изменилось название смыслового значения, то проверяем его на уникальность в рамках
+      // типа распоряжений
+      if (candidate.possibleRefs && candidate.possibleRefs.find((el) => String(el._id) !== String(refId) && el.refName === refName)) {
+        return res.status(ERR).json({ message: 'Смысловое значение с таким наименованием уже существует' });
+      }
+
+      if (req.body.hasOwnProperty('refName'))
+        refCandidate.refName = refName;
+      if (req.body.hasOwnProperty('additionalOrderPlaceInfoForGID'))
+        refCandidate.additionalOrderPlaceInfoForGID = additionalOrderPlaceInfoForGID;
+      if (req.body.hasOwnProperty('possibleMeanings')) {
+        if (refCandidate.possibleMeanings && !possibleMeanings)
+          refCandidate.possibleMeanings = null;
+        if (!testUniqueArrayElements(possibleMeanings))
+          return res.status(ERR).json({ message: 'Смысловое значение не может иметь одинаковых допустимых значений элемента' });
+        refCandidate.possibleMeanings = possibleMeanings;
+      }
+
+      await candidate.save();
+
+      res.status(OK).json({ message: 'Информация успешно изменена', data: { elementTypeId, ref: refCandidate } });
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Изменение смыслового значения',
+        error: error.message,
+        actionParams: { elementTypeId, refId, refName, additionalOrderPlaceInfoForGID },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

@@ -56,6 +56,8 @@ const NewAppCredsGroupModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredShortTitleErrMess || requiredTitleErrMess)
+      return;
     resetAll();
     handleAddNewAppCredsGroupOk({ ...values });
   };

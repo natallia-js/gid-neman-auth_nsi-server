@@ -53,6 +53,8 @@ const NewStationWorkPlaceModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredWorkPlaceErrMess)
+      return;
     resetAll();
     handleAddNewStationWorkPlaceOk({ ...values });
   };

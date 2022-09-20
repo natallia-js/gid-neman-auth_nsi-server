@@ -26,6 +26,7 @@ export const EditOrderPattern = (props) => {
     editPatternElementCallback,
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
+    onModOrderPatternElRef,
   } = props;
   const [orderPatternArrays, setOrderPatternArrays] = useState([]);
   const [editedPatternElementId, setEditedPatternElementId] = useState(null);
@@ -165,6 +166,7 @@ export const EditOrderPattern = (props) => {
               okButtonText="Применить редактирование"
               onNewOrderPatternElRef={onNewOrderPatternElRef}
               onDelOrderPatternElRef={onDelOrderPatternElRef}
+              onModOrderPatternElRef={onModOrderPatternElRef}
             />
           </Space>
         </div>

@@ -56,6 +56,8 @@ const NewPostModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredAbbrevErrMess || requiredTitleErrMess)
+      return;
     resetAll();
     handleAddNewPostOk({ ...values });
   };

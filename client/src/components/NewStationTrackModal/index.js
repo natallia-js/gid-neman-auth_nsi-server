@@ -53,6 +53,8 @@ const NewStationTrackModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredTrackErrMess)
+      return;
     resetAll();
     handleAddNewStationTrackOk({ ...values });
   };

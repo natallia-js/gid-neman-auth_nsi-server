@@ -42,57 +42,158 @@
 {
   elementType: "select",
   possibleRefs: [
-    { refName: 'Вид вспомогательного режима', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Вид пути', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Вид связи', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Выдано запрещение ДСП', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Вид вспомогательного режима',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['кнопок', 'рукояток', 'команд']
+    },
+    {
+      refName: 'Вид пути',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['главного', 'приемоотправочного']
+    },
+    {
+      refName: 'Вид связи',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['АБ', 'ПАБ', 'АЛСН', 'АЛСО']
+    },
+    {
+      refName: 'Выдано запрещение ДСП',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['Выдано запрещение ДСП', '']
+    },
     { refName: 'Дежурство сдал', additionalOrderPlaceInfoForGID: false },
     { refName: 'Дежурство принял', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Действия', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Действия (уведомления)', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Для работы должно быть', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Категория работ', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Направление движения', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Наряд допуск', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Действия',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['Отключить', 'Включить', 'Вывести АПВ ФКС №', 'Ввести АПВ ФКС №', 'Выкатить тележку', 'Вкатить тележку', 'Перевести питание с']
+    },
+    {
+      refName: 'Действия (уведомления)',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['отключено', 'включено', 'выведено АПВ ФКС №', 'введено АПВ ФКС №', 'выкачена тележка', 'вкачена тележка', 'переведено питание с']
+    },
+    {
+      refName: 'Для работы должно быть',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['отключено', 'включено', 'выведено']
+    },
+    {
+      refName: 'Категория работ',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['со снятием напряжения', 'под напряжением', 'вблизи частей, находящихся под напряжением', 'вдали от частей, находящихся под напряжением']
+    },
+    {
+      refName: 'Направление движения',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['нечетного на четное', 'четного на нечетное']
+    },
+    {
+      refName: 'Наряд допуск',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['Наряд-допуск №', 'Без наряда-допуска, по приказу, согласно аварийной заявки №']
+    },
     { refName: 'Номер действующего распоряжения', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего распоряжения на закрытие перегона', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующей заявки', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего уведомления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего приказа', additionalOrderPlaceInfoForGID: false },
     { refName: 'Номер действующего запрещения', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Отключить, включить', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Отключить, включить',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['отключить', 'отключены', 'включить', 'включены']
+    },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
     { refName: 'Перегон станции отправления', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Поезда', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Порядок действий', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Порядок действий (уведомления)', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Прибытие/возвращение', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Поезда',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['четных', 'нечетных']
+    },
+    {
+      refName: 'Порядок действий',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['по ТУ', 'по ДУ, вывесить запрещающие плакаты', 'по МУ, вывесить запрещающие плакаты', 'вручную, привод закрыть на замок']
+    },
+    {
+      refName: 'Порядок действий (уведомления)',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['по ТУ', 'по ДУ, вывешены запрещающие плакаты', 'по МУ, вывешены запрещающие плакаты', 'вручную, привод закрыт на замок']
+    },
+    {
+      refName: 'Прибытие/возвращение',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['прибытием', 'возвращением']
+    },
     { refName: 'Путь перегона', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь перегона станции отправления', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции отправления', additionalOrderPlaceInfoForGID: true },
     { refName: 'Путь станции прибытия', additionalOrderPlaceInfoForGID: true },
-    { refName: 'Работать при наличии', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Работать при наличии',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['переносных заземлений', 'двух шунтирующих штанг']
+    },
     { refName: 'Руководители', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Система движения', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Скорость', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Система движения',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['однопутного', 'двухпутного']
+    },
+    {
+      refName: 'Скорость',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['со скоростью по   км не более   км/ч', 'с установленной скоростью', 'со скоростью согласно ранее выданных предупреждений']
+    },
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция отправления', additionalOrderPlaceInfoForGID: false },
     { refName: 'Станция прибытия', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Точное место', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Участок пути до', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Точное место',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['станция', 'подстанция', 'подстанции', 'перегон', 'контактная сеть', 'ВЛ', 'КЛ']
+    },
+    {
+      refName: 'Участок пути до',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['входного сигнала', 'сигнального знака «Граница станции»']
+    },
   ],
 },
 {
   elementType: "multipleSelect",
   possibleRefs: [
-    { refName: 'Объект', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Объект работ', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Объект работ (уведомления)', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Объект',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['проводе волноводной линии', 'проводе обратного тока', 'экранирующем проводе']
+    },
+    {
+      refName: 'Объект работ',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['контактной сети', 'ВЛ ДПР', 'ВЛ АБ', 'волноводе', 'ВЛ освещения', 'КЛ освещения', 'питающем проводе']
+    },
+    {
+      refName: 'Объект работ (уведомления)',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['контактную сеть', 'ВЛ ДПР', 'ВЛ АБ', 'волновод', 'ВЛ освещения', 'КЛ освещения',
+        'питающий провод', 'провод волноводной линии', 'провод обратного тока', 'экранирующий провод']
+    },
     { refName: 'Перегон', additionalOrderPlaceInfoForGID: false },
-    { refName: 'Путь', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'Путь',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['I', 'II', 'III', 'IV', 'V']
+    },
     { refName: 'Станция', additionalOrderPlaceInfoForGID: false },
-    { refName: 'С чего производится работа', additionalOrderPlaceInfoForGID: false },
+    {
+      refName: 'С чего производится работа',
+      additionalOrderPlaceInfoForGID: false,
+      possibleMeanings: ['АДМ', 'лестница', 'лейтер', 'без подъема на высоту', 'лазов', 'вышки МШТС']
+    },
   ],
 },
 {

@@ -53,6 +53,8 @@ const NewAppCredModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredCredErrMess)
+      return;
     resetAll();
     handleAddNewAppCredOk({ ...values });
   };

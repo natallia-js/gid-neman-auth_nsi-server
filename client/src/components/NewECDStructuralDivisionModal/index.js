@@ -46,6 +46,8 @@ const NewECDStructuralDivisionModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredDivisionErrMess)
+      return;
     resetAll();
     handleAddNewDivisionOk({ ...values });
   };

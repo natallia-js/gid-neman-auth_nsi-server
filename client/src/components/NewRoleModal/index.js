@@ -26,7 +26,6 @@ const NewRoleModal = ({
   clearAddRoleMessages,
   recsBeingAdded,
 }) => {
-
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
@@ -54,6 +53,8 @@ const NewRoleModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredAbbrevErrMess)
+      return;
     resetAll();
     handleAddNewRoleOk({ ...values });
   };

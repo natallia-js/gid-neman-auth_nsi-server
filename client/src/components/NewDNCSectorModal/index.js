@@ -55,6 +55,8 @@ const NewDNCSectorModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredNameErrMess)
+      return;
     resetAll();
     handleAddNewDNCSectorOk({ ...values });
   };

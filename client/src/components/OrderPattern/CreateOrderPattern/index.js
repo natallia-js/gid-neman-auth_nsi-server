@@ -38,6 +38,7 @@ export const CreateOrderPattern = (props) => {
     onCreateOrderPattern,
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
+    onModOrderPatternElRef,
   } = props;
 
   // Массив элементов создаваемого шаблона
@@ -431,6 +432,7 @@ export const CreateOrderPattern = (props) => {
                 okButtonText="Добавить в шаблон"
                 onNewOrderPatternElRef={onNewOrderPatternElRef}
                 onDelOrderPatternElRef={onDelOrderPatternElRef}
+                onModOrderPatternElRef={onModOrderPatternElRef}
               />
             </Space>
           </Col>
@@ -452,6 +454,7 @@ export const CreateOrderPattern = (props) => {
                   editPatternElementCallback={editPatternElement}
                   onNewOrderPatternElRef={onNewOrderPatternElRef}
                   onDelOrderPatternElRef={onDelOrderPatternElRef}
+                  onModOrderPatternElRef={onModOrderPatternElRef}
                 />
                 {
                   (orderPattern && orderPattern.length) ?

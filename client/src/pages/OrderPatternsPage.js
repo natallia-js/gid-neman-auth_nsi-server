@@ -466,7 +466,7 @@ export const OrderPatternsPage = () => {
   const handleNewOrderPatternElRef = (typeId, newRec) => {
     if (orderPatternElRefs) {
       setOrderPatternElRefs((value) => value.map((el) => {
-        if (el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY] === String(typeId)) {
+        if (String(el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY]) === String(typeId)) {
           return {
             ...el,
             [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: [
@@ -484,11 +484,35 @@ export const OrderPatternsPage = () => {
   const handleDelOrderPatternElRef = (typeId, refId) => {
     if (orderPatternElRefs) {
       setOrderPatternElRefs((value) => value.map((el) => {
-        if (el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY] === String(typeId)) {
+        if (String(el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY]) === String(typeId)) {
           return {
             ...el,
             [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
-              .filter((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY] !== String(refId)),
+              .filter((r) => String(r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY]) !== String(refId)),
+          };
+        }
+        return el;
+      }));
+    }
+  };
+
+
+  const handleModOrderPatternElRef = (typeId, modRec) => {
+    if (orderPatternElRefs) {
+      setOrderPatternElRefs((value) => value.map((el) => {
+        if (String(el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY]) === String(typeId)) {
+          return {
+            ...el,
+            [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: el[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
+              .map((r) => {
+                if (String(r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY]) !==
+                  String(modRec[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY]))
+                  return r;
+                return {
+                  ...r,
+                  ...modRec,
+                };
+              }),
           };
         }
         return el;
@@ -554,6 +578,7 @@ export const OrderPatternsPage = () => {
               onFixOrderPatternTreePosition={handleFixOrderPatternTreePosition}
               onNewOrderPatternElRef={handleNewOrderPatternElRef}
               onDelOrderPatternElRef={handleDelOrderPatternElRef}
+              onModOrderPatternElRef={handleModOrderPatternElRef}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
@@ -564,6 +589,7 @@ export const OrderPatternsPage = () => {
               onCreateOrderPattern={handleCreateOrderPattern}
               onNewOrderPatternElRef={handleNewOrderPatternElRef}
               onDelOrderPatternElRef={handleDelOrderPatternElRef}
+              onModOrderPatternElRef={handleModOrderPatternElRef}
             />
           </TabPane>
           <TabPane tab="Связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>

@@ -18,7 +18,6 @@ const NewOrderPatternElementRefModal = ({
   clearAddRecMessages,
   recsBeingAdded,
 }) => {
-
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
 
@@ -46,6 +45,8 @@ const NewOrderPatternElementRefModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
+    if (requiredRefNameErrMess)
+      return;
     resetAll();
     handleAddNewRecOk({ ...values });
   };

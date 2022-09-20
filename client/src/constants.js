@@ -143,8 +143,9 @@ export const ServerAPI = Object.freeze({
 
   GET_ORDER_PATTERNS_LIST: ServerAddress + '/api/orderPatterns/data',
   GET_ORDER_PATTERNS_ELEMENTS_REFS: ServerAddress + '/api/orderPatternElementRefs/fullData',
-  ADD_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/addMeaning',
-  DEL_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/delMeaning',
+  ADD_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/addRef',
+  DEL_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/delRef',
+  MOD_ORDER_PATTERN_ELEMENT_REF: ServerAddress + '/api/orderPatternElementRefs/modRef',
   ADD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/add',
   DEL_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/del',
   MOD_ORDER_PATTERN_DATA: ServerAddress + '/api/orderPatterns/mod',
