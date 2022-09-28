@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const crypto = require('crypto');
 const {
+  getStationBlocksValidationRules,
   addBlockValidationRules,
   delBlockValidationRules,
   modBlockValidationRules,
@@ -131,6 +132,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_BLOCKS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
+  // проверка параметров запроса
+  getStationBlocksValidationRules(),
+  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { stationId, onlyHash } = req.body;

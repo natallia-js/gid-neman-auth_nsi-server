@@ -20,6 +20,11 @@ function createStationWorkPlaceModel(sequelize) {
       type: DataTypes.STRING(64),
       allowNull: false,
     },
+    // тип рабочего места
+    SWP_Type: {
+      type: DataTypes.CHAR(1),
+      allowNull: false,
+    },
     // id станции
     SWP_StationId: {
       type: DataTypes.INTEGER,

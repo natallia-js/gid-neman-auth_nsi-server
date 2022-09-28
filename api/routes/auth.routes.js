@@ -10,9 +10,11 @@ const {
   registerValidationRules,
   addRoleValidationRules,
   loginValidationRules,
+  startWorkWithOrWithoutTakingDutyValidationRules,
   delUserValidationRules,
   delRoleValidationRules,
   modUserValidationRules,
+  confirmUserRegistrationValidationRules,
 } = require('../validators/auth.validator');
 const validate = require('../validators/validate');
 const mongoose = require('mongoose');
@@ -279,7 +281,7 @@ const saveNewUserData = async (props) => {
 
   // Ищем в БД пользователя с указанным login (ищем среди всех пользователей, в т.ч. и среди
   // тех, заявка на регистрацию которых еще не подтвержена)
-  const candidate = await User.findOne({ login }).session(session);
+  const candidate = await User.findOne({ login }, { session });
 
   // Если находим, то процесс регистрации продолжать не можем
   if (candidate) {
@@ -988,6 +990,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITHOUT_TAKING_DUTY; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
+  // проверка параметров запроса
+  startWorkWithOrWithoutTakingDutyValidationRules(),
+  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const {
@@ -1129,6 +1134,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.START_WORK_WITH_TAKING_DUTY; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
+  // проверка параметров запроса
+  startWorkWithOrWithoutTakingDutyValidationRules(),
+  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const {
@@ -1156,7 +1164,7 @@ router.post(
       // Дежурство принимает пользователь с id = req.user.userId
 
       // Ищем в БД пользователя, который прислал запрос на принятие дежурства
-      const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true }, { session });
       if (!user) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
@@ -1231,7 +1239,7 @@ router.post(
         // whose value is null or that do not contain the item field
         findRecsCond["lastTakePassDutyTimes.workPoligon.workPlaceId"] = null;
       }
-      const theSameWorkPoligonUsers = await User.find(findRecsCond).session(session);
+      const theSameWorkPoligonUsers = await User.find(findRecsCond, { session });
       if (theSameWorkPoligonUsers && theSameWorkPoligonUsers.length) {
         for (let theSameWorkPoligonUser of theSameWorkPoligonUsers) {
           const userWorkPoligonTakePassData = theSameWorkPoligonUser.lastTakePassDutyTimes.find((el) =>
@@ -1529,7 +1537,7 @@ router.post(
     session.startTransaction();
 
     try {
-      const candidate = await User.findOne({ _id: userId });
+      const candidate = await User.findOne({ _id: userId }, { session });
 
       if (!candidate) {
         await t.rollback();
@@ -1544,7 +1552,7 @@ router.post(
       }
 
       // Удаляем в БД запись о пользователе
-      await User.deleteOne({ _id: userId });
+      await User.deleteOne({ _id: userId }, { session });
 
       // Удаляем также информацию о его рабочих полигонах
       await TStationWorkPoligon.destroy({ where: { SWP_UserID: userId }, transaction: t });
@@ -1812,6 +1820,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.CONFIRM_USER_REGISTRATION_DATA; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
+  // проверка параметров запроса
+  confirmUserRegistrationValidationRules(),
+  validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;

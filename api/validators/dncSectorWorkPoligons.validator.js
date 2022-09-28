@@ -1,4 +1,4 @@
-const { check } = require('express-validator');
+const { check, body } = require('express-validator');
 
 const getDefinitUsersValidationRules = () => {
   return [
@@ -11,6 +11,10 @@ const getDefinitUsersValidationRules = () => {
     check('onlyOnline')
       .isBoolean()
       .withMessage('Значение параметра запроса onlyOnline должно принимать логическое значение'),
+    check('credsGroups')
+      .if(body('credsGroups').exists())
+      .isArray()
+      .withMessage('Список credsGroups должен быть массивом'),
   ];
 };
 

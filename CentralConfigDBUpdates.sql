@@ -380,3 +380,11 @@ ADD CONSTRAINT XRef_TStationWorkPlaceFromWorkPoligon FOREIGN KEY (SWP_StWP_ID) R
 go
 ALTER TABLE TStationWorkPoligons
 ADD CONSTRAINT XUniqueStationWorkPoligon UNIQUE (SWP_UserID, SWP_StID, SWP_StWP_ID);
+
+
+
+ALTER TABLE TStationWorkPlaces
+ADD SWP_Type char(1);
+
+ALTER TABLE TStationWorkPlaces
+ALTER COLUMN SWP_Type char(1) NOT NULL;

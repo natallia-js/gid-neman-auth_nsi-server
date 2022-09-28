@@ -70,7 +70,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ADJACENT_DNC_SECTORS_OF_DEFINITE_DNC_SECTOR; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  // проверку параметра запроса sectorId не делаю: если он будет указан неверно, то запрос ничего не вернет
+  // проверку параметра запроса sectorId не делаю: если он будет указан неверно, то запрос ничего не вернет;
+  // onlyHash тоже не проверяю: любое истинное в JS значение будет расцениваться как true, если тип указанного
+  // значения не булевый
   async (req, res) => {
     const { sectorId, onlyHash } = req.body;
 

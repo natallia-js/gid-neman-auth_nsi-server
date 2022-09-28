@@ -1,10 +1,26 @@
 const { check, body } = require('express-validator');
 
+const getDefiniteStationDNCSectorsValidationRules = () => {
+  return [
+    check('stationId')
+      .exists()
+      .withMessage('Не указан id станции'),
+    check('onlyHash')
+      .if(body('onlyHash').exists())
+      .isBoolean()
+      .withMessage('Значение параметра запроса onlyHash должно принимать логическое значение'),
+  ];
+};
+
 const getDefiniteDNCSectorValidationRules = () => {
   return [
     check('sectorId')
       .exists()
       .withMessage('Не указан id участка ДНЦ'),
+    check('onlyHash')
+      .if(body('onlyHash').exists())
+      .isBoolean()
+      .withMessage('Значение параметра запроса onlyHash должно принимать логическое значение'),
   ];
 };
 
@@ -50,6 +66,7 @@ const modDNCSectorValidationRules = () => {
 };
 
 module.exports = {
+  getDefiniteStationDNCSectorsValidationRules,
   getDefiniteDNCSectorValidationRules,
   getDefiniteDNCSectorsValidationRules,
   addDNCSectorValidationRules,

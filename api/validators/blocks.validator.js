@@ -1,5 +1,17 @@
 const { check, body } = require('express-validator');
 
+const getStationBlocksValidationRules = () => {
+  return [
+    check('stationId')
+      .exists()
+      .withMessage('Не указан id станции'),
+    check('onlyHash')
+      .if(body('onlyHash').exists())
+      .isBoolean()
+      .withMessage('Значение параметра запроса onlyHash должно принимать логическое значение'),
+  ];
+};
+
 const addBlockValidationRules = () => {
   return [
     check('name')
@@ -33,6 +45,7 @@ const modBlockValidationRules = () => {
       .trim()
       .isLength({ min: 1, max: 64 })
       .withMessage('Длина наименования перегона минимум 1 символ, максимум 64 символа'),
+    // параметры station1 и station2 не проверяю
     check('pensiDNCSectorCode')
       .if(body('pensiDNCSectorCode').exists())
       .trim()
@@ -42,6 +55,7 @@ const modBlockValidationRules = () => {
 };
 
 module.exports = {
+  getStationBlocksValidationRules,
   addBlockValidationRules,
   delBlockValidationRules,
   modBlockValidationRules,

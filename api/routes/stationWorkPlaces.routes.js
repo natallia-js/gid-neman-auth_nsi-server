@@ -33,6 +33,7 @@ const {
  * Параметры тела запроса:
  * stationId - id станции,
  * name - наименование рабочего места на станции (обязательно),
+ * type - тип рабочего места на станции (обязательно),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -46,7 +47,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { stationId, name } = req.body;
+    const { stationId, name, type } = req.body;
 
     try {
       // Ищем в БД рабочее место заданной станции, наименование которого совпадает с переданным пользователем
@@ -63,7 +64,7 @@ router.post(
       }
 
       // Создаем в БД запись с данными о новом рабочем месте на станции
-      const stationWorkPlace = await TStationWorkPlace.create({ SWP_Name: name, SWP_StationId: stationId });
+      const stationWorkPlace = await TStationWorkPlace.create({ SWP_StationId: stationId, SWP_Name: name, SWP_Type: type });
 
       // Возвращаю полную информацию о созданном рабочем месте на станции
       res.status(OK).json({ message: SUCCESS_ADD_MESS, stationWorkPlace });
@@ -73,7 +74,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление нового рабочего места на станции',
         error: error.message,
-        actionParams: { stationId, name },
+        actionParams: { stationId, name, type },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -149,6 +150,7 @@ router.post(
  * Параметры тела запроса:
  * id - идентификатор рабочего места на станции (обязателен),
  * name - наименование рабочего места на станции (не обязательно),
+ * type - тип рабочего места на станции (не обязательно),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -162,7 +164,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, name } = req.body;
+    const { id, name, type } = req.body;
 
     try {
       // Ищем в БД рабочее место на станции, id которого совпадает с переданным пользователем
@@ -191,6 +193,9 @@ router.post(
 
       if (req.body.hasOwnProperty('name')) {
         candidate.SWP_Name = name;
+      }
+      if (req.body.hasOwnProperty('type')) {
+        candidate.SWP_Type = type;
       }
 
       await candidate.save();

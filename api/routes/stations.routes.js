@@ -52,7 +52,7 @@ const {
         },
         {
           model: TStationWorkPlace,
-          attributes: ['SWP_ID', 'SWP_Name'],
+          attributes: ['SWP_ID', 'SWP_Name', 'SWP_Type'],
         }],
       });
       res.status(OK).json(data);
@@ -142,7 +142,7 @@ router.post(
         },
         {
           model: TStationWorkPlace,
-          attributes: ['SWP_ID', 'SWP_Name'],
+          attributes: ['SWP_ID', 'SWP_Name', 'SWP_Type'],
         }],
       });
 
@@ -232,7 +232,7 @@ router.post(
         attributes: ['St_ID', 'St_UNMC', 'St_Title'],
         include: [{
           model: TStationWorkPlace,
-          attributes: ['SWP_ID', 'SWP_Name'],
+          attributes: ['SWP_ID', 'SWP_Name', 'SWP_Type'],
         }],
       };
       if (stationIds) {

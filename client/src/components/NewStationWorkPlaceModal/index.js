@@ -31,6 +31,7 @@ const NewStationWorkPlaceModal = ({
   const [form] = Form.useForm();
 
   const [requiredWorkPlaceErrMess, setRequiredWorkPlaceErrMess] = useState(null);
+  const [requiredWorkPlaceTypeErrMess, setRequiredWorkPlaceTypeErrMess] = useState(null);
 
   /**
    * Чистим поля ввода информации о новом рабочем месте.
@@ -44,6 +45,7 @@ const NewStationWorkPlaceModal = ({
     // Чистим все сообщения
     clearAddStationWorkPlaceMessages();
     setRequiredWorkPlaceErrMess(null);
+    setRequiredWorkPlaceTypeErrMess(null);
   };
 
 
@@ -53,7 +55,7 @@ const NewStationWorkPlaceModal = ({
    * @param {object} values
    */
   const onFinish = (values) => {
-    if (requiredWorkPlaceErrMess)
+    if (requiredWorkPlaceErrMess || requiredWorkPlaceTypeErrMess)
       return;
     resetAll();
     handleAddNewStationWorkPlaceOk({ ...values });
@@ -107,6 +109,31 @@ const NewStationWorkPlaceModal = ({
             autoFocus={true}
             autoComplete="off"
             placeholder="Введите наименование"
+            allowClear
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Тип"
+          name={STATION_WORK_PLACE_FIELDS.TYPE}
+          rules={[
+            {
+              required: true,
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredWorkPlaceTypeErrMess('Пожалуйста, введите тип рабочего места!');
+                } else {
+                  setRequiredWorkPlaceTypeErrMess(null);
+                }
+              },
+            },
+          ]}
+          validateStatus={(stationWorkPlaceFieldsErrs && stationWorkPlaceFieldsErrs[STATION_WORK_PLACE_FIELDS.TYPE]) || requiredWorkPlaceTypeErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(stationWorkPlaceFieldsErrs && stationWorkPlaceFieldsErrs[STATION_WORK_PLACE_FIELDS.TYPE]) || requiredWorkPlaceTypeErrMess}
+        >
+          <Input
+            autoComplete="off"
+            placeholder="Определите тип рабочего места"
             allowClear
           />
         </Form.Item>

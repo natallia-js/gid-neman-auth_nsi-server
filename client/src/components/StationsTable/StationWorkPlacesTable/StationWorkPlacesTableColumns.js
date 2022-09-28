@@ -21,11 +21,21 @@ const stationWorkPlacesTableColumns = (props) => {
       title: 'Наименование рабочего места',
       dataIndex: STATION_WORK_PLACE_FIELDS.NAME,
       key: STATION_WORK_PLACE_FIELDS.NAME,
-      width: '50%',
+      width: '40%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(
         a[STATION_WORK_PLACE_FIELDS.NAME].toLowerCase(), b[STATION_WORK_PLACE_FIELDS.NAME].toLowerCase()),
+    },
+    {
+      title: 'Тип рабочего места',
+      dataIndex: STATION_WORK_PLACE_FIELDS.TYPE,
+      key: STATION_WORK_PLACE_FIELDS.TYPE,
+      width: '20%',
+      editable: true,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => compareStrings(
+        a[STATION_WORK_PLACE_FIELDS.TYPE].toLowerCase(), b[STATION_WORK_PLACE_FIELDS.TYPE].toLowerCase()),
     },
     {
       title: 'Операции',

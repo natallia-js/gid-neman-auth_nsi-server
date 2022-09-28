@@ -230,6 +230,7 @@ export const STATION_TRACK_FIELDS = Object.freeze({
 export const STATION_WORK_PLACE_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'name',
+  TYPE: 'type',
 });
 
 // ----------------------------------------

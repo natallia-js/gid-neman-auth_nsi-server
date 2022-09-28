@@ -83,7 +83,7 @@ const assertOrder = (order) => {
  * в течение которого распоряжения считаются находящимися в работе).
  * Данный временной интервал не ограничен справа. Если параметр startDate не указан, то извлекается
  * вся имеющаяся информация в коллекции рабочих распоряжений, относящаяся к указанному рабочему полигону.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -217,7 +217,7 @@ router.post(
     }
 
     try {
-      await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }).session(session);
+      await WorkOrder.updateMany({ $and: findRecordConditions }, { $set: { deliverDateTime } }, { session });
 
       // Отмечаем подтверждение доставки распоряжений в основной коллекции распоряжений.
       // Для установки даты подтверждения распоряжения в секции "Кому" в основной коллекции необходимо,
@@ -225,7 +225,7 @@ router.post(
       // учитывается рабочее место ДСП и не учитывается рабочее место оператора при ДСП.
       // Для всех подтверждений, идущих со станции, подтверждение в основной коллекции проставляется лишь
       // в секции адресатов на станциях.
-      const orders = await Order.find({ _id: orderIds }).session(session);
+      const orders = await Order.find({ _id: orderIds }, { session });
 
       if (orders && orders.length) {
         for (let order of orders) {
@@ -344,7 +344,7 @@ router.post(
     }
 
     try {
-      const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
+      const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }, { session });
       if (!workOrder) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в списке распоряжений, находящихся в работе на полигоне управления' });
@@ -359,7 +359,7 @@ router.post(
 
       // Теперь распоряжение необходимо подтвердить в общей коллекции распоряжений, при необходимости
 
-      const order = await Order.findOne({ _id: id }).session(session);
+      const order = await Order.findOne({ _id: id }, { session });
       if (!order) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
@@ -398,7 +398,7 @@ router.post(
       let userFIO;
       if ((sector && !sector.confirmDateTime) || (localSector && !localSector.confirmDateTime)) {
         // ищем информацию о лице, подтверждающем распоряжение
-        const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
+        const user = await User.findOne({ _id: req.user.userId, confirmed: true }, { session });
         if (!user) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
@@ -622,7 +622,7 @@ router.post(
 
     try {
       // Вначале ищем распоряжение в основной коллекции распоряжений
-      const order = await Order.findOne({ _id: orderId }).session(session);
+      const order = await Order.findOne({ _id: orderId }, { session });
       if (!order) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
@@ -757,7 +757,7 @@ router.post(
           // whose value is null or that do not contain the item field
           findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
         }
-        const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
+        const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }, { session });
         // Здесь не генерируем никаких ошибок, если в коллекции рабочих распоряжений ничего не найдем
         // либо если там будет присутствовать дата подтверждения
         if (workOrder && !workOrder.confirmDateTime) {
@@ -912,18 +912,13 @@ router.post(
   async (req, res) => {
     const userWorkPoligon = req.user.workPoligon;
 
-    // Действия выполняем в транзакции
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     // Считываем находящиеся в пользовательском запросе данные
     const { orderId, workPlaceId } = req.body;
 
     try {
       // Ищем распоряжение в основной коллекции
-      const order = await Order.findById(orderId).session(session);
+      const order = await Order.findById(orderId);
       if (!order) {
-        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Распоряжение не найдено' });
       }
 
@@ -937,12 +932,10 @@ router.post(
         );
 
       if (!recordToDelete) {
-        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Получатель распоряжения на станции не найден' });
       }
 
       if (recordToDelete.confirmDateTime) {
-        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Нельзя удалить подтвержденную запись' });
       }
 
@@ -969,14 +962,12 @@ router.post(
             !req.user.specialCredentials.includes(DSP_FULL)
           );
         if (wrongPoligonByAddressee) {
-          await session.abortTransaction();
           return res.status(ERR).json({
             message: 'Удалить адресата на станции может лишь работник того рабочего места на станции, на котором распоряжение было издано, либо ДСП в случае распоряжения, изданного вне станции',
           });
         }
         // ДСП не может удалить сам себя!
         if (!recordToDelete.workPlaceId) {
-          await session.abortTransaction();
           return res.status(ERR).json({
             message: 'Удаление основного получателя на станции недопустимо',
           });
@@ -987,10 +978,7 @@ router.post(
 
       // В таблице рабочих распоряжений запись удалять не нужно!
 
-      // By default, `save()` uses the associated session
       await order.save();
-
-      await session.commitTransaction();
 
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
@@ -1003,11 +991,7 @@ router.post(
           userId: req.user.userId, user: userPostFIOString(req.user), orderId, workPlaceId,
         },
       });
-      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
-
-    } finally {
-      session.endSession();
     }
   }
 );

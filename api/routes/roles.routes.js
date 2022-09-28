@@ -56,7 +56,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * При этом главный администратор ГИД Неман получит полный список всех ролей,
  * а иное лицо получит полный список тех ролей, которые ему разрешил
  * использовать главный администратор ГИД Неман.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -96,7 +96,7 @@ router.post(
  * При этом главный администратор ГИД Неман получит полный список аббревиатур ролей,
  * а иное лицо получит полный список аббревиатур тех ролей, которые ему разрешил
  * использовать главный администратор ГИД Неман.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -406,7 +406,7 @@ router.post(
 
     try {
       // Удаляем в БД запись
-      const delRes = await Role.deleteOne({ _id: roleId }).session(session);
+      const delRes = await Role.deleteOne({ _id: roleId }, { session });
 
       let canContinue = true;
       let errMess;

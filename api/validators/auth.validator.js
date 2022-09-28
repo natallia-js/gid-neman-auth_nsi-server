@@ -64,13 +64,25 @@ const addRoleValidationRules = () => {
 
 const loginValidationRules = () => {
   return [
-    check('login', 'Введите логин').exists(),
-    check('password', 'Введите пароль').exists(),
-    /*
-    check('takeDuty')
-      .if(body('takeDuty').exists())
-      .isBoolean()
-      .withMessage('Значение параметра запроса takeDuty должно принимать логическое значение'),*/
+    check('login')
+      .exists()
+      .withMessage('Введите логин'),
+    check('password')
+      .exists()
+      .withMessage('Введите пароль')
+  ];
+};
+
+const startWorkWithOrWithoutTakingDutyValidationRules = () => {
+  return [
+    check('workPoligonType')
+      .exists()
+      .withMessage('Не определен тип рабочего полигона'),
+    check('workPoligonId')
+      .exists()
+      .withMessage('Не определен id рабочего полигона'),
+    // workSubPoligonId не проверяю: может отсутствовать
+    // specialCredentials не проверяю: могут отсутствовать
   ];
 };
 
@@ -86,7 +98,10 @@ const delRoleValidationRules = () => {
   return [
     check('userId')
       .exists()
-      .withMessage('Не указан id удаляемого пользователя'),
+      .withMessage('Не указан id пользователя'),
+    check('roleId')
+      .exists()
+      .withMessage('Не указан id роли'),
   ];
 };
 
@@ -137,11 +152,21 @@ const modUserValidationRules = () => {
   ];
 };
 
+const confirmUserRegistrationValidationRules = () => {
+  return [
+    check('userId')
+      .exists()
+      .withMessage('Не указан id пользователя'),
+  ];
+};
+
 module.exports = {
   registerValidationRules,
   addRoleValidationRules,
   loginValidationRules,
+  startWorkWithOrWithoutTakingDutyValidationRules,
   delUserValidationRules,
   delRoleValidationRules,
   modUserValidationRules,
+  confirmUserRegistrationValidationRules,
 };

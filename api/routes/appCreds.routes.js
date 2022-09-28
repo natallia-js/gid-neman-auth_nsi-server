@@ -24,7 +24,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех групп полномочий в приложениях ГИД Неман.
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -55,7 +55,7 @@ router.post(
  * и, для каждой группы, - соответствующего списка полномочий пользователей (id + аббревиатуры полномочий).
  *
  * Данный запрос доступен лишь главному администратору ГИД Неман, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -252,7 +252,7 @@ router.post(
 
     try {
       // Удаляем в БД запись
-      const delRes = await AppCred.deleteOne({ _id: credsGroupId }).session(session);
+      const delRes = await AppCred.deleteOne({ _id: credsGroupId }, { session });
 
       let canContinue = true;
       let errMess;
@@ -327,7 +327,7 @@ router.post(
 
     try {
       // Ищем в БД нужную группу полномочий
-      const candidate = await AppCred.findOne({ _id: credsGroupId }).session(session);
+      const candidate = await AppCred.findOne({ _id: credsGroupId }, { session });
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {

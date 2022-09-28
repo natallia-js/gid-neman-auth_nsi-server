@@ -143,7 +143,7 @@ const {
       // то ищем сведения о существующей цепочке
       if (orderChainId) {
         // для этого берем первое распоряжение в указанной цепочке
-        const firstChainOrder = await Order.findById(orderChainId).session(session);
+        const firstChainOrder = await Order.findById(orderChainId, { session });
         if (!firstChainOrder) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдена цепочка распоряжений, которой оно принадлежит' });
@@ -157,13 +157,15 @@ const {
           { "orderChain.chainId": orderChainInfo.chainId },
           // update
           { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
-        ).session(session);
+          { session }
+        );
         await WorkOrder.updateMany(
           // filter
           { "orderChain.chainId": orderChainInfo.chainId },
           // update
           { "orderChain.chainEndDateTime": orderChainInfo.chainEndDateTime },
-        ).session(session);
+          { session }
+        );
       }
 
       // Если распоряжение:
@@ -224,8 +226,9 @@ const {
         filter,
         // update
         { lastOrderNumber: number, lastOrderDateTime: createDateTime },
-        { upsert: true, new: true }
-      ).session(session);
+        { upsert: true, new: true },
+        { session }
+      );
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
       // Здесь есть один нюанс. И связан он с распоряжениями, издаваемыми в рамках полигона "станция" либо
@@ -357,7 +360,7 @@ const {
 
       // При необходимости, отменяем некоторое распоряжение по окончании издания текущего
       if (idOfTheOrderToCancel) {
-        const orderToCancel = await Order.findById(idOfTheOrderToCancel).session(session);
+        const orderToCancel = await Order.findById(idOfTheOrderToCancel, { session });
         if (orderToCancel) {
           await WorkOrder.updateMany(
             { orderId: idOfTheOrderToCancel },
@@ -376,7 +379,7 @@ const {
       }
 
       // Удаляем (при необходимости) черновик распоряжения
-      const delRes = draftId ? await Draft.deleteOne({ _id: draftId }).session(session) : null;
+      const delRes = draftId ? await Draft.deleteOne({ _id: draftId }, { session }) : null;
 
       await session.commitTransaction();
 
@@ -472,7 +475,7 @@ router.post(
     const { id, timeSpan, orderText } = req.body;
 
     try {
-      const existingOrder = await Order.findById(id).session(session);
+      const existingOrder = await Order.findById(id, { session });
       if (!existingOrder) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });

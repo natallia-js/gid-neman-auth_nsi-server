@@ -9,6 +9,10 @@ const addStationWorkPlaceValidationRules = () => {
       .trim()
       .isLength({ min: 1, max: 64 })
       .withMessage('Длина наименования рабочего места на станции минимум 1 символ, максимум 64 символа'),
+    check('type')
+      .trim()
+      .isLength({ min: 1, max: 1 })
+      .withMessage('Длина типа рабочего места на станции ровно 1 символ'),
   ];
 };
 
@@ -30,6 +34,11 @@ const modStationWorkPlaceValidationRules = () => {
       .trim()
       .isLength({ min: 1, max: 64 })
       .withMessage('Длина наименования рабочего места на станции минимум 1 символ, максимум 64 символа'),
+    check('type')
+      .if(body('type').exists())
+      .trim()
+      .isLength({ min: 1, max: 1 })
+      .withMessage('Длина типа рабочего места на станции ровно 1 символ'),
   ];
 };
 

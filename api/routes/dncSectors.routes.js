@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const crypto = require('crypto');
 const {
+  getDefiniteStationDNCSectorsValidationRules,
   getDefiniteDNCSectorValidationRules,
   getDefiniteDNCSectorsValidationRules,
   addDNCSectorValidationRules,
@@ -144,7 +145,7 @@ router.post(
         }
       }
 
-
+      // Этот код работает очень медленно:
       /*const data = await TDNCSector.findAll({
         attributes: ['DNCS_ID', 'DNCS_Title', 'DNCS_DESCRIPTION', 'DNCS_PENSI_ID', 'DNCS_PENSI_Code'],
         include: [
@@ -234,6 +235,9 @@ router.post(
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_DNC_SECTORS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
+  // проверка параметров запроса
+  getDefiniteStationDNCSectorsValidationRules(),
+  validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { stationId, onlyHash } = req.body;
@@ -459,6 +463,7 @@ router.post(
         }
       }
 
+      // Этот код пришлось заменить: очень медленный
       /*
       const data = await TDNCSector.findOne({
         attributes: ['DNCS_ID', 'DNCS_Title'],
