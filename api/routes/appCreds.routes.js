@@ -327,7 +327,7 @@ router.post(
 
     try {
       // Ищем в БД нужную группу полномочий
-      const candidate = await AppCred.findOne({ _id: credsGroupId }, { session });
+      const candidate = await AppCred.findOne({ _id: credsGroupId }).session(session);
 
       // Если не находим, то процесс удаления полномочия продолжать не можем
       if (!candidate) {

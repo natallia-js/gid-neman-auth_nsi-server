@@ -25,7 +25,7 @@ const router = Router();
 
 const {
   OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
-  WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
+  WORK_POLIGON_TYPES, STATION_WORKPLACE_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
 } = require('../constants');
 
 
@@ -143,7 +143,7 @@ const {
       // то ищем сведения о существующей цепочке
       if (orderChainId) {
         // для этого берем первое распоряжение в указанной цепочке
-        const firstChainOrder = await Order.findById(orderChainId, { session });
+        const firstChainOrder = await Order.findById(orderChainId).session(session);
         if (!firstChainOrder) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдена цепочка распоряжений, которой оно принадлежит' });
@@ -226,18 +226,21 @@ const {
         filter,
         // update
         { lastOrderNumber: number, lastOrderDateTime: createDateTime },
-        { upsert: true, new: true },
-        { session }
-      );
+        { upsert: true, new: true }
+      ).session(session);
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
       // Здесь есть один нюанс. И связан он с распоряжениями, издаваемыми в рамках полигона "станция" либо
-      // адресуемыми на такой полигон. Станция - это не только ДСП, но и операторы при ДСП.
-      // Как ДСП, так и операторы при ДСП, - все они могут издавать распоряжения.
-      // И получать распоряжения, направляемые в адрес станции, они все тоже должны.
+      // адресуемыми на такой полигон.
+      // Станция - это не только ДСП, но и операторы при ДСП, и иные рабочие места
+      // (в частности, временные рабочие места руководителей работ на станции).
+      // Как ДСП, так и операторы при ДСП, а также руководители работ - все они могут издавать распоряжения.
+      // Но получать распоряжения, направляемые в адрес станции, могут только "стационарные" рабочие места
+      // (т.е. на временное рабочее место руководителя работ распоряжение не должно идти; на такое рабочее место
+      // идут только те распоряжения, которые издаются в рамках этого временного рабочего места).
       // Потому для каждой станции - будь то издатель или получатель распоряжения - проверяем наличие в
-      // ее составе рабочих мест. Копия издаваемого распоряжения должна попасть как ДСП, так и
-      // всем операторам на станции.
+      // ее составе рабочих мест ОПЕРАТОРОВ. Копия издаваемого распоряжения должна
+      // попасть как ДСП, так и всем операторам на станции.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
         // возвращает объект записи о распоряжении, копию которого необходимо передать
@@ -260,15 +263,15 @@ const {
         const orderCopies = [];
         const stationWorkPlacesOrderIsSentTo = [];
         // Отправка ДСП (если распоряжение издается не на станции, но ей адресуется, либо издается
-        // оператором при ДСП на станции и должна попасть самому ДСП)
+        // на рабочем месте станции и должна попасть на это рабочее место)
         if (workPoligon.type !== WORK_POLIGON_TYPES.STATION ||
           stationId !== workPoligon.id || workPoligon.workPlaceId) {
             orderCopies.push(new WorkOrder(getToSendObject({
-            id: stationId,
-            workPlaceId: null,
-            type: WORK_POLIGON_TYPES.STATION,
-            sendOriginal,
-          })));
+              id: stationId,
+              workPlaceId: null,
+              type: WORK_POLIGON_TYPES.STATION,
+              sendOriginal,
+            })));
           let stationTitle = stationName;
           if (!stationTitle) {
             const st = await TStation.findOne({ where: { St_ID: stationId } });
@@ -284,15 +287,14 @@ const {
             sendOriginal,
           });
         }
-        // извлекаем информацию обо всех рабочих местах на станции
+        // извлекаем информацию обо всех рабочих местах ОПЕРАТОРОВ на станции
         const stationWorkPlacesData = await TStationWorkPlace.findAll({
           attributes: ['SWP_ID', 'SWP_Name'],
-          where: { SWP_StationId: stationId },
+          where: { SWP_StationId: stationId, SWP_Type: STATION_WORKPLACE_TYPES.OPERATOR },
         });
         if (stationWorkPlacesData && stationWorkPlacesData.length) {
           // направляем копию всем операторам при ДСП, кроме самого себя
           // (если распоряжение издано оператором при ДСП)
-          //let workPlacesIds = stationWorkPlacesData.map((item) => item.SWP_ID);
           let workPlaces = stationWorkPlacesData.map((item) => ({ id: item.SWP_ID, name: item.SWP_Name }));
           if (workPoligon.type === WORK_POLIGON_TYPES.STATION && stationId === workPoligon.id && workPoligon.workPlaceId) {
             workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
@@ -360,7 +362,7 @@ const {
 
       // При необходимости, отменяем некоторое распоряжение по окончании издания текущего
       if (idOfTheOrderToCancel) {
-        const orderToCancel = await Order.findById(idOfTheOrderToCancel, { session });
+        const orderToCancel = await Order.findById(idOfTheOrderToCancel).session(session);
         if (orderToCancel) {
           await WorkOrder.updateMany(
             { orderId: idOfTheOrderToCancel },
@@ -475,7 +477,7 @@ router.post(
     const { id, timeSpan, orderText } = req.body;
 
     try {
-      const existingOrder = await Order.findById(id, { session });
+      const existingOrder = await Order.findById(id).session(session);
       if (!existingOrder) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });

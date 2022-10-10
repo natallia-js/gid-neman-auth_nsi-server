@@ -281,7 +281,7 @@ const saveNewUserData = async (props) => {
 
   // Ищем в БД пользователя с указанным login (ищем среди всех пользователей, в т.ч. и среди
   // тех, заявка на регистрацию которых еще не подтвержена)
-  const candidate = await User.findOne({ login }, { session });
+  const candidate = await User.findOne({ login }).session(session);
 
   // Если находим, то процесс регистрации продолжать не можем
   if (candidate) {
@@ -803,13 +803,14 @@ router.post(
         }
       }
 
-      // Осталось извлечь перечень рабочих полигонов пользователя (точнее, их id)
-
-      const stations = await TStationWorkPoligon.findAll({
-        raw: true,
-        attributes: ['SWP_StID', 'SWP_StWP_ID'],
-        where: { SWP_UserID: String(user._id) },
-      });
+      // Осталось извлечь перечень рабочих полигонов пользователя.
+      // Для каждого рабочего места на станции дополнительно извлекаем указатель на тип рабочего места (при его наличии).
+      const [stations] = await req.sequelize.query(
+        'SELECT t1.SWP_StID, t1.SWP_StWP_ID, t2.SWP_Type ' +
+        'FROM TStationWorkPoligons t1 LEFT OUTER JOIN TStationWorkPlaces t2 ' +
+        'ON t1.SWP_StID = t2.SWP_StationId AND t1.SWP_StWP_ID = t2.SWP_ID ' +
+        `WHERE t1.SWP_UserID = '${String(user._id)}'`
+      );
 
       const dncSectors = await TDNCSectorWorkPoligon.findAll({
         raw: true,
@@ -1153,7 +1154,7 @@ router.post(
       ? req.session.appsUsers.find((el) => el.application === applicationAbbreviation)
       : null;
     if (!appSessionArrayElement) {
-      res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
+      return res.status(ERR).json({ message: 'Для пользователя нет записи в текущей сессии' });
     }
 
     // транзакция MongoDB
@@ -1164,7 +1165,7 @@ router.post(
       // Дежурство принимает пользователь с id = req.user.userId
 
       // Ищем в БД пользователя, который прислал запрос на принятие дежурства
-      const user = await User.findOne({ _id: req.user.userId, confirmed: true }, { session });
+      const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
       if (!user) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
@@ -1239,7 +1240,7 @@ router.post(
         // whose value is null or that do not contain the item field
         findRecsCond["lastTakePassDutyTimes.workPoligon.workPlaceId"] = null;
       }
-      const theSameWorkPoligonUsers = await User.find(findRecsCond, { session });
+      const theSameWorkPoligonUsers = await User.find(findRecsCond).session(session);
       if (theSameWorkPoligonUsers && theSameWorkPoligonUsers.length) {
         for (let theSameWorkPoligonUser of theSameWorkPoligonUsers) {
           const userWorkPoligonTakePassData = theSameWorkPoligonUser.lastTakePassDutyTimes.find((el) =>
@@ -1537,7 +1538,7 @@ router.post(
     session.startTransaction();
 
     try {
-      const candidate = await User.findOne({ _id: userId }, { session });
+      const candidate = await User.findOne({ _id: userId }).session(session);
 
       if (!candidate) {
         await t.rollback();

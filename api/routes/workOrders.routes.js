@@ -225,7 +225,7 @@ router.post(
       // учитывается рабочее место ДСП и не учитывается рабочее место оператора при ДСП.
       // Для всех подтверждений, идущих со станции, подтверждение в основной коллекции проставляется лишь
       // в секции адресатов на станциях.
-      const orders = await Order.find({ _id: orderIds }, { session });
+      const orders = await Order.find({ _id: orderIds }).session(session);
 
       if (orders && orders.length) {
         for (let order of orders) {
@@ -292,9 +292,9 @@ router.post(
  * подтверждается на соответствующем глобальном полигоне управления лишь в том случае, если ранее на данном
  * полигоне управления его никто не подтверждал. На локальном полигоне управления (рабочем месте) подтверждается
  * при условии наличия этого рабочего места.
- * Для случая ДСП и Операторов при ДСП на станции: на уровне рабочих распоряжений и своих локальных рабочих
- * полигонов каждый подтверждает распоряжение сам за себя, на уровне самого распоряжения (из общей коллекции)
- * подтверждать может только ДСП.
+ * Для случая ДСП и Операторов при ДСП (либо иных работников) на станции: на уровне рабочих распоряжений и
+ * своих локальных рабочих полигонов каждый подтверждает распоряжение сам за себя, на уровне самого распоряжения
+ * (из общей коллекции) подтверждать может только ДСП.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -344,7 +344,7 @@ router.post(
     }
 
     try {
-      const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }, { session });
+      const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
       if (!workOrder) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в списке распоряжений, находящихся в работе на полигоне управления' });
@@ -359,7 +359,7 @@ router.post(
 
       // Теперь распоряжение необходимо подтвердить в общей коллекции распоряжений, при необходимости
 
-      const order = await Order.findOne({ _id: id }, { session });
+      const order = await Order.findOne({ _id: id }).session(session);
       if (!order) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
@@ -377,7 +377,7 @@ router.post(
             // (операторы при ДСП не могут)
             sector = findSector(order.dspToSend, workPoligon, true);
           }
-          // зато в рамках станции (локально) могут подтверждать распоряжения как ДСП, так и Операторы при ДСП
+          // зато в рамках станции (локально) могут подтверждать распоряжения как ДСП, так и Операторы при ДСП + иные работники станции
           localSector = findSector(order.stationWorkPlacesToSend, workPoligon, false);
           break;
         case WORK_POLIGON_TYPES.DNC_SECTOR:
@@ -398,7 +398,7 @@ router.post(
       let userFIO;
       if ((sector && !sector.confirmDateTime) || (localSector && !localSector.confirmDateTime)) {
         // ищем информацию о лице, подтверждающем распоряжение
-        const user = await User.findOne({ _id: req.user.userId, confirmed: true }, { session });
+        const user = await User.findOne({ _id: req.user.userId, confirmed: true }).session(session);
         if (!user) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
@@ -622,7 +622,7 @@ router.post(
 
     try {
       // Вначале ищем распоряжение в основной коллекции распоряжений
-      const order = await Order.findOne({ _id: orderId }, { session });
+      const order = await Order.findOne({ _id: orderId }).session(session);
       if (!order) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Указанное распоряжение не найдено в базе данных' });
@@ -757,7 +757,7 @@ router.post(
           // whose value is null or that do not contain the item field
           findRecordConditions.push({ "recipientWorkPoligon.workPlaceId": null });
         }
-        const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }, { session });
+        const workOrder = await WorkOrder.findOne({ $and: findRecordConditions }).session(session);
         // Здесь не генерируем никаких ошибок, если в коллекции рабочих распоряжений ничего не найдем
         // либо если там будет присутствовать дата подтверждения
         if (workOrder && !workOrder.confirmDateTime) {

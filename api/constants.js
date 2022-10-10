@@ -117,6 +117,12 @@ const WORK_POLIGON_TYPES = Object.freeze({
 });
 
 
+const STATION_WORKPLACE_TYPES = Object.freeze({
+  OPERATOR: 'o',
+  WORKS_MANAGER: 'w',
+});
+
+
 const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
   ONLY_OUTGOUING: 'ONLY_OUTGOUING', // учитывать только исходящие документы
   INCLUDE_ACTIVE: 'INCLUDE_ACTIVE', // учитывать действующие документы
@@ -143,6 +149,8 @@ module.exports = {
   ...WEBSOCKET_CONSTANTS,
 
   WORK_POLIGON_TYPES,
+
+  STATION_WORKPLACE_TYPES,
 
   INCLUDE_DOCUMENTS_CRITERIA,
 
