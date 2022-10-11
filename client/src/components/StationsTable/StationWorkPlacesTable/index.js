@@ -168,7 +168,7 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
 
     setRecsBeingProcessed((value) => [...value, stationWorkPlaceId]);
 
-    try { console.log('rowData',rowData)
+    try {
       // Делаем запрос на сервер с целью редактирования информации о рабочем месте на станции
       const res = await request(ServerAPI.MOD_STATION_WORK_PLACE_DATA, 'POST', { id: stationWorkPlaceId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);

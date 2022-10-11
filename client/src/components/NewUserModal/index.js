@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Button, Typography, Select, Row, Col} from 'antd';
+import { Modal, Form, Input, Button, Popconfirm, Typography, Select, Row, Col} from 'antd';
 import {
   USER_FIELDS,
   SERVICE_FIELDS,
   POST_FIELDS,
+  STATION_WORKPLACE_TYPES,
 } from '../../constants';
 import tagRender from '../tagRender';
 
@@ -88,6 +89,17 @@ const NewUserModal = ({
 
   function handleChangeRoles(selectedItems) {
     setSelectedRoles([...selectedItems]);
+  }
+
+  function includeAllWorkManagerWorkPlaces() {
+    const newWorkPlacesArray = selectedStationsWithWorkPlaces;
+    stationsDataForMultipleSelect
+      .filter((item) => item.workPlaceType === STATION_WORKPLACE_TYPES.WORKS_MANAGER)
+      .forEach(item => {
+        if (!newWorkPlacesArray.includes(item.value))
+          newWorkPlacesArray.push(item.value);
+      });
+    setSelectedStationsWithWorkPlaces([...newWorkPlacesArray]);
   }
 
   function handleChangeStations(selectedItems) {
@@ -377,6 +389,16 @@ const NewUserModal = ({
           label="Станции"
           name={USER_FIELDS.STATION_WORK_POLIGONS}
         >
+          <Popconfirm
+            title="Добавить рабочие места?"
+            onConfirm={includeAllWorkManagerWorkPlaces}
+            okText="Да"
+            cancelText="Отмена"
+          >
+            <Button type="link" size="small">
+              Включить рабочие места Руководителей работ всех станций
+            </Button>
+          </Popconfirm>
           <Select
             mode="multiple"
             size="default"

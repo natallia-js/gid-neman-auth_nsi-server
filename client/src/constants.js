@@ -162,6 +162,13 @@ export const ServerAPI = Object.freeze({
 
 // ----------------------------------------
 
+export const STATION_WORKPLACE_TYPES = Object.freeze({
+  OPERATOR: 'o',
+  WORKS_MANAGER: 'w',
+});
+
+// ----------------------------------------
+
 export const APP_CREDS_GROUP_FIELDS = Object.freeze({
   KEY: 'key',
   SHORT_TITLE: 'shortTitle',

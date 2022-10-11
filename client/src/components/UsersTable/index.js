@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { Button, Collapse, Form, Input, Select, Space, Table, Typography } from 'antd';
+import { Button, Collapse, Form, Input, Popconfirm, Select, Space, Table, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
 import {
@@ -13,6 +13,7 @@ import {
   STATION_WORK_PLACE_FIELDS,
   DNCSECTOR_FIELDS,
   ECDSECTOR_FIELDS,
+  STATION_WORKPLACE_TYPES,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import usersTableColumns from './UsersTableColumns';
@@ -60,8 +61,8 @@ const UsersTable = () => {
   // Краткая информация по участкам ЭЦД (массив объектов)
   const [ecdSectorsDataForMultipleSelect, setECDSectorsDataForMultipleSelect] = useState(null);
 
-  // Данные по станциям, которые необходимо отображать в компоненте множественного выбора
-  const [stationsDataForMultipleSelect, setStationsDataForMultipleSelect] = useState([]);
+  // Информация по станциям
+  const [stationsData, setStationsData] = useState(null);
 
   // Ошибка загрузки данных о пользователях
   const [loadDataErr, setLoadDataErr] = useState(null);
@@ -160,27 +161,8 @@ const UsersTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
       res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
-      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
-      // Станции будем сортировать при отображении в списках выбора
-      const dataForStationsMultipleSelect = [];
-      stations
-        .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
-        .forEach((station) => {
-          dataForStationsMultipleSelect.push({
-            label: station[STATION_FIELDS.NAME_AND_CODE],
-            value: `${station[STATION_FIELDS.KEY]}`,
-          });
-          if (station[STATION_FIELDS.WORK_PLACES]) {
-            station[STATION_FIELDS.WORK_PLACES].forEach((wp) => {
-              dataForStationsMultipleSelect.push({
-                label: `${wp[STATION_WORK_PLACE_FIELDS.NAME]} (${station[STATION_FIELDS.NAME]})`,
-                value: `${station[STATION_FIELDS.KEY]}_${wp[STATION_WORK_PLACE_FIELDS.KEY]}`,
-                subitem: true,
-              });
-            });
-          }
-        });
-      setStationsDataForMultipleSelect(dataForStationsMultipleSelect);
+      const stations = res.map((station) => getAppStationObjFromDBStationObj(station)); console.log(stations)
+      setStationsData(stations);
 
       // ---------------------------------
 
@@ -240,6 +222,34 @@ const UsersTable = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+
+  /**
+   * Для отображения станций и их рабочих мест в списках выбора.
+   * Данные сортируются.
+   */
+  const stationsDataForMultipleSelect = useMemo(() => {
+    const dataForStationsMultipleSelect = [];
+    (stationsData || [])
+      .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
+      .forEach((station) => {
+        dataForStationsMultipleSelect.push({
+          label: station[STATION_FIELDS.NAME_AND_CODE],
+          value: `${station[STATION_FIELDS.KEY]}`,
+        });
+        if (station[STATION_FIELDS.WORK_PLACES]) {
+          station[STATION_FIELDS.WORK_PLACES].forEach((wp) => {
+            dataForStationsMultipleSelect.push({
+              label: `${wp[STATION_WORK_PLACE_FIELDS.NAME]} (${station[STATION_FIELDS.NAME]})`,
+              value: `${station[STATION_FIELDS.KEY]}_${wp[STATION_WORK_PLACE_FIELDS.KEY]}`,
+              subitem: true,
+              workPlaceType: wp[STATION_WORK_PLACE_FIELDS.TYPE],
+            });
+          });
+        }
+      });
+      return dataForStationsMultipleSelect;
+  }, [stationsData]);
 
 
   /**
@@ -564,7 +574,34 @@ const UsersTable = () => {
     });
   };
 
-  const getTableDataToDisplay =
+  // Позволяет включить все рабочие места Руководителей работ всех станций в список рабочих мест пользователя.
+  const includeAllWorkManagerWorkPlaces = async (userObject) => {
+    if (!userObject)
+      return;
+    const userStationWorkPoligons = userObject[USER_FIELDS.STATION_WORK_POLIGONS] || [];
+    (stationsData || []).forEach((station) => {
+      station[STATION_FIELDS.WORK_PLACES].forEach((workPlace) => {
+        if (workPlace[STATION_WORK_PLACE_FIELDS.TYPE] === STATION_WORKPLACE_TYPES.WORKS_MANAGER) {
+          if (!userStationWorkPoligons.find((userWorkPlace) =>
+            userWorkPlace.id === station[STATION_FIELDS.KEY] && userWorkPlace.workPlaceId === workPlace[STATION_WORK_PLACE_FIELDS.KEY])) {
+            userStationWorkPoligons.push({ id: station[STATION_FIELDS.KEY], workPlaceId: workPlace[STATION_WORK_PLACE_FIELDS.KEY] });
+          }
+        }
+      });
+    });
+    // Делаем запрос на сервер с целью редактирования информации о пользователе в части информации по рабочим местам на станциях
+    const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST', { userId: userObject[USER_FIELDS.KEY], poligons: userStationWorkPoligons });
+    message(MESSAGE_TYPES.SUCCESS, res.message);
+    const newTableData = tableData.map((user) => {
+      if (user[USER_FIELDS.KEY] === userObject[USER_FIELDS.KEY]) {
+        return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: userStationWorkPoligons };
+      }
+      return user;
+    });
+    setTableData(newTableData);
+  };
+
+  const getTableDataToDisplay = useMemo(() =>
     (!filters || !filters.length) ?
     tableData :
     tableData.filter((el) => {
@@ -624,7 +661,7 @@ const UsersTable = () => {
         }
       }
       return ok;
-    });
+    }), [tableData]);
 
   const onFinishSetFilters = () => {
     const currentFilters = filterForm.getFieldsValue();
@@ -843,6 +880,16 @@ const UsersTable = () => {
                     Рабочие полигоны-станции/рабочие места на станциях данного пользователя
                   */}
                   <Title level={4}>Рабочие полигоны (станции)</Title>
+                  <Popconfirm
+                    title="Добавить рабочие места?"
+                    onConfirm={() => includeAllWorkManagerWorkPlaces(record)}
+                    okText="Да"
+                    cancelText="Отмена"
+                  >
+                    <Button type="primary" size="small">
+                      Включить рабочие места Руководителей работ всех станций
+                    </Button>
+                  </Popconfirm>
                   <SavableSelectMultiple
                     placeholder="Выберите станции/рабочие места на станциях"
                     options={stationsDataForMultipleSelect}
