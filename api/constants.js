@@ -126,6 +126,7 @@ const STATION_WORKPLACE_TYPES = Object.freeze({
 const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
   ONLY_OUTGOUING: 'ONLY_OUTGOUING', // учитывать только исходящие документы
   INCLUDE_ACTIVE: 'INCLUDE_ACTIVE', // учитывать действующие документы
+  INCLUDE_ORDER_NOTIFICATION_TEXT: 'INCLUDE_ORDER_NOTIFICATION_TEXT', // включать текст уведомлений (для ЭЦД)
 });
 
 
@@ -137,6 +138,16 @@ const ORDER_PATTERN_TYPES = Object.freeze({
   ECD_PROHIBITION: 'запрещение',
   ECD_NOTIFICATION: 'уведомление/отмена запрещения',
 });
+
+// отметка особой категории распоряжений о принятии дежурства ДНЦ/ЭЦД
+const TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN = 'ЦР';
+
+// отметка особой категории распоряжений о принятии дежурства ДСП
+const SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN = 'ДСП_ПД';
+
+// смысловое значение элемента шаблона распоряжения о принятии дежурства ДСП,
+// в котором хранится информация о персонале, принимающем дежурство
+const TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF = 'Персонал, принимающий дежурство';
 
 
 module.exports = {
@@ -157,6 +168,10 @@ module.exports = {
   ORDER_PATTERN_TYPES,
 
   DY58_APP_CODE_NAME: 'DY-58',
+
+  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+  TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

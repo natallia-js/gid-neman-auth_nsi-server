@@ -10,7 +10,6 @@ const {
   getOrdersFromGivenDateRules,
 } = require('../validators/orders.validator');
 const { TStation } = require('../models/TStation');
-const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const { TBlock } = require('../models/TBlock');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
@@ -25,7 +24,8 @@ const router = Router();
 
 const {
   OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
-  WORK_POLIGON_TYPES, STATION_WORKPLACE_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
+  WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
+  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN, TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
 } = require('../constants');
 
 
@@ -38,6 +38,9 @@ const {
  * берется дата создания распоряжения).
  *   Дата окончания действия цепочки = дате окончания действия последнего распоряжения, изданного в рамках
  * данной цепочки.
+ *
+ * При издании распоряжения о приеме-сдаче дежурства ДСП это распоряжение автоматически рассылается только на те
+ * рабочие места этой станции, которые явно прописаны в тексте данного распоряжения.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -217,13 +220,13 @@ const {
 
       // Обновляем информацию по номеру последнего изданного распоряжения заданного типа
       // на текущем глобальном полигоне управления
-      const filter = {
-        ordersType: orderNumSaveType,
-        'workPoligon.id': workPoligon.id,
-        'workPoligon.type': workPoligon.type,
-      };
       await LastOrdersParam.findOneAndUpdate(
-        filter,
+        // filter
+        {
+          ordersType: orderNumSaveType,
+          'workPoligon.id': workPoligon.id,
+          'workPoligon.type': workPoligon.type,
+        },
         // update
         { lastOrderNumber: number, lastOrderDateTime: createDateTime },
         { upsert: true, new: true }
@@ -239,8 +242,9 @@ const {
       // (т.е. на временное рабочее место руководителя работ распоряжение не должно идти; на такое рабочее место
       // идут только те распоряжения, которые издаются в рамках этого временного рабочего места).
       // Потому для каждой станции - будь то издатель или получатель распоряжения - проверяем наличие в
-      // ее составе рабочих мест ОПЕРАТОРОВ. Копия издаваемого распоряжения должна
-      // попасть как ДСП, так и всем операторам на станции.
+      // ее составе рабочих мест ОПЕРАТОРОВ. Копия издаваемого распоряжения должна попасть как ДСП,
+      // так и тем операторам на станции, которые фигурировали в последнем (ныне активном) распоряжении
+      // о приеме-сдаче дежурства ДСП.
       const workOrders = [];
       const getToSendObject = (sectorInfo) => {
         // возвращает объект записи о распоряжении, копию которого необходимо передать
@@ -257,8 +261,10 @@ const {
           orderChain: orderChainInfo,
         };
       };
-      // Формирование копий распоряжения для ДСП станции и всех операторов при ДСП
-      // (самому себе копия не формируется)
+      // Формирование копий распоряжения для ДСП станции и тех операторов при ДСП, которые приняли дежурство
+      // вместе с ДСП согласно распоряжения о приеме-сдаче дежурства ДСП (самому себе копия не формируется).
+      // Если же издается распоряжение о приеме-сдаче дежурства ДСП, то копии распоряжения идут тем операторам
+      // при ДСП, которые фигурируют в тексте распоряжения.
       const formOrderCopiesForDSPAndOperators = async (stationId, stationName, sendOriginal) => {
         const orderCopies = [];
         const stationWorkPlacesOrderIsSentTo = [];
@@ -287,41 +293,96 @@ const {
             sendOriginal,
           });
         }
-        // извлекаем информацию обо всех рабочих местах ОПЕРАТОРОВ на станции
-        const stationWorkPlacesData = await TStationWorkPlace.findAll({
-          attributes: ['SWP_ID', 'SWP_Name'],
-          where: { SWP_StationId: stationId, SWP_Type: STATION_WORKPLACE_TYPES.OPERATOR },
-        });
-        if (stationWorkPlacesData && stationWorkPlacesData.length) {
-          // направляем копию всем операторам при ДСП, кроме самого себя
-          // (если распоряжение издано оператором при ДСП)
-          let workPlaces = stationWorkPlacesData.map((item) => ({ id: item.SWP_ID, name: item.SWP_Name }));
-          if (workPoligon.type === WORK_POLIGON_TYPES.STATION && stationId === workPoligon.id && workPoligon.workPlaceId) {
-            workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
+
+        // Рабочие места ОПЕРАТОРОВ при ДСП станции, которым будет передана копия издаваемого документа
+        let workPlaces = [];
+
+        // Издается распоряжение о приеме-сдаче дежурства ДСП => из текста распоряжения выделяем информацию о
+        // рабочих местах операторов при ДСП станции, которым данное распоряжение адресуется. Им необходимо отправить
+        // копию издаваемого документа о приеме-сдаче дежурства.
+        if (specialTrainCategories?.includes(SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN)) {
+          if (orderText?.orderText?.length) {
+            const takeDutyPersonalInfo = orderText.orderText.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF);
+            if (takeDutyPersonalInfo) {
+              try {
+                const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
+                workPlaces = takeDutyPersonal.map((el) => ({ id: el.workPlaceId, name: el.placeTitle }));
+              } catch (error) {
+                addError({
+                  errorTime: new Date(),
+                  action: 'Издание распоряжения',
+                  error: error.message,
+                  actionParams: {
+                    userId: req.user.userId, user: userPostFIOString(req.user),
+                    type, number, createDateTime, place, timeSpan, orderText,
+                    dncToSend, dspToSend, ecdToSend, otherToSend,
+                    workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
+                    orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
+                  },
+                });
+              }
+            }
           }
-          workPlaces.forEach((wp) => {
-            orderCopies.push(new WorkOrder(getToSendObject({
-              id: stationId,
-              workPlaceId: wp.id,
-              type: WORK_POLIGON_TYPES.STATION,
-              sendOriginal,
-            })));
-            stationWorkPlacesOrderIsSentTo.push({
-              id: stationId,
-              type: WORK_POLIGON_TYPES.STATION,
-              workPlaceId: wp.id,
-              placeTitle: wp.name,
-              sendOriginal,
-            });
+        } else {
+          // Если издается распоряжение НЕ о приеме-сдаче дежурства ДСП, то для определения адресатов распоряженя на
+          // рабочих местах станции (т.е. операторов при ДСП) извлекаем действующее распоряжение о приеме-сдаче
+          // дежурства на станции stationId
+          const activeTakePassOrder = await Order.findOne({
+            "workPoligon.type": WORK_POLIGON_TYPES.STATION,
+            "workPoligon.id": stationId,
+            $or: [
+              // The { item : null } query matches documents that either contain the item field
+              // whose value is null or that do not contain the item field
+              { "timeSpan.end": null },
+              { "timeSpan.end": { $gt: new Date() } },
+            ],
+            specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
           });
+          // если на станции stationId нет действующего распоряжения о приеме сдаче-дежурства либо в нем нет
+          // списка рабочих мест операторов при ДСП, то новое распоряжение не будет передаваться на рабочие места
+          // операторов при ДСП этой станции
+          if (activeTakePassOrder?.stationWorkPlacesToSend?.length) {
+            // если на станции stationId найдено действующее распоряжение о приеме-сдаче дежурства, то
+            // новое распоряжение будет передано на те рабочие места операторов при ДСП станции, которые
+            // фигурируют в найденном распоряжении о приеме-сдаче дежурства
+            workPlaces = activeTakePassOrder.stationWorkPlacesToSend.map((workPlace) => {
+              return { id: workPlace.workPlaceId, name: workPlace.placeTitle };
+            });
+          }
         }
+
+        if (!workPlaces.length) {
+          return { orderCopies, stationWorkPlacesOrderIsSentTo };
+        }
+
+        if (workPoligon.type === WORK_POLIGON_TYPES.STATION && stationId === workPoligon.id && workPoligon.workPlaceId) {
+          workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
+        }
+        workPlaces.forEach((wp) => {
+          orderCopies.push(new WorkOrder(getToSendObject({
+            id: stationId,
+            workPlaceId: wp.id,
+            type: WORK_POLIGON_TYPES.STATION,
+            sendOriginal,
+          })));
+          stationWorkPlacesOrderIsSentTo.push({
+            id: stationId,
+            type: WORK_POLIGON_TYPES.STATION,
+            workPlaceId: wp.id,
+            placeTitle: wp.name,
+            sendOriginal,
+          });
+        });
+
         return { orderCopies, stationWorkPlacesOrderIsSentTo };
       };
+
       // рассылка на участки ДНЦ
       order.dncToSend.forEach((dncSector) => {
         const workOrder = new WorkOrder(getToSendObject(dncSector));
         workOrders.push(workOrder);
       });
+
       // рассылка на станции (ДСП и операторам при ДСП) - явно указанные издателем распоряжения как адресаты
       for (let dspSector of order.dspToSend) {
         const { orderCopies, stationWorkPlacesOrderIsSentTo } =
@@ -329,11 +390,13 @@ const {
         workOrders.push(...orderCopies);
         order.stationWorkPlacesToSend.push(...stationWorkPlacesOrderIsSentTo);
       }
+
       // рассылка на участки ЭЦД
       order.ecdToSend.forEach((ecdSector) => {
         const workOrder = new WorkOrder(getToSendObject(ecdSector));
         workOrders.push(workOrder);
       });
+
       // себе
       const senderInfo = { ...workPoligon, title: workPoligonTitle };
       const deliverAndConfirmDateTimeOnCurrentWorkPoligon = new Date();
@@ -347,6 +410,7 @@ const {
         confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
         orderChain: orderChainInfo,
       }));
+
       // если распоряжение издается на станции (ДСП или оператором при ДСП), то оно
       // автоматически должно попасть как ДСП, так и на все рабочие места операторов при ДСП данной станции
       if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
@@ -444,6 +508,10 @@ const {
  * Позволяется редактировать только одиночные распоряжения.
  * Данный запрос не работает с цепочками распоряжений!
  *
+ * Данный запрос ПОКА доступен только в случае редактирования распоряжения ДСП о приеме-сдаче дежурства.
+ * Он не позволяет анализировать изменяемое время действия распоряжения для редактирования времени действия
+ * всей цепочки распоряжений.
+ *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
@@ -469,6 +537,12 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
+    // Определяем рабочий полигон пользователя
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
+
     // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -497,21 +571,91 @@ router.post(
 
       // Редактируем запись в основной коллекции распоряжений
       let edited = false;
+
+      // Запоминаем рабочие места на станции, которым текущее распоряжение было адресовано ранее
+      let stationWorkPlacesToSend = [...existingOrder.stationWorkPlacesToSend || []];
+      // Сюда поместим id тех рабочих мест на станции, по которым были изменения
+      const deletedWorkPlacesIds = [];
+      const newWorkPlacesIds = [];
+
       if (timeSpan) {
         existingOrder.timeSpan = timeSpan;
         existingOrder.orderChain.chainStartDateTime = timeSpan.start;
         existingOrder.orderChain.chainEndDateTime = timeSpan.end;
         edited = true;
       }
+
       if (orderText) {
         existingOrder.orderText = orderText;
         edited = true;
+      }
+
+      // Если редактируется распоряжение о приеме-сдаче дежурства ДСП, то количество рабочих мест
+      // ОПЕРАТОРОВ при ДСП на станции, которым адресуется документ, должно соответствовать количеству
+      // ОПЕРАТОРОВ при ДСП, указанных в тексте распоряжения в качестве персонала, принимающего дежурство вместе с ДСП станции.
+      if (existingOrder.specialTrainCategories?.includes(SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN)) {
+        // Извлекаем элемент текста распоряжения, в котором приводится список рабочих мест на станции, принимающих
+        // дежурство наряду с текущим ДСП
+        const takeDutyPersonalInfo = orderText?.orderText?.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF) || { value: '[]' };
+        try {
+          // Получаем список рабочих мест, которым необходимо адресовать текущее распоряжение
+          const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
+          // Просто заменить текущий список новым не можем: затрем время доставки и подтверждения документа на
+          // рабочих местах станции. Придется анализировать каждый элемент списка отдельно.
+
+          // Удаляем тех получателей распоряжения на станции, которых нет в новом списке получателей
+          stationWorkPlacesToSend = stationWorkPlacesToSend.filter((el) => {
+            const doNotDeleteRecord =
+              el.type !== WORK_POLIGON_TYPES.STATION ||
+              el.id !== workPoligon.id ||
+              el.workPlaceId === null ||
+              Boolean(takeDutyPersonal.find((newEl) => el.workPlaceId === newEl.workPlaceId));
+            if (!doNotDeleteRecord)
+              deletedWorkPlacesIds.push(el.workPlaceId);
+            return doNotDeleteRecord;
+          });
+
+          // Добавляем новых получателей распоряжения на рабочих местах станции
+          takeDutyPersonal.forEach((newWorkPlaceInfo) => {
+            const existingElement = stationWorkPlacesToSend.find((el) =>
+              el.type === WORK_POLIGON_TYPES.STATION &&
+              el.id === workPoligon.id &&
+              el.workPlaceId === newWorkPlaceInfo.workPlaceId
+            );
+            if (!existingElement) {
+              stationWorkPlacesToSend.push({
+                id: workPoligon.id,
+                type: WORK_POLIGON_TYPES.STATION,
+                workPlaceId: newWorkPlaceInfo.workPlaceId,
+                placeTitle: newWorkPlaceInfo.placeTitle,
+                sendOriginal: true,
+              });
+              newWorkPlacesIds.push(newWorkPlaceInfo.workPlaceId);
+            }
+          });
+
+          if (deletedWorkPlacesIds.length || newWorkPlacesIds.length) {
+            existingOrder.stationWorkPlacesToSend = stationWorkPlacesToSend;
+            edited = true;
+          }
+
+        } catch (err) {
+          addError({
+            errorTime: new Date(),
+            action: 'Редактирование распоряжения',
+            error: error.message,
+            actionParams: {
+              user: userPostFIOString(req.user), orderId: id, timeSpan, orderText,
+            },
+          });
+        }
       }
       if (edited) {
         await existingOrder.save();
       }
 
-      // Редактируем (при необходимости) записи в коллекции рабочих распоряжений
+      // Редактируем (при необходимости) записи в коллекции рабочих распоряжений.
+
       if (timeSpan) {
         await WorkOrder.updateMany(
           { orderId: id },
@@ -523,6 +667,48 @@ router.post(
             "orderChain.chainEndDateTime": timeSpan.end,
           } },
           { session },
+        );
+      }
+
+      // При редактировании учитываем тот факт, что список адресатов среди рабочих мест на теущей станции
+      // после выполнения кода выше мог измениться.
+
+      // Из WorkOrders удаляем те записи по рабочим местам станции, которых нет в stationWorkPlacesToSend
+      // для распоряжения с id
+      if (deletedWorkPlacesIds.length) {
+        await WorkOrder.deleteMany({
+          orderId: id,
+          "recipientWorkPoligon.type": WORK_POLIGON_TYPES.STATION,
+          "recipientWorkPoligon.id": workPoligon.id,
+          "recipientWorkPoligon.workPlaceId": deletedWorkPlacesIds,
+        }, { session });
+      }
+
+      // Записи из stationWorkPlacesToSend, которых нет в WorkOrders, добавляем туда.
+      if (newWorkPlacesIds.length) {
+        await WorkOrder.insertMany(
+          newWorkPlacesIds.map((wp) => new WorkOrder({
+            senderWorkPoligon: {
+              id: workPoligon.id,
+              workPlaceId: workPoligon.workPlaceId,
+              type: workPoligon.type,
+              title: existingOrder.workPoligon.title,
+            },
+            recipientWorkPoligon: {
+              id: workPoligon.id,
+              workPlaceId: wp,
+              type: workPoligon.type,
+            },
+            orderId: id,
+            timeSpan: existingOrder.timeSpan,
+            sendOriginal: true,
+            orderChain: {
+              chainId: existingOrder.orderChain.chainId,
+              chainStartDateTime: timeSpan.start,
+              chainEndDateTime: timeSpan.end,
+            },
+          })),
+          { session }
         );
       }
 
@@ -800,7 +986,8 @@ router.post(
  *                       используются для поиска документов по дате издания; если же указан, то документы
  *                       ищутся по временному интервалу действия соответствующих им цепочек распоряжений
  *                       (т.е. если документ принадлежит цепочке, время действия которой попадает во временной
- *                       интервал от datetimeStart до datetimeEnd, то такой документ включается в выборку)
+ *                       интервал от datetimeStart до datetimeEnd, то такой документ включается в выборку);
+ *                       3) включать текст уведомлений - для ЭЦД
  * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются по
  *              дате-времени издания соответствующих документов; если есть, то к условиям в sortFields
  *              добавляется условие сортировки по id соответствующих документов (сортировка по возрастанию),
@@ -998,6 +1185,15 @@ router.post(
       // Уведомление по id в БД всегда связано с приказом / запрещением.
       let lookupConditions = null;
       if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) {
+        const projectConditions = {
+          _id: 0,
+          number: 1,
+          startDate: '$timeSpan.start',
+          creator: 1,
+        };
+        if (includeDocsCriteria && includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.INCLUDE_ORDER_NOTIFICATION_TEXT)) {
+          projectConditions.orderText = '$orderText.orderText';
+        }
         lookupConditions = {
           from: 'orders',
           let: { the_id: '$_id', the_chainId: '$orderChain.chainId', the_orderType: '$type'},
@@ -1014,13 +1210,8 @@ router.post(
                 },
               },
             },
-            { $project:
-              {
-                _id: 0,
-                number: 1,
-                startDate: '$timeSpan.start',
-                creator: 1,
-              },
+            {
+              $project: projectConditions,
             },
           ],
           as: 'connectedOrder',

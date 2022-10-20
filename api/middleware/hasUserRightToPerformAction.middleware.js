@@ -449,7 +449,7 @@ const hasUserRightToPerformAction = async (req, res, next) => {
       creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, STATION_WORKS_MANAGER];
       break;
     case DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER:
-      creds = [DSP_FULL, DSP_Operator];
+      creds = [DSP_FULL, DSP_Operator, STATION_WORKS_MANAGER];
       break;
     // Все распоряжения
     case DY58_ACTIONS.ADD_ORDER:

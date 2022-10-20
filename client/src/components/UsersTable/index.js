@@ -161,7 +161,7 @@ const UsersTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
       res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
-      const stations = res.map((station) => getAppStationObjFromDBStationObj(station)); console.log(stations)
+      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       setStationsData(stations);
 
       // ---------------------------------
@@ -661,7 +661,7 @@ const UsersTable = () => {
         }
       }
       return ok;
-    }), [tableData]);
+    }), [tableData, filters]);
 
   const onFinishSetFilters = () => {
     const currentFilters = filterForm.getFieldsValue();

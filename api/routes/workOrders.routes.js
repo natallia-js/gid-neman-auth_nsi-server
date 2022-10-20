@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
 const User = require('../models/User');
-const { WORK_POLIGON_TYPES } = require('../constants');
+const {
+  WORK_POLIGON_TYPES,
+  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+} = require('../constants');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const {
   getUserConciseFIOString,
@@ -825,6 +829,11 @@ router.post(
  * Обрабатывает запрос на удаление цепочки распоряжений из списка распоряжений, находящихся
  * в работе на заданном полигоне управления. Удалению подлежат лишь те распоряжения цепочки,
  * которые имеют статус "подтверждено".
+ * Если в рамках цепочки распоряжений встречается распоряжение о приеме-сдаче дежурства, изданное
+ * на том полигоне управления, с которого пришел запрос на удаление (под рабочим полигоном понимается
+ * глобальный рабочий полигон, а не рабочее место на глобальном полигоне управления; глобальные полигоны -
+ * станция, участок ДНЦ/ЭЦД, не глобальный полигон - рабочее место оператора при ДСП),
+ * то такая цепочка удалению не подлежит (т.е. свои распоряжения о приеме-сдаче дежурства удалять нельзя).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -847,6 +856,29 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { chainId } = req.body;
 
+    // Проверяем, есть ли среди распоряжений цепочки действующее распоряжение о приеме-сдаче дежурства,
+    // изданное на рабочем полигоне, с которого поступил запрос на удаление цепочки
+    const activeTakePassOrder = await Order.findOne({
+      "orderChain.chainId": chainId,
+      "workPoligon.id": workPoligon.id,
+      "workPoligon.type": workPoligon.type,
+      $or: [
+        // The { item : null } query matches documents that either contain the item field
+        // whose value is null or that do not contain the item field
+        { "timeSpan.end": null },
+        { "timeSpan.end": { $gt: new Date() } },
+      ],
+      specialTrainCategories: workPoligon.type == WORK_POLIGON_TYPES.STATION ? SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN :
+        TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+    });
+
+    if (activeTakePassOrder) {
+      return res.status(ERR).json({
+        message: 'Цепочка распоряжений, содержащая действующее распоряжение о приеме-сдаче дежурства, не может быть удалена',
+      });
+    }
+
+    // Определяем условия поиска записей, подлежащих удалению
     const findRecordsConditions = [
       { "recipientWorkPoligon.id": workPoligon.id },
       { "recipientWorkPoligon.type": workPoligon.type },
@@ -890,9 +922,9 @@ router.post(
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Информацию по получателю распоряжения на рабочем месте станции может удалить:
- * 1) издатель данного распоряжения, если он - работник станции (ДСП или Оператор при ДСП) -
+ * 1) издатель данного распоряжения, если он - работник станции (ДСП, Оператор при ДСП либо Руководитель работ) -
  *    может удалить любого из получателей на станции (в том числе и ДСП),
- * 2) ДСП (не Оператор при ДСП!) в случае распоряжения, изданного не на станции, но адресованного ей,
+ * 2) ДСП (не иной работник станции!) в случае распоряжения, изданного не на станции, но адресованного ей,
  *    может удалить любого из получателей на станции, кроме себя
  *
  * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
