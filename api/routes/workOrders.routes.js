@@ -152,6 +152,7 @@ router.post(
               deliverDateTime: correspWorkDataObject.deliverDateTime,
               confirmDateTime: correspWorkDataObject.confirmDateTime,
               sendOriginal: correspWorkDataObject.sendOriginal,
+              hidden: correspWorkDataObject.hidden,
             };
           }
           return { ...item._doc };

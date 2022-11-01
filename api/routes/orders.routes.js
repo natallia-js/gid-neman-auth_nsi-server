@@ -26,6 +26,7 @@ const {
   OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
   WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
   SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN, TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
+  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
 } = require('../constants');
 
 
@@ -201,8 +202,21 @@ const {
       // Создаем в БД запись с данными о новом распоряжении
       const order = new Order({
         _id: newOrderObjectId,
-        type, number, createDateTime, place, timeSpan, orderText,
-        dncToSend, dspToSend, ecdToSend, otherToSend,
+        type,
+        number,
+        createDateTime,
+        place,
+        timeSpan,
+        orderText,
+        dncToSend,
+        dspToSend,
+        // Если издано циркулярное распоряжение ДНЦ, то в его список адресатов искусственно на клиенте
+        // включаются ЭЦД, которых ДНЦ никогда не указывает. Этих ЭЦД не нужно включать в оригинальный документ.
+        // Они нужны только в документах в работе (чтобы у ЭЦД автоматически формировался список адресатов
+        // на станциях при создании нового документа)
+        ecdToSend: (workPoligon.type === WORK_POLIGON_TYPES.DNC_SECTOR && specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN))
+          ? [] : ecdToSend,
+        otherToSend,
         workPoligon: { ...workPoligon, title: workPoligonTitle },
         creator: {
           id: req.user.userId,
@@ -246,7 +260,7 @@ const {
       // так и тем операторам на станции, которые фигурировали в последнем (ныне активном) распоряжении
       // о приеме-сдаче дежурства ДСП.
       const workOrders = [];
-      const getToSendObject = (sectorInfo) => {
+      const getToSendObject = ({ sectorInfo, isHiddenDocument = false }) => {
         // возвращает объект записи о распоряжении, копию которого необходимо передать
         return {
           senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
@@ -259,6 +273,10 @@ const {
           orderId: order._id,
           timeSpan: timeSpan,
           orderChain: orderChainInfo,
+          hidden: isHiddenDocument,
+          // Для скрытых документов сразу устанавливаем даты доставки и подтверждения, чтобы документ находился "в работе"
+          deliverDateTime: isHiddenDocument ? new Date() : null,
+          confirmDateTime: isHiddenDocument ? new Date() : null,
         };
       };
       // Формирование копий распоряжения для ДСП станции и тех операторов при ДСП, которые приняли дежурство
@@ -272,12 +290,15 @@ const {
         // на рабочем месте станции и должна попасть на это рабочее место)
         if (workPoligon.type !== WORK_POLIGON_TYPES.STATION ||
           stationId !== workPoligon.id || workPoligon.workPlaceId) {
-            orderCopies.push(new WorkOrder(getToSendObject({
-              id: stationId,
-              workPlaceId: null,
-              type: WORK_POLIGON_TYPES.STATION,
-              sendOriginal,
-            })));
+            orderCopies.push(new WorkOrder(
+              getToSendObject({
+                sectorInfo: {
+                  id: stationId,
+                  workPlaceId: null,
+                  type: WORK_POLIGON_TYPES.STATION,
+                  sendOriginal,
+                }
+              })));
           let stationTitle = stationName;
           if (!stationTitle) {
             const st = await TStation.findOne({ where: { St_ID: stationId } });
@@ -324,10 +345,10 @@ const {
             }
           }
         } else {
-          // Если издается распоряжение НЕ о приеме-сдаче дежурства ДСП, то для определения адресатов распоряженя на
+          // Если издается распоряжение НЕ о приеме-сдаче дежурства ДСП, то для определения адресатов распоряжения на
           // рабочих местах станции (т.е. операторов при ДСП) извлекаем действующее распоряжение о приеме-сдаче
           // дежурства на станции stationId
-          const activeTakePassOrder = await Order.findOne({
+          const activeTakePassOrders = await Order.find({
             "workPoligon.type": WORK_POLIGON_TYPES.STATION,
             "workPoligon.id": stationId,
             $or: [
@@ -337,7 +358,10 @@ const {
               { "timeSpan.end": { $gt: new Date() } },
             ],
             specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
-          });
+          }).sort({ createDateTime: -1 });
+
+          const activeTakePassOrder = activeTakePassOrders?.length ? activeTakePassOrders[0] : null;
+
           // если на станции stationId нет действующего распоряжения о приеме сдаче-дежурства либо в нем нет
           // списка рабочих мест операторов при ДСП, то новое распоряжение не будет передаваться на рабочие места
           // операторов при ДСП этой станции
@@ -359,12 +383,15 @@ const {
           workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
         }
         workPlaces.forEach((wp) => {
-          orderCopies.push(new WorkOrder(getToSendObject({
-            id: stationId,
-            workPlaceId: wp.id,
-            type: WORK_POLIGON_TYPES.STATION,
-            sendOriginal,
-          })));
+          orderCopies.push(new WorkOrder(
+            getToSendObject({
+              sectorInfo: {
+                id: stationId,
+                workPlaceId: wp.id,
+                type: WORK_POLIGON_TYPES.STATION,
+                sendOriginal,
+              }
+            })));
           stationWorkPlacesOrderIsSentTo.push({
             id: stationId,
             type: WORK_POLIGON_TYPES.STATION,
@@ -378,13 +405,13 @@ const {
       };
 
       // рассылка на участки ДНЦ
-      order.dncToSend.forEach((dncSector) => {
-        const workOrder = new WorkOrder(getToSendObject(dncSector));
+      dncToSend.forEach((dncSector) => {
+        const workOrder = new WorkOrder(getToSendObject({ sectorInfo: dncSector }));
         workOrders.push(workOrder);
       });
 
       // рассылка на станции (ДСП и операторам при ДСП) - явно указанные издателем распоряжения как адресаты
-      for (let dspSector of order.dspToSend) {
+      for (let dspSector of dspToSend) {
         const { orderCopies, stationWorkPlacesOrderIsSentTo } =
           await formOrderCopiesForDSPAndOperators(dspSector.id, dspSector.placeTitle, dspSector.sendOriginal);
         workOrders.push(...orderCopies);
@@ -392,8 +419,10 @@ const {
       }
 
       // рассылка на участки ЭЦД
-      order.ecdToSend.forEach((ecdSector) => {
-        const workOrder = new WorkOrder(getToSendObject(ecdSector));
+      ecdToSend.forEach((ecdSector) => {
+        const isHiddenDocument = (workPoligon.type === WORK_POLIGON_TYPES.DNC_SECTOR &&
+          specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN));
+        const workOrder = new WorkOrder(getToSendObject({ sectorInfo: ecdSector, isHiddenDocument }));
         workOrders.push(workOrder);
       });
 
