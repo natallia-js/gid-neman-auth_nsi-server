@@ -21,7 +21,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Обрабатывает запрос на получение списка всех рабочих полигонов-участков ЭЦД.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -123,6 +123,7 @@ router.post(
             post: userInfo.post,
             service: userInfo.service,
             ecdSectorId: user.ECDSWP_ECDSID,
+            contactData: userInfo.contactData,
           });
         });
       }

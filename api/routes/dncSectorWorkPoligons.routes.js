@@ -123,6 +123,7 @@ router.post(
             post: userInfo.post,
             service: userInfo.service,
             dncSectorId: user.DNCSWP_DNCSID,
+            contactData: user.contactData,
           });
         });
       }
