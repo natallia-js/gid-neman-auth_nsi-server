@@ -499,6 +499,7 @@ export const ElementRefChooser = (props) => {
                       })
                   : []
                 }
+                value={chosenRef}
                 onChange={handleChangeRef}
               />
             </Col>

@@ -246,7 +246,53 @@ const {
         { upsert: true, new: true }
       ).session(session);
 
+      // Информация о полигоне, на котором было издано распоряжение
+      const senderInfo = { ...workPoligon, title: workPoligonTitle };
+
+      // Функция, которую необходимо вызвать после успешного сохранения всей информации о распоряжении в БД
+      const successfullFinishAddingNewDocument = async (delOrderDraftRes, deliverAndConfirmDateTimeOnCurrentWorkPoligon) => {
+        await session.commitTransaction();
+
+        res.status(OK).json({ message: 'Информация успешно сохранена', order:
+          {
+            ...order._doc,
+            senderWorkPoligon: senderInfo,
+            deliverDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
+            confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
+            sendOriginal: true,
+          },
+          draftId: (delOrderDraftRes && delOrderDraftRes.deletedCount === 1) ? draftId : null,
+        });
+
+        // Логируем действие пользователя
+        const logObject = {
+          user: userPostFIOString(req.user),
+          workPoligon: await getUserWorkPoligonString({
+            workPoligonType: workPoligon.type,
+            workPoligonId: workPoligon.id,
+            workSubPoligonId: workPoligon.workPlaceId,
+          }),
+          actionTime: createDateTime,
+          action: 'Издание распоряжения',
+          actionParams: {
+            userId: req.user.userId,
+            type, number, createDateTime, place, timeSpan, orderText,
+            dncToSend, dspToSend, ecdToSend, otherToSend,
+            workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
+            orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
+          },
+        };
+        addDY58UserActionInfo(logObject);
+      };
+
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
+      // Сохраняем все, кроме отметок ревизоров в журнале! Эти отметки не являются рабочими распоряжениями.
+      if (type === ORDER_PATTERN_TYPES.CONTROL) {
+        await order.save({ session });
+        await successfullFinishAddingNewDocument(null, new Date());
+        return;
+      }
+
       // Здесь есть один нюанс. И связан он с распоряжениями, издаваемыми в рамках полигона "станция" либо
       // адресуемыми на такой полигон.
       // Станция - это не только ДСП, но и операторы при ДСП, и иные рабочие места
@@ -427,7 +473,6 @@ const {
       });
 
       // себе
-      const senderInfo = { ...workPoligon, title: workPoligonTitle };
       const deliverAndConfirmDateTimeOnCurrentWorkPoligon = new Date();
       workOrders.push(new WorkOrder({
         senderWorkPoligon: senderInfo,
@@ -476,38 +521,7 @@ const {
       // Удаляем (при необходимости) черновик распоряжения
       const delRes = draftId ? await Draft.deleteOne({ _id: draftId }, { session }) : null;
 
-      await session.commitTransaction();
-
-      res.status(OK).json({ message: 'Информация успешно сохранена', order:
-        {
-          ...order._doc,
-          senderWorkPoligon: senderInfo,
-          deliverDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
-          confirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
-          sendOriginal: true,
-        },
-        draftId: (delRes && delRes.deletedCount === 1) ? draftId : null,
-      });
-
-      // Логируем действие пользователя
-      const logObject = {
-        user: userPostFIOString(req.user),
-        workPoligon: await getUserWorkPoligonString({
-          workPoligonType: workPoligon.type,
-          workPoligonId: workPoligon.id,
-          workSubPoligonId: workPoligon.workPlaceId,
-        }),
-        actionTime: createDateTime,
-        action: 'Издание распоряжения',
-        actionParams: {
-          userId: req.user.userId,
-          type, number, createDateTime, place, timeSpan, orderText,
-          dncToSend, dspToSend, ecdToSend, otherToSend,
-          workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
-          orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
-        },
-      };
-      addDY58UserActionInfo(logObject);
+      await successfullFinishAddingNewDocument(delRes, deliverAndConfirmDateTimeOnCurrentWorkPoligon);
 
     } catch (error) {
       addError({
@@ -996,6 +1010,93 @@ router.post(
 
 
 /**
+ * Обрабатывает запрос на пометку ранее изданного и находящегося в работе документа как
+ * действительного / недействительного.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием. Но реально пометить документ
+ * как действительный / недействительный сможет только тот пользователь, который его издал и только с того
+ * рабочего полигона, на котором документ был издан.
+ *
+ * Информация о пользователе, о типе и id его рабочего полигона извлекается из токена пользователя.
+ *
+ * Параметры тела запроса:
+ * orderId - id документа, который необходимо пометить как действительный / недействительный (обязателен),
+ * invalid - true - если документ необходимо пометить как недействительный, false - если документ необходимо
+ * пометить как действительный,
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/setOrderInvalidMark',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.SET_ORDER_INVALID_MARK; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    const workPoligon = req.user.workPoligon;
+    if (!workPoligon || !workPoligon.type || !workPoligon.id) {
+      return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
+    }
+    // Считываем находящиеся в пользовательском запросе данные
+    const { orderId, invalid } = req.body;
+
+    try {
+      // Ищем документ по id
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return res.status(ERR).json({ message: 'Документ не найден' });
+      }
+      // Смотрим, был ли издан найденный документ на полигоне workPoligon пользователем с id = req.user.userId
+      if (String(order.creator?.id) !== String(req.user?.userId)) {
+        return res.status(ERR).json({ message: 'Документ издан не Вами' });
+      }
+      if (order.workPoligon?.type !== workPoligon.type || order.workPoligon?.id !== workPoligon.id ||
+         (order.workPoligon.workPlaceId && order.workPoligon.workPlaceId !== workPoligon.workPlaceId) ||
+         (!order.workPoligon.workPlaceId && workPoligon.workPlaceId)) {
+        return res.status(ERR).json({ message: 'Документ издан не на этом рабочем полигоне' });
+      }
+      // Делаем отметку о действительности / недействительности документа
+      order.invalid = invalid;
+      await order.save();
+
+      res.status(OK).json({
+        message: `Распоряжение помечено как ${invalid ? 'недействительное' : 'действительное'}`,
+        orderId,
+        invalid,
+      });
+
+      // Логируем действие пользователя
+      const logObject = {
+        user: userPostFIOString(req.user),
+        workPoligon: await getUserWorkPoligonString({
+          workPoligonType: workPoligon.type,
+          workPoligonId: workPoligon.id,
+          workSubPoligonId: workPoligon.workPlaceId,
+        }),
+        actionTime: new Date(),
+        action: 'Проставление отметки о действительности документа',
+        actionParams: {
+          userId: req.user.userId,
+          workPoligon, orderId, invalid,
+        },
+      };
+      addDY58UserActionInfo(logObject);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Проставление отметки о действительности документа',
+        error: error.message,
+        actionParams: {
+          workPoligon, orderId, invalid,
+        },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обрабатывает запрос на получение списка распоряжений для журнала ЭЦД либо для журнала ДНЦ/ДСП.
  *
  * Данный запрос доступен любому лицу, наделенному полномочием ЭЦД, ДНЦ, ДСП, Оператора при ДСП либо Ревизора.
@@ -1016,7 +1117,8 @@ router.post(
  *                       ищутся по временному интервалу действия соответствующих им цепочек распоряжений
  *                       (т.е. если документ принадлежит цепочке, время действия которой попадает во временной
  *                       интервал от datetimeStart до datetimeEnd, то такой документ включается в выборку);
- *                       3) включать текст уведомлений - для ЭЦД
+ *                       3) включать ошибочно изданные документы;
+ *                       4) включать текст уведомлений - для ЭЦД
  * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются по
  *              дате-времени издания соответствующих документов; если есть, то к условиям в sortFields
  *              добавляется условие сортировки по id соответствующих документов (сортировка по возрастанию),
@@ -1064,6 +1166,12 @@ router.post(
 
       const startDate = new Date(datetimeStart);
       const endDate = new Date(datetimeEnd);
+
+      if (!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.INCLUDE_INVALID)) {
+        // По умолчанию (в случае, если явно не указано) и в случае, если это явно указано,
+        // в выборку не включаем ошибочно изданные документы
+        matchFilter.$and.push({ invalid: false });
+      }
 
       if (!includeDocsCriteria || !includeDocsCriteria.includes(INCLUDE_DOCUMENTS_CRITERIA.INCLUDE_ACTIVE)) {
         // Поиск по дате-времени издания

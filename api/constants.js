@@ -126,6 +126,7 @@ const STATION_WORKPLACE_TYPES = Object.freeze({
 const INCLUDE_DOCUMENTS_CRITERIA = Object.freeze({
   ONLY_OUTGOUING: 'ONLY_OUTGOUING', // учитывать только исходящие документы
   INCLUDE_ACTIVE: 'INCLUDE_ACTIVE', // учитывать действующие документы
+  INCLUDE_INVALID: 'INCLUDE_INVALID', // учитывать ошибочно изданные документы
   INCLUDE_ORDER_NOTIFICATION_TEXT: 'INCLUDE_ORDER_NOTIFICATION_TEXT', // включать текст уведомлений (для ЭЦД)
 });
 
@@ -137,6 +138,7 @@ const ORDER_PATTERN_TYPES = Object.freeze({
   ECD_ORDER: 'приказ',
   ECD_PROHIBITION: 'запрещение',
   ECD_NOTIFICATION: 'уведомление/отмена запрещения',
+  CONTROL: 'контроль',
 });
 
 // отметка особой категории распоряжений о принятии дежурства ДНЦ/ЭЦД

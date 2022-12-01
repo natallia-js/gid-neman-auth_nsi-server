@@ -451,6 +451,9 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     case DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER:
       creds = [DSP_FULL, DSP_Operator, STATION_WORKS_MANAGER];
       break;
+    case DY58_ACTIONS.SET_ORDER_INVALID_MARK:
+      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, STATION_WORKS_MANAGER];
+      break;
     // Все распоряжения
     case DY58_ACTIONS.ADD_ORDER:
     case DY58_ACTIONS.GET_ORDERS_JOURNAL_DATA:

@@ -54,6 +54,8 @@ const schema = new Schema({
   // идет раньше текущего; для некоторых типов распоряжений текущее распоряжение может отменять
   // указанное распоряжение, например, в случае запрещения ЭЦД - уведомления ЭЦД)
   dispatchedOnOrder: { type: Types.ObjectId, required: false },
+  // true, если данный документ был издан ошибочно, в противном случае false
+  invalid: { type: Boolean, required: true, default: false },
 });
 
 
