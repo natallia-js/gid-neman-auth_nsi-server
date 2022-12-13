@@ -97,7 +97,7 @@ const ServerLogsTable = () => {
 
   useEffect(() => {
     fetchData(searchDataTimeSpan, currentTablePage);
-  }, [fetchData, searchDataTimeSpan, currentTablePage]);
+  }, [searchDataTimeSpan, currentTablePage]);
 
 
   /**

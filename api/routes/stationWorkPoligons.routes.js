@@ -138,7 +138,7 @@ router.post(
             service: userInfo.service,
             stationId: user.SWP_StID,
             stationWorkPlaceId: user.SWP_StWP_ID,
-            contactData: user.contactData,
+            contactData: userInfo.contactData,
           });
         });
       }

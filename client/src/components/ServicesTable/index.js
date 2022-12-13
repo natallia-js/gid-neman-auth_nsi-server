@@ -82,7 +82,7 @@ const ServicesTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

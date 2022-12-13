@@ -97,7 +97,7 @@ const DY58UsersLogsTable = () => {
 
   useEffect(() => {
     fetchData(searchDataTimeSpan, currentTablePage);
-  }, [fetchData, searchDataTimeSpan, currentTablePage]);
+  }, [searchDataTimeSpan, currentTablePage]);
 
 
   /**

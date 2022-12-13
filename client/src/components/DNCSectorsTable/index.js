@@ -190,7 +190,7 @@ const DNCSectorsTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

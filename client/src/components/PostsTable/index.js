@@ -85,7 +85,7 @@ const PostsTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

@@ -97,7 +97,7 @@ const ServerErrorsLogsTable = () => {
 
   useEffect(() => {
     fetchData(searchDataTimeSpan, currentTablePage);
-  }, [fetchData, searchDataTimeSpan, currentTablePage]);
+  }, [searchDataTimeSpan, currentTablePage]);
 
 
   /**

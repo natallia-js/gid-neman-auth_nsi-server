@@ -249,6 +249,7 @@ const {
       // Информация о полигоне, на котором было издано распоряжение
       const senderInfo = { ...workPoligon, title: workPoligonTitle };
 
+
       // Функция, которую необходимо вызвать после успешного сохранения всей информации о распоряжении в БД
       const successfullFinishAddingNewDocument = async (delOrderDraftRes, deliverAndConfirmDateTimeOnCurrentWorkPoligon) => {
         await session.commitTransaction();
@@ -284,6 +285,7 @@ const {
         };
         addDY58UserActionInfo(logObject);
       };
+
 
       // Сохраняем информацию об издаваемом распоряжении в таблице рабочих распоряжений.
       // Сохраняем все, кроме отметок ревизоров в журнале! Эти отметки не являются рабочими распоряжениями.
@@ -372,8 +374,15 @@ const {
             const takeDutyPersonalInfo = orderText.orderText.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF);
             if (takeDutyPersonalInfo) {
               try {
+                // В списке лиц, принимающих дежурство, может оказаться (теоретически) несколько лиц с одного рабочего
+                // полигона. Но нас не интересуют работники, нас интересует непосредственно сам рабочий полигон (работа
+                // ДУ-58 ведется на рабочих полигонах!). Поэтому формируем список рабочих полигонов с учетом возможного
+                // дублирования информации (дубликаты удаляем).
                 const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
-                workPlaces = takeDutyPersonal.map((el) => ({ id: el.workPlaceId, name: el.placeTitle }));
+                takeDutyPersonal.forEach((el) => {
+                  if (!workPlaces.find((wp) => wp.id === el.workPlaceId))
+                    workPlaces.push({ id: el.workPlaceId, name: el.placeTitle });
+                });
               } catch (error) {
                 addError({
                   errorTime: new Date(),
@@ -1128,7 +1137,7 @@ router.post(
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
- *             то запрос возвращает все найденные документы),
+ *             то запрос возвращает все найденные документы)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -1380,6 +1389,7 @@ router.post(
       } else {
         sortConditions.createDateTime = -1;
       }
+      // Именно здесь, а не в начале, т.к. другие условия сортировки важнее, чем сортировка по id
       sortConditions._id = 1;
 
       const aggregation = [

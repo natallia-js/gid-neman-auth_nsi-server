@@ -159,6 +159,14 @@ router.put(
  * иное же лицо получит полный список тех пользователей, которые закреплены за его службой
  * (включая его самого).
  *
+ * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются только по id;
+ *              если есть, то к условиям в sortFields добавляется условие сортировки по id соответствующих документов
+ *              (сортировка по возрастанию), все это необходимо для поддерки пагинации)
+ * filterFields - объект полей с условиями поиска по массиву данных
+ * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
+ *        то запрос возвращает все найденные документы)
+ * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
+ *             то запрос возвращает все найденные документы)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -168,35 +176,68 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { sortFields, filterFields, page, docsCount } = req.body;
+
+    console.log(sortFields, filterFields, page, docsCount)
+
     const serviceName = req.user.service;
-    const fieldsToExtract = {
-      _id: 1,
-      login: 1,
-      password: 1,
-      name: 1,
-      surname: 1,
-      fatherName: 1,
-      post: 1,
-      service: 1,
-      roles: 1,
-      contactData: 1,
-      confirmed: 1,
-    };
+
     let data;
+    let totalRecords;
     let mainAdminRolesIds;
 
+    // Применяем сортировку
+    let sortConditions = { _id: 1 };
+    if (sortFields) {
+      sortConditions = Object.assign(sortConditions, sortFields);
+    }
+
+    // Применяем фильтры (полагаем, что все поля, к которым применяются фильтры, содержат
+    // только строковые значения)
+    const matchFilter = {};
+    if (!isMainAdmin(req)) {
+      // Если пользователь, отправивший запрос, - не главный администратор, то ищем пользователей, принадлежащих службе,
+      // которой принадлежит пользователь, отправивший запрос
+      matchFilter.service = serviceName;
+    }
+    if (filterFields) {
+      matchFilter.$or = [];
+      filterFields.forEach((filter) => {
+        matchFilter.$or.push({ [filter.field]: filter.value });
+      });
+    }
+
+    const aggregation = [
+      { $match: matchFilter },
+      { $sort: sortConditions },
+      { $group: {
+        _id: null,
+        total: { $sum: 1 },
+        data: { $push: '$$ROOT' },
+      } },
+      { $project: {
+        total: 1,
+        // skip = page > 0 ? (page - 1) * docsCount : 0
+        // limit = docsCount || 1000000
+        data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
+      } }
+    ];
+
     try {
+      data = await User.aggregate(aggregation);
+
       if (!isMainAdmin(req)) {
-        // Ищем пользователей, принадлежащих заданной службе
-        data = await User.find({ service: serviceName }, fieldsToExtract);
         // Ищем те роли, которые доступны лишь главному администратору.
         // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
         mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
         mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
-      } else {
-        // Извлекаем информацию обо всех пользователях
-        data = await User.find({}, fieldsToExtract);
       }
+
+      // вначале делаем это
+      totalRecords = data && data[0] ? data[0].total : 0;
+      // и только затем это
+      data = data && data[0] ? data[0].data : [];
 
       // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
       // по рабочим полигонам
@@ -222,7 +263,7 @@ router.post(
 
       data = data.map((user) => {
         return {
-          ...user._doc,
+          ...user,
           roles: user.roles && mainAdminRolesIds
             ? user.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
             : user.roles,
@@ -238,7 +279,10 @@ router.post(
         };
       });
 
-      res.status(OK).json(data);
+      res.status(OK).json({
+        data,
+        totalRecords,
+      });
 
     } catch (error) {
       addError({

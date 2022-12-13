@@ -103,7 +103,7 @@ export const OrderPatternsPage = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   const NodeTypes = {

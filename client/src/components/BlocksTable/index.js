@@ -113,7 +113,7 @@ const BlocksTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

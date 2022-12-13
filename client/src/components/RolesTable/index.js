@@ -99,7 +99,7 @@ const RolesTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

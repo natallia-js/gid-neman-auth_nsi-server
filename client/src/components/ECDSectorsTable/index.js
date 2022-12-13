@@ -189,7 +189,7 @@ const ECDSectorsTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

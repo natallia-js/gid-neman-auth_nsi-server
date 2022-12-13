@@ -81,7 +81,7 @@ const AppsCredsTable = () => {
    */
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
 
   /**

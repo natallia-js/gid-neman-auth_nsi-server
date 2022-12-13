@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHttp } from '../../hooks/http.hook';
-import { Button, Collapse, Form, Input, Popconfirm, Select, Space, Table, Typography } from 'antd';
+import { Button, Collapse, Form, Input, Pagination, Popconfirm, Select, Space, Table, Typography } from 'antd';
 import EditableTableCell from '../EditableTableCell';
 import NewUserModal from '../NewUserModal';
 import {
@@ -34,6 +34,9 @@ import tagRender from '../tagRender';
 const { Text, Title } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
+
+// Количество строк на одной странице таблицы
+const MAX_TABLE_ROW_COUNT = 10;
 
 
 /**
@@ -105,18 +108,28 @@ const UsersTable = () => {
   // Для сортировки данных в столбцах таблицы
   const { getColumnSearchProps } = useColumnSearchProps();
 
+  // Общее количество записей в БД, удовлетворяющее условиям поиска
+  const [totalItemsCount, setTotalItemsCount] = useState(0);
+
+  // Текущая страница таблицы
+  const [currentTablePage, setCurrentTablePage] = useState(1);
+
 
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
    * и устанавливает ее в локальное состояние
    */
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (page) => {
     setDataLoaded(false);
 
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
-      let res = await request(ServerAPI.GET_ALL_USERS, 'POST', {});
-      const tableData = res
+      let res = await request(ServerAPI.GET_ALL_USERS, 'POST', {
+        page,
+        docsCount: MAX_TABLE_ROW_COUNT,
+      });
+
+      const tableData = res.data
         .map((user) => getAppUserObjFromDBUserObj(user))
         // Неподтвержденные записи по пользователям выводим в начале списка
         .sort((a, b) => {
@@ -128,6 +141,14 @@ const UsersTable = () => {
           return 0;
         });
       setTableData(tableData);
+      setTotalItemsCount(res.totalRecords);
+      // Если после загрузки данных окажется, что пользователь запросил страницу, которая не существует в БД,
+      // то устанавливаем номер страницы равный максимальному извлеченному номеру (такое может, в частности,
+      // произойти в случае, если на сервере перед запросом произошла "чистка" БД)
+      const pagesNumber = Math.ceil(res.totalItemsCount / MAX_TABLE_ROW_COUNT);
+      if (page > pagesNumber) {
+        setCurrentTablePage(pagesNumber);
+      }
 
       // ---------------------------------
 
@@ -209,6 +230,8 @@ const UsersTable = () => {
       setLoadDataErr(null);
 
     } catch (e) {
+      setTotalItemsCount(0);
+      setCurrentTablePage(1);
       setLoadDataErr(e.message);
     }
 
@@ -220,8 +243,8 @@ const UsersTable = () => {
    * При рендере компонента подгружает информацию для отображения в таблице из БД
    */
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(currentTablePage);
+  }, [currentTablePage]);
 
 
   /**
@@ -717,6 +740,12 @@ const UsersTable = () => {
     }
   };
 
+  const onChange = (page, _pageSize) => {
+    if (page !== currentTablePage) {
+      setCurrentTablePage(page);
+    }
+  };
+
 
   return (
     <>
@@ -834,10 +863,20 @@ const UsersTable = () => {
             dataSource={getTableDataToDisplay}
             columns={mergedColumns}
             rowClassName="editable-row"
-            pagination={{
-              onChange: handleCancelMod,
-            }}
             sticky={true}
+            pagination={{ position: ['none', 'none'] }}
+            footer={() =>
+              <div align="end">
+                <Pagination
+                  current={currentTablePage}
+                  pageSize={MAX_TABLE_ROW_COUNT}
+                  onChange={onChange}
+                  total={totalItemsCount}
+                  showQuickJumper
+                  showTotal={(total, range) => `Всего записей: ${total}, показаны с ${range[0]} по ${range[1]}`}
+                />
+              </div>
+            }
             onRow={(record) => {
               return {
                 onDoubleClick: () => {
