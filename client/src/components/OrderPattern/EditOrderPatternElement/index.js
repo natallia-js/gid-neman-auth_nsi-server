@@ -106,7 +106,7 @@ export const EditOrderPatternElement = (props) => {
     let elementValue = selectedPatternElement.value;
     let elementSize = selectedPatternElement.size;
     let changed = false;
-    if (selectedPatternElement.type !== OrderPatternElementType.TEXT) {
+    if (![OrderPatternElementType.TEXT, OrderPatternElementType.TEXT_AREA].includes(selectedPatternElement.type)) {
       elementValue = null;
       changed = true;
     }
@@ -193,7 +193,15 @@ export const EditOrderPatternElement = (props) => {
           size="small"
         />;
       case OrderPatternElementType.TEXT_AREA:
-        return <TextArea autoSize />;
+        return <>
+          <TextArea
+            autoSize
+            value={selectedPatternElement.value}
+            onChange={changePatternElementValue}
+            allowClear
+          />
+          <div>*Текст, введенный в поле выше, будет полагаться значением по умолчанию</div>
+        </>;
       case OrderPatternElementType.SELECT:
         return <Select
           open={false}
@@ -289,10 +297,11 @@ export const EditOrderPatternElement = (props) => {
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               {selectedPatternElement.type === OrderPatternElementType.TEXT
                 ?
-                <><span>Введите текст</span>{getSelectedPatternElementView()}</>
+                <span>Введите текст</span>
                 :
-                <><span>Образец</span>{getSelectedPatternElementView()}</>
+                <span>Образец</span>
               }
+              {getSelectedPatternElementView()}
             </Space>
           </Col>
         </Row>

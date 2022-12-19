@@ -40,6 +40,7 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
         <TextArea
           autoSize
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          value={element[ORDER_PATTERN_ELEMENT_FIELDS.VALUE]}
         />
       </Tooltip>;
     case OrderPatternElementType.SELECT:

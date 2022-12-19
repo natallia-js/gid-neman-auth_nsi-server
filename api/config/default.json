@@ -4,7 +4,7 @@
   "cookieMaxAgeInMs": 46800000,
   "touchUserSessionAfterSec": 46800,
   "jwtSecret": "secret jwt key",
-  "mongoURI": "mongodb://mongo-root:passw0rd@localhost:27017",
+  "mongoURI": "mongodb://mongo-root:passw0rd@127.0.0.1:27017",
   "CentralConfigDB": {
     "host": "10.23.0.67",
     "dialect": "mssql",

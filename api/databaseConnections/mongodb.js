@@ -8,7 +8,7 @@ async function connectToMongoDB(mongoURI) {
     // значение true заставляет Mongoose использовать построение индекса по умолчанию с помощью createIndex(),
     // а не ensureIndex() - чтобы избежать deprecation warnings со стороны драйвера MongoDB
     useCreateIndex: true,
-    // значение false заставляет методы findOneAndUpdate() и findOneAndRemove() использовать нативный 
+    // значение false заставляет методы findOneAndUpdate() и findOneAndRemove() использовать нативный
     // findOneAndUpdate(), нежели findAndModify()
     useFindAndModify: false,
   });
