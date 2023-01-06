@@ -28,6 +28,7 @@ const { addDY58UserActionInfo, addAdminActionInfo, addError } = require('../serv
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
+const { setLastStationPersonalUpdateDate, setLastDNCSectorPersonalUpdateDate } = require('./additional/updateLastPersonalUpdateDates');
 
 const router = Router();
 
@@ -162,7 +163,9 @@ router.put(
  * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются только по id;
  *              если есть, то к условиям в sortFields добавляется условие сортировки по id соответствующих документов
  *              (сортировка по возрастанию), все это необходимо для поддерки пагинации)
- * filterFields - объект полей с условиями поиска по массиву данных
+ * filterFields - массив объектов (field, value) с условиями поиска по массиву информации о пользователях (value - строка)
+ * additionalFilterFields - массив объектов (field, value) с условиями поиска по дополнительной информации о пользователях:
+ *                          роли, участки ДНЦ, ЭЦД, станции (value - строка либо массив строк)
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
@@ -179,16 +182,16 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { sortFields, filterFields, page, docsCount } = req.body;
 
-    console.log(sortFields, filterFields, page, docsCount)
-
     const serviceName = req.user.service;
 
     let data;
     let totalRecords;
     let mainAdminRolesIds;
 
-    // Применяем сортировку
-    let sortConditions = { _id: 1 };
+    // Применяем сортировку.
+    // Неподтвержденные записи по пользователям выводим в начале списка.
+    // id нужен в принципе для реализации возможности "ленивой" загрузки.
+    let sortConditions = { confirmed: 1, _id: 1 };
     if (sortFields) {
       sortConditions = Object.assign(sortConditions, sortFields);
     }
@@ -201,10 +204,10 @@ router.post(
       // которой принадлежит пользователь, отправивший запрос
       matchFilter.service = serviceName;
     }
-    if (filterFields) {
-      matchFilter.$or = [];
+    if (filterFields?.length) {
+      matchFilter.$and = [];
       filterFields.forEach((filter) => {
-        matchFilter.$or.push({ [filter.field]: filter.value });
+        matchFilter.$and.push({ [filter.field]: new RegExp(filter.value, 'i') });
       });
     }
 
@@ -321,6 +324,7 @@ const saveNewUserData = async (props) => {
   const {
     _id, login, password, name, fatherName, surname, post, service, contactData,
     roles, stations, dncSectors, ecdSectors, authorizedRegistration, session, transaction,
+    setWorkPoligonUpdateTime,
   } = props;
 
   // Ищем в БД пользователя с указанным login (ищем среди всех пользователей, в т.ч. и среди
@@ -366,7 +370,7 @@ const saveNewUserData = async (props) => {
 
   // Определяем, при необходимости, для созданного пользователя рабочие полигоны
 
-  if (stations && stations.length) {
+  if (stations?.length) {
     // Создаем в БД рабочие полигоны-станции либо рабочие места в рамках станций для заданного пользователя
     const objectsToCreateInDatabase = [];
     for (let stationObj of stations) {
@@ -377,9 +381,11 @@ const saveNewUserData = async (props) => {
       });
     }
     await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction });
+    if (setWorkPoligonUpdateTime)
+      await setLastStationPersonalUpdateDate({ date: new Date(), stationIds: stations.map((st) => st.id), transaction });
   }
 
-  if (dncSectors && dncSectors.length) {
+  if (dncSectors?.length) {
     // Создаем в БД рабочие полигоны-участки ДНЦ для заданного пользователя
     for (let id of dncSectors) {
       await TDNCSectorWorkPoligon.create({
@@ -387,9 +393,11 @@ const saveNewUserData = async (props) => {
         DNCSWP_DNCSID: id,
       }, { transaction });
     }
+    if (setWorkPoligonUpdateTime)
+      await setLastDNCSectorPersonalUpdateDate({ date: new Date(), dncSectorIds: dncSectors, transaction })
   }
 
-  if (ecdSectors && ecdSectors.length) {
+  if (ecdSectors?.length) {
     // Создаем в БД рабочие полигоны-участки ЭЦД для заданного пользователя
     for (let id of ecdSectors) {
       await TECDSectorWorkPoligon.create({
@@ -467,6 +475,7 @@ router.post(
       return await saveNewUserData({
         _id, login, password, name, fatherName, surname, post, service, contactData,
         roles, stations, dncSectors, ecdSectors, authorizedRegistration: true, session, transaction: t,
+        setWorkPoligonUpdateTime: true,
       });
     })
     .then(async (user) => {
@@ -567,6 +576,7 @@ router.post(
       return await saveNewUserData({
         _id: undefined, login, password, name, fatherName, surname, post, service, contactData,
         roles, stations, dncSectors, ecdSectors, authorizedRegistration: false, session, transaction: t,
+        setWorkPoligonUpdateTime: false,
       });
     })
     .then(async (user) => {

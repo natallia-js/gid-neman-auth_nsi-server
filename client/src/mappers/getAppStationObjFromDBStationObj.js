@@ -15,6 +15,7 @@ const getAppStationObjFromDBStationObj = (dbStationObj, getTrainSectorInfo = fal
   const appStationObj = {
     [STATION_FIELDS.KEY]: dbStationObj.St_ID,
     [STATION_FIELDS.ESR_CODE]: dbStationObj.St_UNMC,
+    [STATION_FIELDS.GID_ESR_CODE]: dbStationObj.St_GID_UNMC,
     [STATION_FIELDS.NAME]: dbStationObj.St_Title,
     [STATION_FIELDS.NAME_AND_CODE]: `${dbStationObj.St_Title} (${dbStationObj.St_UNMC})`,
     [STATION_FIELDS.PENSI_ID]: dbStationObj.St_PENSI_ID,

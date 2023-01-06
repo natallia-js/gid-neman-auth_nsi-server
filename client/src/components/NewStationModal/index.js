@@ -115,6 +115,31 @@ const NewStationModal = ({
         </Form.Item>
 
         <Form.Item
+          label="ЕСР-код ГИД"
+          name={STATION_FIELDS.GID_ESR_CODE}
+          rules={[
+            {
+              required: true,
+              validator: async (_, value) => {
+                if (!value || value.length < 1) {
+                  setRequiredCodeErrMess('Пожалуйста, введите ЕСР-код ГИД станции!');
+                } else {
+                  setRequiredCodeErrMess(null);
+                }
+              },
+            },
+          ]}
+          validateStatus={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.GID_ESR_CODE]) || requiredCodeErrMess ? ERR_VALIDATE_STATUS : null}
+          help={(stationFieldsErrs && stationFieldsErrs[STATION_FIELDS.GID_ESR_CODE]) || requiredCodeErrMess}
+        >
+          <Input
+            autoComplete="off"
+            placeholder="Введите ЕСР-код ГИД станции"
+            allowClear
+          />
+        </Form.Item>
+
+        <Form.Item
           label="Наименование"
           name={STATION_FIELDS.NAME}
           rules={[

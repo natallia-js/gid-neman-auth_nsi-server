@@ -36,6 +36,18 @@ function createDNCSectorModel(sequelize) {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    // Дата-время последнего изменения в информации о персонале участка ДНЦ.
+    // Данное поле нужно исключительно для обновления информации о персонале в ГИД ДНЦ (в его локальной БД).
+    // Учитывается обновление только следующего рода информации: ФИО, должность.
+    DNCS_LastPersonalUpdateTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    // Дата-время последнего запроса с участка ДНЦ с целью обновления информации по персоналу участка ДНЦ
+    DNCS_LastUpdatePersonalRequestTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     // Other model options go here
     sequelize, // We need to pass the connection instance

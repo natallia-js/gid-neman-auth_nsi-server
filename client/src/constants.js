@@ -219,6 +219,7 @@ export const USER_FIELDS = Object.freeze({
 export const STATION_FIELDS = Object.freeze({
   KEY: 'key',
   ESR_CODE: 'ESRCode',
+  GID_ESR_CODE: 'GID_ESRCode',
   NAME: 'name',
   NAME_AND_CODE: 'nameCode',
   PENSI_ID: 'pensiId',

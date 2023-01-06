@@ -84,7 +84,7 @@ router.post(
           });
           const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.DNCTSS_StationID))];
           const stations = await TStation.findAll({
-            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
             where: { St_ID: stationsIds },
           });
           // ------------- Перегоны поездных участков ДНЦ -----------------
@@ -112,6 +112,7 @@ router.post(
                   return {
                     St_ID: station.dataValues.St_ID,
                     St_UNMC: station.dataValues.St_UNMC,
+                    St_GID_UNMC: station.dataValues.St_GID_UNMC,
                     St_Title: station.dataValues.St_Title,
                     TDNCTrainSectorStation: {
                       DNCTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.DNCTSS_StationPositionInTrainSector,
@@ -362,7 +363,7 @@ router.post(
           const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.DNCTSS_StationID))];
           // Ищем станции всех поездных участков ДНЦ
           const stations = await TStation.findAll({
-            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
             where: { St_ID: stationsIds },
           });
 
@@ -427,6 +428,7 @@ router.post(
                 return {
                   St_ID: station.dataValues.St_ID,
                   St_UNMC: station.dataValues.St_UNMC,
+                  St_GID_UNMC: station.dataValues.St_GID_UNMC,
                   St_Title: station.dataValues.St_Title,
                   TStationTracks: station.dataValues.TStationTracks,
                   TDNCTrainSectorStation: {
@@ -602,7 +604,10 @@ router.post(
       }
 
       // Создаем в БД запись с данными о новом участке ДНЦ
-      const sector = await TDNCSector.create({ DNCS_Title: name });
+      const sector = await TDNCSector.create({
+        DNCS_Title: name,
+        DNCS_LastPersonalUpdateTime: new Date(),
+      });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 

@@ -94,7 +94,7 @@ router.post(
           });
           const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.ECDTSS_StationID))];
           const stations = await TStation.findAll({
-            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
             where: { St_ID: stationsIds },
           });
           // ------------- Перегоны поездных участков ЭЦД -----------------
@@ -122,6 +122,7 @@ router.post(
                   return {
                     St_ID: station.dataValues.St_ID,
                     St_UNMC: station.dataValues.St_UNMC,
+                    St_GID_UNMC: station.dataValues.St_GID_UNMC,
                     St_Title: station.dataValues.St_Title,
                     TECDTrainSectorStation: {
                       ECDTSS_StationPositionInTrainSector: trainSectorStationInfo.dataValues.ECDTSS_StationPositionInTrainSector,
@@ -392,7 +393,7 @@ router.post(
           const stationsIds = [...new Set(trainSectorsStations.map((station) => station.dataValues.ECDTSS_StationID))];
           // Ищем станции всех поездных участков ЭЦД
           const stations = await TStation.findAll({
-            attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+            attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
             where: { St_ID: stationsIds },
           });
 
@@ -457,6 +458,7 @@ router.post(
                 return {
                   St_ID: station.dataValues.St_ID,
                   St_UNMC: station.dataValues.St_UNMC,
+                  St_GID_UNMC: station.dataValues.St_GID_UNMC,
                   St_Title: station.dataValues.St_Title,
                   TStationTracks: station.dataValues.TStationTracks,
                   TECDTrainSectorStation: {
@@ -638,7 +640,10 @@ router.post(
       }
 
       // Создаем в БД запись с данными о новом участке ЭЦД
-      const sector = await TECDSector.create({ ECDS_Title: name });
+      const sector = await TECDSector.create({
+        ECDS_Title: name,
+        ECDS_LastPersonalUpdateTime: new Date(),
+      });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', sector });
 

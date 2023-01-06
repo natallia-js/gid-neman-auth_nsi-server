@@ -388,3 +388,16 @@ ADD SWP_Type char(1);
 
 ALTER TABLE TStationWorkPlaces
 ALTER COLUMN SWP_Type char(1) NOT NULL;
+
+
+ALTER TABLE TStations
+ADD St_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
+
+ALTER TABLE TDNCSectors
+ADD DNCS_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
+
+
+ALTER TABLE TStations
+ADD St_GID_UNMC nvarchar(6);
+update TStations set St_GID_UNMC = St_UNMC;
+ALTER TABLE TStations ALTER COLUMN St_GID_UNMC NVARCHAR(6) NOT NULL;

@@ -25,6 +25,10 @@ const addStationValidationRules = () => {
       .trim()
       .isLength({ min: 1, max: 6 })
       .withMessage('Длина ЕСР-кода станции минимум 1 символ, максимум 6 символов'),
+    check('GID_ESRCode')
+      .trim()
+      .isLength({ min: 1, max: 6 })
+      .withMessage('Длина ЕСР-кода ГИД станции минимум 1 символ, максимум 6 символов'),
     check('name')
       .trim()
       .isLength({ min: 1, max: 32 })

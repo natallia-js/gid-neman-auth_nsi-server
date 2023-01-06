@@ -45,7 +45,7 @@ const {
   async (_req, res) => {
     try {
       const data = await TStation.findAll({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
         include: [{
           model: TStationTrack,
           attributes: ['ST_ID', 'ST_Name'],
@@ -86,7 +86,7 @@ router.post(
   async (_req, res) => {
     try {
       const data = await TStation.findAll({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
         include: [{
           model: TStationTrack,
           attributes: ['ST_ID', 'ST_Name'],
@@ -134,7 +134,7 @@ router.post(
 
     try {
       let data = await TStation.findOne({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
         where: { St_ID: stationId },
         include: [{
           model: TStationTrack,
@@ -190,7 +190,7 @@ router.post(
     try {
       const data = await TStation.findAll({
         raw: true,
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
         where: { St_ID: stationIds },
       });
       res.status(OK).json(data);
@@ -229,7 +229,7 @@ router.post(
 
     try {
       const filter = {
-        attributes: ['St_ID', 'St_UNMC', 'St_Title'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title'],
         include: [{
           model: TStationWorkPlace,
           attributes: ['SWP_ID', 'SWP_Name', 'SWP_Type'],
@@ -261,6 +261,7 @@ router.post(
  *
  * Параметры тела запроса:
  * ESRCode - ЕСР-код станции (обязателен),
+ * GID_ESRCode - ЕСР-код ГИД станции (обязателен),
  * name - наименование станции (обязательно),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -275,7 +276,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { ESRCode, name } = req.body;
+    const { ESRCode, GID_ESRCode, name } = req.body;
 
     try {
       // Ищем в БД станцию, ESRCode которой совпадает с переданным пользователем
@@ -287,7 +288,12 @@ router.post(
       }
 
       // Создаем в БД запись с данными о новой станции
-      const station = await TStation.create({ St_UNMC: ESRCode, St_Title: name });
+      const station = await TStation.create({
+        St_UNMC: ESRCode,
+        St_GID_UNMC: GID_ESRCode,
+        St_Title: name,
+        St_LastPersonalUpdateTime: new Date(),
+      });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', station });
 
@@ -368,6 +374,7 @@ router.post(
  * Параметры тела запроса:
  * id - идентификатор станции (обязателен),
  * ESRCode - ЕСР-код станции (не обязателен),
+ * GID_ESRCode - ЕСР-код ГИД станции (не обязателен),
  * name - наименование станции (не обязательно),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -382,7 +389,7 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, ESRCode, name } = req.body;
+    const { id, ESRCode, GID_ESRCode, name } = req.body;
 
     try {
       // Ищем в БД станцию, id которой совпадает с переданным пользователем
@@ -408,6 +415,9 @@ router.post(
 
       if (req.body.hasOwnProperty('ESRCode')) {
         updateFields.St_UNMC = ESRCode;
+      }
+      if (req.body.hasOwnProperty('GID_ESRCode')) {
+        updateFields.St_GID_UNMC = GID_ESRCode;
       }
       if (req.body.hasOwnProperty('name')) {
         updateFields.St_Title = name;
@@ -487,7 +497,7 @@ router.post(
 
       // После этого извлекаю данные по станциям из своей БД
       const localStationsData = await TStation.findAll({
-        attributes: ['St_ID', 'St_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
         transaction: t,
       });
 
@@ -538,6 +548,7 @@ router.post(
         } else {
           await TStation.create({
             St_UNMC: pensiRecord.stationCode,
+            St_GID_UNMC: pensiRecord.stationCode,
             St_Title: pensiRecord.stationName,
             St_PENSI_ID: pensiRecord.stationId,
             St_PENSI_UNMC: pensiRecord.stationCode,

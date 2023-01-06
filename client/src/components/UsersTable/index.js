@@ -28,7 +28,7 @@ import SavableSelectMultiple from '../SavableSelectMultiple';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
-import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
+import { useColumnSearchPropsOnLazyLoad } from '../../hooks/columnSearchPropsOnLazyLoad.hook';
 import tagRender from '../tagRender';
 
 const { Text, Title } = Typography;
@@ -38,6 +38,8 @@ const { Panel } = Collapse;
 // Количество строк на одной странице таблицы
 const MAX_TABLE_ROW_COUNT = 10;
 
+const CLEAR_STATIONS_FILTER_MARK = '_';
+
 
 /**
  * Компонент таблицы с информацией о пользователях.
@@ -46,8 +48,11 @@ const UsersTable = () => {
   // Информация по пользователям (массив объектов)
   const [tableData, setTableData] = useState(null);
 
+  // Фильтры по полям таблицы пользователей
+  const [filterFields, setFilterFields] = useState([]);
+
   // Дополнительные фильтры по полям, не отображаемым в таблице (роли, участки ДНЦ, ЭЦД, станции)
-  const [filters, setFilters] = useState(null);
+  const [additionalFilters, setAdditionalFilters] = useState([]);
 
   // Массив объектов, каждый из которых содержит id роли и ее аббревиатуру
   const [rolesDataForMutipleSelect, setRolesDataForMutipleSelect] = useState(null);
@@ -105,55 +110,63 @@ const UsersTable = () => {
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
-  // Для сортировки данных в столбцах таблицы
-  const { getColumnSearchProps } = useColumnSearchProps();
-
   // Общее количество записей в БД, удовлетворяющее условиям поиска
   const [totalItemsCount, setTotalItemsCount] = useState(0);
 
   // Текущая страница таблицы
   const [currentTablePage, setCurrentTablePage] = useState(1);
 
+  // Для поиска данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchPropsOnLazyLoad();
+
 
   /**
-   * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
-   * и устанавливает ее в локальное состояние
+   * Загрузка требуемой информации по пользователям
    */
-  const fetchData = useCallback(async (page) => {
+  const lazyLoadUsers = useCallback(async ({ page, filters = null }) => {
     setDataLoaded(false);
-
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
-      let res = await request(ServerAPI.GET_ALL_USERS, 'POST', {
+      const res = await request(ServerAPI.GET_ALL_USERS, 'POST', {
+        filterFields: filters,
         page,
         docsCount: MAX_TABLE_ROW_COUNT,
       });
 
-      const tableData = res.data
-        .map((user) => getAppUserObjFromDBUserObj(user))
-        // Неподтвержденные записи по пользователям выводим в начале списка
-        .sort((a, b) => {
-          if (!a[USER_FIELDS.CONFIRMED] && b[USER_FIELDS.CONFIRMED]) {
-            return -1;
-          } else if (a[USER_FIELDS.CONFIRMED] && !b[USER_FIELDS.CONFIRMED]) {
-            return 1;
-          }
-          return 0;
-        });
+      const tableData = res.data.map((user) => getAppUserObjFromDBUserObj(user));
+
       setTableData(tableData);
       setTotalItemsCount(res.totalRecords);
       // Если после загрузки данных окажется, что пользователь запросил страницу, которая не существует в БД,
-      // то устанавливаем номер страницы равный максимальному извлеченному номеру (такое может, в частности,
-      // произойти в случае, если на сервере перед запросом произошла "чистка" БД)
+      // то устанавливаем номер страницы равный максимальному извлеченному номеру
       const pagesNumber = Math.ceil(res.totalItemsCount / MAX_TABLE_ROW_COUNT);
-      if (page > pagesNumber) {
+      if (currentTablePage > pagesNumber) {
         setCurrentTablePage(pagesNumber);
       }
+      setLoadDataErr(null);
 
-      // ---------------------------------
+    } catch (e) {
+      setTotalItemsCount(0);
+      setCurrentTablePage(1);
+      setLoadDataErr(e.message);
+    }
 
+    setDataLoaded(true);
+  }, [request]);
+
+
+  /**
+   * Извлекает дополнительную информацию по пользователям, которая должна быть отображена в таблице, из первоисточника
+   * и устанавливает ее в локальное состояние
+   */
+  const fetchData = useCallback(async () => {
+    lazyLoadUsers({ page: currentTablePage, filters: filterFields });
+
+    setDataLoaded(false);
+
+    try {
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
-      res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
+      let res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
       // Участки ДНЦ будем сортировать при отображении в списках выбора
       const dncSectors = res
         .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
@@ -168,7 +181,7 @@ const UsersTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
       res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
-     // Участки ЭЦД будем сортировать при отображении в списках выбора
+      // Участки ЭЦД будем сортировать при отображении в списках выбора
       const ecdSectors = res
         .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
         .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
@@ -243,8 +256,8 @@ const UsersTable = () => {
    * При рендере компонента подгружает информацию для отображения в таблице из БД
    */
   useEffect(() => {
-    fetchData(currentTablePage);
-  }, [currentTablePage]);
+    fetchData();
+  }, []);
 
 
   /**
@@ -561,6 +574,7 @@ const UsersTable = () => {
     getColumnSearchProps,
   });
 
+
   /**
    * Правила отображения редактируемых и нередактируемых столбцов таблицы.
    */
@@ -585,6 +599,10 @@ const UsersTable = () => {
     };
   });
 
+
+  /**
+   * Для отображения информации о рабочих полигонах-станциях пользователя в списках выбора.
+   */
   const getUserStationWorkPoligonsForMultipleSelect = (userObject) => {
     if (!userObject || !userObject[USER_FIELDS.STATION_WORK_POLIGONS]) {
       return [];
@@ -597,7 +615,10 @@ const UsersTable = () => {
     });
   };
 
-  // Позволяет включить все рабочие места Руководителей работ всех станций в список рабочих мест пользователя.
+
+  /**
+   * Позволяет включить все рабочие места Руководителей работ всех станций в список рабочих мест пользователя.
+   */
   const includeAllWorkManagerWorkPlaces = async (userObject) => {
     if (!userObject)
       return;
@@ -624,7 +645,7 @@ const UsersTable = () => {
     setTableData(newTableData);
   };
 
-  const getTableDataToDisplay = useMemo(() =>
+  /*const getTableDataToDisplay = useMemo(() =>
     (!filters || !filters.length) ?
     tableData :
     tableData.filter((el) => {
@@ -684,41 +705,54 @@ const UsersTable = () => {
         }
       }
       return ok;
-    }), [tableData, filters]);
+    }), [tableData, filters]);*/
 
-  const onFinishSetFilters = () => {
-    const currentFilters = filterForm.getFieldsValue();
-    if (!currentFilters || !Object.keys(currentFilters).length) {
-      setFilters(null);
+
+  /**
+   * Обрабатывает подтверждение со стороны пользователя применения установленных дополнительных
+   * фильтров в отношении таблицы пользователей.
+   */
+  const onFinishSetAdditionalFilters = () => {
+    const currentAdditionalFilters = filterForm.getFieldsValue();
+    if (!currentAdditionalFilters || !Object.keys(currentAdditionalFilters).length) {
+      setAdditionalFilters([]);
     } else {
-      const newFilters = Object.keys(currentFilters)
-        .map((filterName) => [filterName, currentFilters[filterName]])
+      const newAdditionalFilters = Object.keys(currentAdditionalFilters)
+        .map((filterName) => ({ filterName, value: currentAdditionalFilters[filterName] }))
         .filter((el) => {
-          if (el[1] === null || el[1] === undefined) {
+          if (!el.value) {
             return false;
           }
-          if (Object.prototype.toString.call(el[1]) === '[object Array]' && !el[1].length) {
+          if (Object.prototype.toString.call(el.value) === '[object Array]' && !el.value.length) {
             return false;
           }
           return true;
         });
-      setFilters(newFilters);
+        console.log('newAdditionalFilters',newAdditionalFilters)
+      setAdditionalFilters(newAdditionalFilters);
     }
   };
 
-  const onResetFilters = () => {
-    setFilters(null);
+
+  /**
+   * Обрабатывает подтверждение со стороны пользователя сброса установленных дополнительных
+   * фильтров в отношении таблицы пользователей.
+   */
+  const onResetAdditionalFilters = () => {
+    setAdditionalFilters([]);
     filterForm.resetFields();
   };
 
 
+  // Список станций и рабочих мест в рамках них для отображения в списке выбора в меню дополнительных фильтров
   const [stationsAndWorkPoligonsOptions, setStationsAndWorkPoligonsOptions] = useState([]);
 
-  // формируем основной массив данных (опций для отображения), учитывая возможный установленный фильтр
+  // Формируем основной массив данных (опций для отображения) по станциям и их рабочим местам (в меню дополнительных фильтров),
+  // учитывая возможный установленный фильтр (фильтр, установленный непосредственно в списке выбора)
   useEffect(() => {
     setStationsAndWorkPoligonsOptions(
       !stationsDataForMultipleSelect ? [] :
-      [{ label: '< очистить список >', value: '_' }, ...stationsDataForMultipleSelect].map((item) => {
+      [{ label: '< очистить список >', value: CLEAR_STATIONS_FILTER_MARK }, ...stationsDataForMultipleSelect].map((item) => {
         const labelToDisplay = item.label || item.value;
         return (
           <Option label={labelToDisplay} value={item.value} key={item.value}>
@@ -733,17 +767,49 @@ const UsersTable = () => {
     );
   }, [stationsDataForMultipleSelect]);
 
+
+  /**
+   * Сброс дополнительного фильтра по станциям / рабочим местам.
+   */
   const handleSelectStation = (optionKey) => {
-    if (optionKey === '_') {
+    if (optionKey === CLEAR_STATIONS_FILTER_MARK) {
       filterForm.resetFields([USER_FIELDS.STATION_WORK_POLIGONS]);
-      setFilters((value) => value ? value.filter((el) => el[0] !== USER_FIELDS.STATION_WORK_POLIGONS) : null);
+      setAdditionalFilters((value) => value ? value.filter((el) => el[0] !== USER_FIELDS.STATION_WORK_POLIGONS) : null);
     }
   };
 
-  const onChange = (page, _pageSize) => {
-    if (page !== currentTablePage) {
-      setCurrentTablePage(page);
+
+  /**
+   * Реакция на смену номера страницы таблицы пользователей.
+   */
+  const onChangePageNumber = (page, _pageSize) => {
+    setCurrentTablePage(page);
+    lazyLoadUsers({ page, filters: filterFields });
+  };
+
+
+  /**
+   * Обрабатываем событие установки фильтров / сортировки данных в таблице
+   */
+  const handleFilterAndSortData = (_pagination, filters, sorter) => {
+    console.log('handleFilterAndSortData', filters, sorter)
+
+    const currentFilters = [];
+    for (const [field, filter] of Object.entries(filters || {})) {
+      if (filter?.length) {
+        currentFilters.push({ field, value: filter[0] });
+      }
     }
+    setFilterFields(currentFilters);
+    const currentSorters = {};
+    if (sorter.column) {
+      currentSorters[sorter.column.field] = sorter.order;
+    }
+
+    const currentPage = 1;
+    setCurrentTablePage(currentPage);
+
+    lazyLoadUsers({ page: currentPage, filters: currentFilters });
   };
 
 
@@ -806,12 +872,12 @@ const UsersTable = () => {
               </Form.Item>
               <Form.Item>
                 <Space>
-                  <Button type="primary" onClick={onFinishSetFilters}>
+                  <Button type="primary" onClick={onFinishSetAdditionalFilters}>
                     Найти
                   </Button>
                   {
-                    filters && filters.length &&
-                    <Button type="primary" onClick={onResetFilters}>
+                    additionalFilters && additionalFilters.length &&
+                    <Button type="primary" onClick={onResetAdditionalFilters}>
                       Сброс фильтров
                     </Button>
                   }
@@ -860,7 +926,7 @@ const UsersTable = () => {
               },
             }}
             bordered
-            dataSource={getTableDataToDisplay}
+            dataSource={tableData}
             columns={mergedColumns}
             rowClassName="editable-row"
             sticky={true}
@@ -870,13 +936,14 @@ const UsersTable = () => {
                 <Pagination
                   current={currentTablePage}
                   pageSize={MAX_TABLE_ROW_COUNT}
-                  onChange={onChange}
+                  onChange={onChangePageNumber}
                   total={totalItemsCount}
                   showQuickJumper
                   showTotal={(total, range) => `Всего записей: ${total}, показаны с ${range[0]} по ${range[1]}`}
                 />
               </div>
             }
+            onChange={handleFilterAndSortData}
             onRow={(record) => {
               return {
                 onDoubleClick: () => {

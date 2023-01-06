@@ -20,7 +20,7 @@ const {
   GET_DY58_USERS_LOGS_ACTION,
   GET_SERVER_ERRORS_LOGS_ACTION,
   GET_SERVER_LOGS_ACTION,
-  DSP_FULL, DSP_Operator, DNC_FULL, ECD_FULL, REVISOR, STATION_WORKS_MANAGER,
+  DSP_FULL, DSP_Operator, DNC_FULL, ECD_FULL, REVISOR, STATION_WORKS_MANAGER, VIEWER,
 } = require('../constants');
 const AUTH_NSI_ACTIONS = require('./AUTH_NSI_ACTIONS');
 const DY58_ACTIONS = require('./DY58_ACTIONS');
@@ -437,7 +437,7 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     // -----------------
     // Рабочие распоряжения
     case DY58_ACTIONS.GET_WORK_ORDERS:
-      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR, STATION_WORKS_MANAGER];
+      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR, STATION_WORKS_MANAGER, VIEWER];
       break;
     case DY58_ACTIONS.REPORT_ON_ORDER_DELIVERY:
     case DY58_ACTIONS.CONFIRM_ORDER:
@@ -457,7 +457,7 @@ const hasUserRightToPerformAction = async (req, res, next) => {
     // Все распоряжения
     case DY58_ACTIONS.ADD_ORDER:
     case DY58_ACTIONS.GET_ORDERS_JOURNAL_DATA:
-      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR, STATION_WORKS_MANAGER];
+      creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL, REVISOR, STATION_WORKS_MANAGER, VIEWER];
       break;
     case DY58_ACTIONS.MOD_ORDER:
       creds = [DNC_FULL, DSP_FULL, DSP_Operator, ECD_FULL];

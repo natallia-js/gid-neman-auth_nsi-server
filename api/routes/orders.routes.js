@@ -130,6 +130,7 @@ const {
       dncToSend, dspToSend, ecdToSend, otherToSend,
       workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
       orderChainId, dispatchedOnOrder, showOnGID, idOfTheOrderToCancel, draftId,
+      additionalWorkers,
     } = req.body;
 
     // Генерируем id нового распоряжения
@@ -225,7 +226,7 @@ const {
             name: req.user.name,
             fatherName: req.user.fatherName,
             surname: req.user.surname,
-          }),
+          }) + (additionalWorkers ? ', ' + additionalWorkers : ''),
         },
         createdOnBehalfOf, specialTrainCategories, orderChain: orderChainInfo, showOnGID,
         assertDateTime: getOrderAssertDateTime(),
@@ -626,6 +627,7 @@ router.post(
 
       // Запоминаем рабочие места на станции, которым текущее распоряжение было адресовано ранее
       let stationWorkPlacesToSend = [...existingOrder.stationWorkPlacesToSend || []];
+
       // Сюда поместим id тех рабочих мест на станции, по которым были изменения
       const deletedWorkPlacesIds = [];
       const newWorkPlacesIds = [];
@@ -649,6 +651,7 @@ router.post(
         // Извлекаем элемент текста распоряжения, в котором приводится список рабочих мест на станции, принимающих
         // дежурство наряду с текущим ДСП
         const takeDutyPersonalInfo = orderText?.orderText?.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF) || { value: '[]' };
+
         try {
           // Получаем список рабочих мест, которым необходимо адресовать текущее распоряжение
           const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
@@ -702,6 +705,7 @@ router.post(
           });
         }
       }
+
       if (edited) {
         await existingOrder.save();
       }
@@ -1132,8 +1136,9 @@ router.post(
  *              дате-времени издания соответствующих документов; если есть, то к условиям в sortFields
  *              добавляется условие сортировки по id соответствующих документов (сортировка по возрастанию),
  *              все это необходимо для поддерки пагинации)
- * filterFields - объект полей с условиями поиска по массиву данных (если поиск запрашивается по номеру уведомления,
- *                то остальные критерии поиска и сортировка автоматически не принимаются во внимание)
+ * filterFields - массив объектов (field, value) с условиями поиска по массиву данных
+ *                (если поиск запрашивается по номеру уведомления, то остальные критерии поиска и сортировка
+ *                автоматически не принимаются во внимание)
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,

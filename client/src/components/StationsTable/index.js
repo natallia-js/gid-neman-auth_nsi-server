@@ -162,6 +162,7 @@ const StationsTable = () => {
   const handleStartEditStation = (record) => {
     form.setFieldsValue({
       [STATION_FIELDS.ESR_CODE]: '',
+      [STATION_FIELDS.GID_ESR_CODE]: '',
       [STATION_FIELDS.NAME]: '',
       ...record,
     });
