@@ -180,7 +180,7 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { sortFields, filterFields, page, docsCount } = req.body;
+    const { sortFields, filterFields, additionalFilterFields, page, docsCount } = req.body;
 
     const serviceName = req.user.service;
 
@@ -204,6 +204,7 @@ router.post(
       // которой принадлежит пользователь, отправивший запрос
       matchFilter.service = serviceName;
     }
+    // фильтрация по полям непосредственно самой таблицы пользователей
     if (filterFields?.length) {
       matchFilter.$and = [];
       filterFields.forEach((filter) => {
@@ -211,40 +212,68 @@ router.post(
       });
     }
 
-    const aggregation = [
-      { $match: matchFilter },
-      { $sort: sortConditions },
-      { $group: {
-        _id: null,
-        total: { $sum: 1 },
-        data: { $push: '$$ROOT' },
-      } },
-      { $project: {
-        total: 1,
-        // skip = page > 0 ? (page - 1) * docsCount : 0
-        // limit = docsCount || 1000000
-        data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
-      } }
-    ];
+    if (!isMainAdmin(req)) {
+      // Ищем те роли, которые доступны лишь главному администратору.
+      // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
+      mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
+      mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
+    }
 
-    try {
-      data = await User.aggregate(aggregation);
+    // Фильтрация по дополнительным полям (как самой таблицы пользователей, так и связанных таблиц)
+    const addFields = {};
+    if (additionalFilterFields) {
+      additionalFilterFields.forEach((filter) => {
+        // фильтр по id пользователя
+        if (filter.field === 'key') {
+          if (!matchFilter.$and) matchFilter.$and = [];
+          addFields._id = { $toString: "$_id" };
+          matchFilter.$and.push({ '_id': new RegExp(filter.value, 'i') });
+        }
+        // фильтр по ролям (полагаем, что указана только 1 роль для поиска пользователей, которые ею наделены)
+        if (filter.field === 'roles' && filter.value?.length) {
+          if (!matchFilter.$and) matchFilter.$and = [];
+          addFields['thereAreRoles'] = { $cond: [{ $setIsSubset: [[mongoose.Types.ObjectId(filter.value)], "$roles"]}, true, false] };
+          matchFilter.$and.push({ 'thereAreRoles': true });
+        }
+      });
+    }
 
-      if (!isMainAdmin(req)) {
-        // Ищем те роли, которые доступны лишь главному администратору.
-        // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
-        mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
-        mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
-      }
+    // Условия извлечения информации из коллекции пользователей
+    const getAggregation = (page, docsCount) => {
+      const aggregation = [];
+      if (Object.keys(addFields).length)
+        aggregation.push({ $addFields: addFields });
+
+      aggregation.push(
+        { $match: matchFilter },
+        { $sort: sortConditions },
+        { $group: {
+          _id: null,
+          total: { $sum: 1 },
+          data: { $push: '$$ROOT' },
+        } },
+        { $project: {
+          total: 1,
+          // skip = page > 0 ? (page - 1) * docsCount : 0
+          // limit = docsCount || 1000000
+          data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
+        } }
+      );
+      return aggregation;
+    };
+
+    // Поиск порции данных (порция - либо весь результирующий набор данных, либо часть результирующего набора)
+    const findDataPortion = async (page, docsCount) => {
+      let dataPortion = await User.aggregate(getAggregation(page, docsCount));
 
       // вначале делаем это
-      totalRecords = data && data[0] ? data[0].total : 0;
+      totalRecords = dataPortion && dataPortion[0] ? dataPortion[0].total : 0;
       // и только затем это
-      data = data && data[0] ? data[0].data : [];
+      dataPortion = dataPortion && dataPortion[0] ? dataPortion[0].data : [];
 
       // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
       // по рабочим полигонам
-      const userIds = data.map((user) => String(user._id));
+      const userIds = dataPortion.map((user) => String(user._id));
 
       const stationWorkPoligons = await TStationWorkPoligon.findAll({
         raw: true,
@@ -264,9 +293,10 @@ router.post(
         where: { ECDSWP_UserID: userIds },
       });
 
-      data = data.map((user) => {
+      return dataPortion.map((user) => {
         return {
           ...user,
+          // из списка ролей пользователя удаляем те, которые доступны лишь главному администратору системы
           roles: user.roles && mainAdminRolesIds
             ? user.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
             : user.roles,
@@ -281,6 +311,11 @@ router.post(
             .map((poligon) => poligon.ECDSWP_ECDSID),
         };
       });
+    }
+
+    let currentPage = page;
+    try {
+      data = await findDataPortion(currentPage, docsCount);
 
       res.status(OK).json({
         data,

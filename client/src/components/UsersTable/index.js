@@ -123,12 +123,13 @@ const UsersTable = () => {
   /**
    * Загрузка требуемой информации по пользователям
    */
-  const lazyLoadUsers = useCallback(async ({ page, filters = null }) => {
+  const lazyLoadUsers = useCallback(async ({ page, filters = null, additionalFilters = null }) => {
     setDataLoaded(false);
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
       const res = await request(ServerAPI.GET_ALL_USERS, 'POST', {
         filterFields: filters,
+        additionalFilterFields: additionalFilters,
         page,
         docsCount: MAX_TABLE_ROW_COUNT,
       });
@@ -160,7 +161,7 @@ const UsersTable = () => {
    * и устанавливает ее в локальное состояние
    */
   const fetchData = useCallback(async () => {
-    lazyLoadUsers({ page: currentTablePage, filters: filterFields });
+    lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
 
     setDataLoaded(false);
 
@@ -307,8 +308,9 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью добавления информации о пользователе
       const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user);
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const newUser = getAppUserObjFromDBUserObj(res.user);
-      setTableData([...tableData, newUser]);
+      //const newUser = getAppUserObjFromDBUserObj(res.user);
+      //setTableData([...tableData, newUser]);
+      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -333,7 +335,8 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью удаления всей информации о пользователе
       const res = await request(ServerAPI.DEL_USER, 'POST', { userId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      setTableData(tableData.filter((user) => user[USER_FIELDS.KEY] !== userId));
+      //setTableData(tableData.filter((user) => user[USER_FIELDS.KEY] !== userId));
+      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -713,12 +716,12 @@ const UsersTable = () => {
    * фильтров в отношении таблицы пользователей.
    */
   const onFinishSetAdditionalFilters = () => {
-    const currentAdditionalFilters = filterForm.getFieldsValue();
+    const currentAdditionalFilters = filterForm.getFieldsValue(); console.log('currentAdditionalFilters',currentAdditionalFilters)
     if (!currentAdditionalFilters || !Object.keys(currentAdditionalFilters).length) {
       setAdditionalFilters([]);
     } else {
       const newAdditionalFilters = Object.keys(currentAdditionalFilters)
-        .map((filterName) => ({ filterName, value: currentAdditionalFilters[filterName] }))
+        .map((field) => ({ field, value: currentAdditionalFilters[field] }))
         .filter((el) => {
           if (!el.value) {
             return false;
@@ -730,6 +733,7 @@ const UsersTable = () => {
         });
         console.log('newAdditionalFilters',newAdditionalFilters)
       setAdditionalFilters(newAdditionalFilters);
+      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters: newAdditionalFilters });
     }
   };
 
@@ -741,6 +745,7 @@ const UsersTable = () => {
   const onResetAdditionalFilters = () => {
     setAdditionalFilters([]);
     filterForm.resetFields();
+    lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters: [] });
   };
 
 
@@ -784,7 +789,7 @@ const UsersTable = () => {
    */
   const onChangePageNumber = (page, _pageSize) => {
     setCurrentTablePage(page);
-    lazyLoadUsers({ page, filters: filterFields });
+    lazyLoadUsers({ page, filters: filterFields, additionalFilters });
   };
 
 
@@ -809,7 +814,7 @@ const UsersTable = () => {
     const currentPage = 1;
     setCurrentTablePage(currentPage);
 
-    lazyLoadUsers({ page: currentPage, filters: currentFilters });
+    lazyLoadUsers({ page: currentPage, filters: currentFilters, additionalFilters });
   };
 
 
@@ -887,9 +892,10 @@ const UsersTable = () => {
                 Примечание.
                 Фильтрация производится путем сопоставления всех указанных значений с соответствующими
                 значениями полей записей таблицы. В результирующую выборку попадают только те записи,
-                для которых совпадение 100%. Исключение - поле "Станция / рабочее место на станции":
-                поиск производится по частичному совпадению, т.е. в результирующую выборку попадут все те
-                записи, у которых хотя бы одно значение совпадает с хотя бы одним указанным значением.
+                для которых совпадение 100%. Исключения: поле "ID пользователя" (фильтрация производится по
+                частичному совпадению заданной строки со строкой с id пользователя), поле "Станция / рабочее место на станции"
+                (поиск производится по частичному совпадению, т.е. в результирующую выборку попадут все те
+                записи, у которых хотя бы одно значение совпадает с хотя бы одним указанным значением).
               </Text>
             </Form>
           </Panel>
