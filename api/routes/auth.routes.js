@@ -151,8 +151,8 @@ router.put(
 
 
 /**
- * Обрабатывает запрос на получение списка всех пользователей.
- * В результат включаются абсолютно все пользователи, в том числе и те, заявки на регистрацию
+ * Обрабатывает запрос на получение списка всех пользователей[, удовлетворяющих указанным критериям фильтрации].
+ * В результат включаются все найденные пользователи, в том числе и те, заявки на регистрацию
  * которых пока не подтверждены.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
@@ -160,12 +160,13 @@ router.put(
  * иное же лицо получит полный список тех пользователей, которые закреплены за его службой
  * (включая его самого).
  *
- * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются только по id;
- *              если есть, то к условиям в sortFields добавляется условие сортировки по id соответствующих документов
- *              (сортировка по возрастанию), все это необходимо для поддерки пагинации)
- * filterFields - массив объектов (field, value) с условиями поиска по массиву информации о пользователях (value - строка)
- * additionalFilterFields - массив объектов (field, value) с условиями поиска по дополнительной информации о пользователях:
- *                          роли, участки ДНЦ, ЭЦД, станции (value - строка либо массив строк)
+ * sortFields - объект полей, по которым производится сортировка данных (если нет, то данные сортируются по полю
+ *              подтверждения информации со стороны администратора и по полю _id (все по возрастанию);
+ *              если есть, то за условиями в sortFields следует условие сортировки по _id соответствующих документов
+ *              (сортировка по возрастанию); все это необходимо для поддерки пагинации)
+ * filterFields - массив объектов {field, value} с условиями поиска по массиву информации о пользователях (value - строка)
+ * additionalFilterFields - массив объектов {field, value} с условиями поиска по дополнительной информации о пользователях:
+ *                          роли, участки ДНЦ, ЭЦД, станции (value - строка, число либо массив строк)
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
@@ -182,68 +183,174 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { sortFields, filterFields, additionalFilterFields, page, docsCount } = req.body;
 
+    const addFields = {}; // дополнительно вводимые поля
+
+    // Извлекаем наименование службы, которой принадлежит пользователь
     const serviceName = req.user.service;
 
-    let data;
-    let totalRecords;
-    let mainAdminRolesIds;
-
-    // Применяем сортировку.
-    // Неподтвержденные записи по пользователям выводим в начале списка.
-    // id нужен в принципе для реализации возможности "ленивой" загрузки.
-    let sortConditions = { confirmed: 1, _id: 1 };
-    if (sortFields) {
-      sortConditions = Object.assign(sortConditions, sortFields);
+    // Применяем условия сортировки.
+    // Неподтвержденные записи по пользователям выводим в начале списка при условии отсутствия указанных
+    // пользователем условий сортировки.
+    // _id нужен в принципе для реализации возможности "ленивой" загрузки.
+    let sortConditions = {};
+    if (sortFields && Object.keys(sortFields).length > 0) {
+      for (let prop in sortFields) {
+        const newAddFieldName = `_${prop}`;
+        addFields[newAddFieldName] = { "$toLower": `$${prop}` };
+        sortConditions = { [newAddFieldName]: sortFields[prop] };
+      }
+    } else {
+      sortConditions = { confirmed: 1 };
     }
+    sortConditions._id = 1;
 
-    // Применяем фильтры (полагаем, что все поля, к которым применяются фильтры, содержат
+    // Применяем условия фильтрации (полагаем, что все поля, к которым применяются фильтры, содержат
     // только строковые значения)
     const matchFilter = {};
     if (!isMainAdmin(req)) {
-      // Если пользователь, отправивший запрос, - не главный администратор, то ищем пользователей, принадлежащих службе,
-      // которой принадлежит пользователь, отправивший запрос
+      // Если пользователь, отправивший запрос, - не главный администратор, то будем искать пользователей,
+      // принадлежащих службе, которой принадлежит пользователь, отправивший запрос
       matchFilter.service = serviceName;
     }
-    // фильтрация по полям непосредственно самой таблицы пользователей
+    // фильтрация по полям непосредственно самой таблицы (коллекции) пользователей
     if (filterFields?.length) {
       matchFilter.$and = [];
       filterFields.forEach((filter) => {
-        matchFilter.$and.push({ [filter.field]: new RegExp(filter.value, 'i') });
+        if (filter?.field && filter?.value)
+          matchFilter.$and.push({ [filter.field]: new RegExp(filter.value, 'i') });
       });
     }
 
-    if (!isMainAdmin(req)) {
-      // Ищем те роли, которые доступны лишь главному администратору.
-      // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
-      mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
-      mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
-    }
+    // Устанавливаем фильтры по дополнительным полям (как самой таблицы пользователей, так и связанных с нею таблиц)
 
-    // Фильтрация по дополнительным полям (как самой таблицы пользователей, так и связанных таблиц)
-    const addFields = {};
-    if (additionalFilterFields) {
-      additionalFilterFields.forEach((filter) => {
-        // фильтр по id пользователя
-        if (filter.field === 'key') {
-          if (!matchFilter.$and) matchFilter.$and = [];
-          addFields._id = { $toString: "$_id" };
-          matchFilter.$and.push({ '_id': new RegExp(filter.value, 'i') });
-        }
-        // фильтр по ролям (полагаем, что указана только 1 роль для поиска пользователей, которые ею наделены)
-        if (filter.field === 'roles' && filter.value?.length) {
-          if (!matchFilter.$and) matchFilter.$and = [];
-          addFields['thereAreRoles'] = { $cond: [{ $setIsSubset: [[mongoose.Types.ObjectId(filter.value)], "$roles"]}, true, false] };
-          matchFilter.$and.push({ 'thereAreRoles': true });
-        }
-      });
-    }
+    let possibleUserIds = []; // id возможных пользователей, если есть фильтр по рабочим полигонам
+    let firstSetPossibleUserIds = false; // true - если значение possibleUserIds установлено при применении первого из
+                                         // указанных дополнительных фильтров по рабочим полигонам (при применении
+                                         // всех последующих фильтров по рабочим полигонам значение будет false)
+    let dbFindResult; // результат получения данных из БД
+    const stationAndWorkPlaceSeparator = '_';
 
-    // Условия извлечения информации из коллекции пользователей
-    const getAggregation = (page, docsCount) => {
+    try {
+      if (additionalFilterFields) {
+        for (let filter of additionalFilterFields) {
+          switch (filter.field) {
+            // фильтр по id пользователя
+            case 'key':
+              if (filter.value) {
+                if (!matchFilter.$and) matchFilter.$and = [];
+                addFields._id = { $toString: "$_id" };
+                matchFilter.$and.push({ '_id': new RegExp(filter.value, 'i') });
+              }
+              break;
+            // фильтр по ролям (полагаем, что указана только 1 роль для поиска пользователей, которые ею наделены)
+            case 'roles':
+              if (filter.value?.length) {
+                if (!matchFilter.$and) matchFilter.$and = [];
+                addFields['thereAreRoles'] = { $cond: [{ $setIsSubset: [[mongoose.Types.ObjectId(filter.value)], "$roles"]}, true, false] };
+                matchFilter.$and.push({ 'thereAreRoles': true });
+              }
+              break;
+            // Если среди дополнительных фильтров есть условия поиска по рабочим полигонам, то прежде чем искать
+            // информацию в коллекции пользователей, необходимо определить id тех пользователей, которых можно
+            // искать. Информация о таких пользователях лежит во вспомогательных таблицах рабочих полигонов.
+            case 'stations':
+              // Полагаем, что filter.value - массив строк. Если в строке встречается символ '_', то это
+              // значит, что до этого символа идет id станции, после него - id рабочего места на этой станции;
+              // если символа '_' в строке нет, то в строке содержится код станции
+              if (filter.value?.length) {
+                // Ищем пользователей, у которых есть рабочий полигон "станция" (игнорируем пока рабочее место)
+                // с одним из заданных id
+                dbFindResult = await TStationWorkPoligon.findAll({
+                  raw: true,
+                  attributes: ['SWP_UserID', 'SWP_StID', 'SWP_StWP_ID'],
+                  where: { SWP_StID: filter.value.map((el) => {
+                    if (el.indexOf(stationAndWorkPlaceSeparator) > 0) return el.split(stationAndWorkPlaceSeparator)[0];
+                    else return el;
+                  }) },
+                });
+                // Из найденных пользователей оставляем только тех, у которых есть полное совпадение рабочего
+                // полигона с одним из заданных (с учетом рабочего места на станции)
+                dbFindResult = dbFindResult.filter((el) => {
+                  let fullUserWorkPoligon;
+                  if (el.SWP_StWP_ID) fullUserWorkPoligon = `${el.SWP_StID}${stationAndWorkPlaceSeparator}${el.SWP_StWP_ID}`;
+                  else fullUserWorkPoligon = `${el.SWP_StID}`;
+                  return (filter.value.indexOf(fullUserWorkPoligon) >= 0);
+                });
+                // Если ранее массив possibleUserIds не заполнялся, заполняем его
+                if (!firstSetPossibleUserIds) {
+                  firstSetPossibleUserIds = true;
+                  possibleUserIds.push(...dbFindResult.map((res) => res.SWP_UserID));
+                // Если же массив possibleUserIds ранее заполнялся, то необходимо выполнить операцию
+                // нахождения пересечения ранее установленных значений массива с новыми значениями и
+                // присвоить результат possibleUserIds
+                } else {
+                  possibleUserIds = dbFindResult
+                    .map((res) => res.SWP_UserID)
+                    .filter((el) => possibleUserIds.includes(el));
+                }
+              }
+              break;
+            case 'dncSectors':
+              // Полагаем, что filter.value - число
+              if (filter.value) {
+                // Ищем пользователей, у которых есть рабочий полигон "участок ДНЦ" с заданным id
+                dbFindResult = await TDNCSectorWorkPoligon.findAll({
+                  raw: true,
+                  attributes: ['DNCSWP_UserID', 'DNCSWP_DNCSID'],
+                  where: { DNCSWP_DNCSID: filter.value },
+                }) || [];
+                // Если ранее массив possibleUserIds не заполнялся, заполняем его
+                if (!firstSetPossibleUserIds) {
+                  firstSetPossibleUserIds = true;
+                  possibleUserIds.push(...dbFindResult.map((res) => res.DNCSWP_UserID));
+                // Если же массив possibleUserIds ранее заполнялся, то необходимо выполнить операцию
+                // нахождения пересечения ранее установленных значений массива с новыми значениями и
+                // присвоить результат possibleUserIds
+                } else {
+                  possibleUserIds = dbFindResult
+                    .map((res) => res.DNCSWP_UserID)
+                    .filter((el) => possibleUserIds.includes(el));
+                }
+              }
+              break;
+            case 'ecdSectors':
+              // Полагаем, что filter.value - число
+              if (filter.value) {
+                // Ищем пользователей, у которых есть рабочий полигон "участок ЭЦД" с заданным id
+                dbFindResult = await TECDSectorWorkPoligon.findAll({
+                  raw: true,
+                  attributes: ['ECDSWP_UserID', 'ECDSWP_ECDSID'],
+                  where: { ECDSWP_ECDSID: filter.value },
+                }) || [];
+                // Если ранее массив possibleUserIds не заполнялся, заполняем его
+                if (!firstSetPossibleUserIds) {
+                  firstSetPossibleUserIds = true;
+                  possibleUserIds.push(...dbFindResult.map((res) => res.ECDSWP_UserID));
+                // Если же массив possibleUserIds ранее заполнялся, то необходимо выполнить операцию
+                // нахождения пересечения ранее установленных значений массива с новыми значениями и
+                // присвоить результат possibleUserIds
+                } else {
+                  possibleUserIds = dbFindResult
+                    .map((res) => res.ECDSWP_UserID)
+                    .filter((el) => possibleUserIds.includes(el));
+                }
+              }
+              break;
+          }
+        }
+      }
+
+      // Если фильтрация по рабочим полигонам будет, то определяем id тех пользователей, которые могут
+      // участвовать в выборке
+      if (firstSetPossibleUserIds) {
+        if (!matchFilter.$and) matchFilter.$and = [];
+        matchFilter.$and.push({ _id: { $in: possibleUserIds.map((el) => mongoose.Types.ObjectId(el)) } });
+      }
+
+      // Определяем условия извлечения информации из коллекции пользователей
       const aggregation = [];
       if (Object.keys(addFields).length)
         aggregation.push({ $addFields: addFields });
-
       aggregation.push(
         { $match: matchFilter },
         { $sort: sortConditions },
@@ -259,21 +366,26 @@ router.post(
           data: { $slice: ['$data', page > 0 ? (page - 1) * docsCount : 0, docsCount || 1000000] },
         } }
       );
-      return aggregation;
-    };
 
-    // Поиск порции данных (порция - либо весь результирующий набор данных, либо часть результирующего набора)
-    const findDataPortion = async (page, docsCount) => {
-      let dataPortion = await User.aggregate(getAggregation(page, docsCount));
+      // Извлекаем информацию о пользователях с учетом установленных фильтров
+      let data = await User.aggregate(aggregation);
 
-      // вначале делаем это
-      totalRecords = dataPortion && dataPortion[0] ? dataPortion[0].total : 0;
+      // далее, вначале делаем это
+      let totalRecords = data && data[0] ? data[0].total : 0;
       // и только затем это
-      dataPortion = dataPortion && dataPortion[0] ? dataPortion[0].data : [];
+      data = data && data[0] ? data[0].data : [];
+
+      let mainAdminRolesIds;
+      if (!isMainAdmin(req)) {
+        // Ищем те роли, которые доступны лишь главному администратору.
+        // Для каждого найденного пользователя ниже удалим id тех ролей, которые доступны лишь главному администратору
+        mainAdminRolesIds = await Role.find({ subAdminCanUse: false }, { _id: 1 });
+        mainAdminRolesIds = mainAdminRolesIds?.length ? mainAdminRolesIds.map((role) => String(role._id)) : [];
+      }
 
       // Для всех пользователей, информацию по которым извлекли, извлекаю также информацию
       // по рабочим полигонам
-      const userIds = dataPortion.map((user) => String(user._id));
+      const userIds = data.map((user) => String(user._id));
 
       const stationWorkPoligons = await TStationWorkPoligon.findAll({
         raw: true,
@@ -293,29 +405,22 @@ router.post(
         where: { ECDSWP_UserID: userIds },
       });
 
-      return dataPortion.map((user) => {
-        return {
-          ...user,
-          // из списка ролей пользователя удаляем те, которые доступны лишь главному администратору системы
-          roles: user.roles && mainAdminRolesIds
-            ? user.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
-            : user.roles,
-          stationWorkPoligons: stationWorkPoligons
-            .filter((poligon) => poligon.SWP_UserID === String(user._id))
-            .map((poligon) => ({ id: poligon.SWP_StID, workPlaceId: poligon.SWP_StWP_ID })),
-          dncSectorsWorkPoligons: dncSectorsWorkPoligons
-            .filter((poligon) => poligon.DNCSWP_UserID === String(user._id))
-            .map((poligon) => poligon.DNCSWP_DNCSID),
-          ecdSectorsWorkPoligons: ecdSectorsWorkPoligons
-            .filter((poligon) => poligon.ECDSWP_UserID === String(user._id))
-            .map((poligon) => poligon.ECDSWP_ECDSID),
-        };
-      });
-    }
-
-    let currentPage = page;
-    try {
-      data = await findDataPortion(currentPage, docsCount);
+      data = data.map((user) => ({
+        ...user,
+        // из списка ролей пользователя удаляем те, которые доступны лишь главному администратору системы
+        roles: user.roles && mainAdminRolesIds
+          ? user.roles.filter((roleId) => !mainAdminRolesIds.includes(String(roleId)))
+          : user.roles,
+        stationWorkPoligons: stationWorkPoligons
+          .filter((poligon) => poligon.SWP_UserID === String(user._id))
+          .map((poligon) => ({ id: poligon.SWP_StID, workPlaceId: poligon.SWP_StWP_ID })),
+        dncSectorsWorkPoligons: dncSectorsWorkPoligons
+          .filter((poligon) => poligon.DNCSWP_UserID === String(user._id))
+          .map((poligon) => poligon.DNCSWP_DNCSID),
+        ecdSectorsWorkPoligons: ecdSectorsWorkPoligons
+          .filter((poligon) => poligon.ECDSWP_UserID === String(user._id))
+          .map((poligon) => poligon.ECDSWP_ECDSID),
+      }));
 
       res.status(OK).json({
         data,

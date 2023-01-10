@@ -45,14 +45,22 @@ const CLEAR_STATIONS_FILTER_MARK = '_';
  * Компонент таблицы с информацией о пользователях.
  */
 const UsersTable = () => {
+  const [dataBeingLoadedMessage, setDataBeingLoadedMessage] = useState(null);
+
   // Информация по пользователям (массив объектов)
   const [tableData, setTableData] = useState(null);
 
   // Фильтры по полям таблицы пользователей
   const [filterFields, setFilterFields] = useState([]);
 
+  // Условия сортировки по полям таблицы пользователей
+  const [sorterFields, setSorterFields] = useState({});
+
   // Дополнительные фильтры по полям, не отображаемым в таблице (роли, участки ДНЦ, ЭЦД, станции)
   const [additionalFilters, setAdditionalFilters] = useState([]);
+
+  // true - данные на текущей странице пользователю рекомендуется обновить
+  const [dataShouldBeUpdated, setDataShouldBeUpdated] = useState(false);
 
   // Массив объектов, каждый из которых содержит id роли и ее аббревиатуру
   const [rolesDataForMutipleSelect, setRolesDataForMutipleSelect] = useState(null);
@@ -123,11 +131,15 @@ const UsersTable = () => {
   /**
    * Загрузка требуемой информации по пользователям
    */
-  const lazyLoadUsers = useCallback(async ({ page, filters = null, additionalFilters = null }) => {
-    setDataLoaded(false);
+  const lazyLoadUsers = useCallback(async (props) => {
+    const { page, sorters = null, filters = null, additionalFilters = null, setDataLoadedFlag = true } = props;
+
+    if (setDataLoadedFlag) setDataLoaded(false);
+    setDataBeingLoadedMessage('Загружаю текущую страницу таблицы пользователей...');
     try {
       // Делаем запрос на сервер с целью получения информации по пользователям
       const res = await request(ServerAPI.GET_ALL_USERS, 'POST', {
+        sortFields: sorters,
         filterFields: filters,
         additionalFilterFields: additionalFilters,
         page,
@@ -151,8 +163,8 @@ const UsersTable = () => {
       setCurrentTablePage(1);
       setLoadDataErr(e.message);
     }
-
-    setDataLoaded(true);
+    setDataBeingLoadedMessage(null);
+    if (setDataLoadedFlag) setDataLoaded(true);
   }, [request]);
 
 
@@ -161,12 +173,19 @@ const UsersTable = () => {
    * и устанавливает ее в локальное состояние
    */
   const fetchData = useCallback(async () => {
-    lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
-
     setDataLoaded(false);
+
+    lazyLoadUsers({
+      page: currentTablePage,
+      sorters: sorterFields,
+      filters: filterFields,
+      additionalFilters,
+      setDataLoadedFlag: false,
+    });
 
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
+      setDataBeingLoadedMessage('Загружаю информацию по участкам ДНЦ...');
       let res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
       // Участки ДНЦ будем сортировать при отображении в списках выбора
       const dncSectors = res
@@ -181,6 +200,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
+      setDataBeingLoadedMessage('Загружаю информацию по участкам ЭЦД...');
       res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
       // Участки ЭЦД будем сортировать при отображении в списках выбора
       const ecdSectors = res
@@ -195,6 +215,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
+      setDataBeingLoadedMessage('Загружаю информацию по станциям...');
       res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
       const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
       setStationsData(stations);
@@ -202,6 +223,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по ролям
+      setDataBeingLoadedMessage('Загружаю информацию по ролям пользователей...');
       res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'POST', {});
       // Роли отсортируем перед отображением в списках выбора
       const rolesData = res
@@ -216,6 +238,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по службам
+      setDataBeingLoadedMessage('Загружаю информацию по службам...');
       res = await request(ServerAPI.GET_SERVICES_DATA, 'POST', {});
       // Хочу, чтобы службы в выпадающих списках были отсортированы по алфавиту
       const servicesData = res
@@ -232,6 +255,7 @@ const UsersTable = () => {
       // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по должностям
+      setDataBeingLoadedMessage('Загружаю информацию по должностям...');
       res = await request(ServerAPI.GET_POSTS_DATA, 'POST', {});
       // Хочу, чтобы должности в выпадающих списках были отсортированы по алфавиту
       const postsData = res
@@ -249,6 +273,7 @@ const UsersTable = () => {
       setLoadDataErr(e.message);
     }
 
+    setDataBeingLoadedMessage(null);
     setDataLoaded(true);
   }, [request]);
 
@@ -308,9 +333,9 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью добавления информации о пользователе
       const res = await request(ServerAPI.ADD_NEW_USER, 'POST', user);
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      //const newUser = getAppUserObjFromDBUserObj(res.user);
-      //setTableData([...tableData, newUser]);
-      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
+      // Поскольку не знаем, куда именно в коллекцию пользователей была добавлена новая информация,
+      // перегружаем текущую страницу таблицы пользователей
+      lazyLoadUsers({ page: currentTablePage, sorters: sorterFields, filters: filterFields, additionalFilters });
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -335,8 +360,9 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью удаления всей информации о пользователе
       const res = await request(ServerAPI.DEL_USER, 'POST', { userId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      //setTableData(tableData.filter((user) => user[USER_FIELDS.KEY] !== userId));
-      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters });
+      // Перегружаем текущую страницу таблицы пользователей для удаления с нее удаленной записи и
+      // подгрузки свежей информации
+      lazyLoadUsers({ page: currentTablePage, sorters: sorterFields, filters: filterFields, additionalFilters });
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -356,13 +382,8 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью подтверждения всей информации о пользователе
       const res = await request(ServerAPI.CONFIRM_USER, 'POST', { userId });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const newTableData = tableData.map((user) => {
-        if (user[USER_FIELDS.KEY] === userId) {
-          return { ...user, ...res.user };
-        }
-        return user;
-      });
-      setTableData(newTableData);
+      // Перегружаем текущую страницу таблицы пользователей
+      lazyLoadUsers({ page: currentTablePage, sorters: sorterFields, filters: filterFields, additionalFilters });
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -408,6 +429,24 @@ const UsersTable = () => {
     finishEditing();
   };
 
+  /**
+   *
+   */
+  const isFieldBeingSorteredBy = (field) => {
+    return Boolean(sorterFields && field && Object.keys(sorterFields).indexOf(field) >= 0);
+  };
+
+
+  /**
+   *
+   */
+  const isFieldBeingFilteredBy = (field) => {
+    return Boolean(field && (
+      (filterFields && filterFields.find((el) => el.field === field)) ||
+      (additionalFilters && additionalFilters.find((el) => el.field === field))
+    ));
+  };
+
 
   /**
    * Редактирует информацию о пользователе в БД.
@@ -427,8 +466,18 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
       const res = await request(ServerAPI.MOD_USER, 'POST', { userId, ...rowData });
       message(MESSAGE_TYPES.SUCCESS, res.message);
+      // Здесь смотрим, какая именно информация (поля) о пользователе была отредактирована,
+      // ведь к таблице могут применяться фильтры и условия сортировки, которые нужно учитывать.
+      // Если отредактирована была информация в том поле, по которому установлен фильтр либо
+      // применены условия сортировки, то пользователю предлагаем обновить данные в таблице.
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
+          for (let prop in user) {
+            if (res.user[prop] !== user[prop] && (isFieldBeingSorteredBy(prop) || isFieldBeingFilteredBy(prop))) {
+              setDataShouldBeUpdated(true);
+              break;
+            }
+          }
           return { ...user, ...res.user };
         }
         return user;
@@ -459,8 +508,13 @@ const UsersTable = () => {
       // Делаем запрос на сервер с целью редактирования информации о пользователе
       const res = await request(ServerAPI.MOD_USER, 'POST', { userId, roles: rolesIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
+      // Здесь смотрим, не применен ли сейчас фильтр по ролям, который нужно учитывать.
+      // Если применен, то пользователю предлагаем обновить данные в таблице.
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
+          if ((JSON.stringify(user[USER_FIELDS.ROLES]) !== JSON.stringify(res.user.roles)) && isFieldBeingFilteredBy(USER_FIELDS.ROLES)) {
+            setDataShouldBeUpdated(true);
+          }
           return { ...user, [USER_FIELDS.ROLES]: rolesIds };
         }
         return user;
@@ -484,8 +538,13 @@ const UsersTable = () => {
     try {
       const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST', { userId, poligons });
       message(MESSAGE_TYPES.SUCCESS, res.message);
+      // Здесь смотрим, не применен ли сейчас фильтр по рабочим полигонам-станциям, который нужно учитывать.
+      // Если применен, то пользователю предлагаем обновить данные в таблице.
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
+          if ((JSON.stringify(user[USER_FIELDS.STATION_WORK_POLIGONS]) !== JSON.stringify(poligons)) && isFieldBeingFilteredBy(USER_FIELDS.STATION_WORK_POLIGONS)) {
+            setDataShouldBeUpdated(true);
+          }
           return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: poligons };
         }
         return user;
@@ -508,8 +567,13 @@ const UsersTable = () => {
     try {
       const res = await request(ServerAPI.MOD_DNC_SECTORS_WORK_POLIGON_LIST, 'POST', { userId, dncSectorIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
+      // Здесь смотрим, не применен ли сейчас фильтр по рабочим полигонам-участкам ДНЦ, который нужно учитывать.
+      // Если применен, то пользователю предлагаем обновить данные в таблице.
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
+          if ((JSON.stringify(user[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]) !== JSON.stringify(dncSectorIds)) && isFieldBeingFilteredBy(USER_FIELDS.DNC_SECTOR_WORK_POLIGONS)) {
+            setDataShouldBeUpdated(true);
+          }
           return { ...user, [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dncSectorIds };
         }
         return user;
@@ -532,8 +596,13 @@ const UsersTable = () => {
     try {
       const res = await request(ServerAPI.MOD_ECD_SECTORS_WORK_POLIGON_LIST, 'POST', { userId, ecdSectorIds });
       message(MESSAGE_TYPES.SUCCESS, res.message);
+      // Здесь смотрим, не применен ли сейчас фильтр по рабочим полигонам-участкам ЭЦД, который нужно учитывать.
+      // Если применен, то пользователю предлагаем обновить данные в таблице.
       const newTableData = tableData.map((user) => {
         if (user[USER_FIELDS.KEY] === userId) {
+          if ((JSON.stringify(user[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]) !== JSON.stringify(ecdSectorIds)) && isFieldBeingFilteredBy(USER_FIELDS.ECD_SECTOR_WORK_POLIGONS)) {
+            setDataShouldBeUpdated(true);
+          }
           return { ...user, [USER_FIELDS.ECD_SECTOR_WORK_POLIGONS]: ecdSectorIds };
         }
         return user;
@@ -637,10 +706,18 @@ const UsersTable = () => {
       });
     });
     // Делаем запрос на сервер с целью редактирования информации о пользователе в части информации по рабочим местам на станциях
-    const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST', { userId: userObject[USER_FIELDS.KEY], poligons: userStationWorkPoligons });
+    const res = await request(ServerAPI.MOD_STATIONS_WORK_POLIGON_LIST, 'POST', {
+      userId: userObject[USER_FIELDS.KEY],
+      poligons: userStationWorkPoligons,
+    });
     message(MESSAGE_TYPES.SUCCESS, res.message);
+    // Здесь смотрим, не применен ли сейчас фильтр по рабочим полигонам-станциям, который нужно учитывать.
+    // Если применен, то пользователю предлагаем обновить данные в таблице.
     const newTableData = tableData.map((user) => {
       if (user[USER_FIELDS.KEY] === userObject[USER_FIELDS.KEY]) {
+        if ((JSON.stringify(user[USER_FIELDS.STATION_WORK_POLIGONS]) !== JSON.stringify(userStationWorkPoligons)) && isFieldBeingFilteredBy(USER_FIELDS.STATION_WORK_POLIGONS)) {
+          setDataShouldBeUpdated(true);
+        }
         return { ...user, [USER_FIELDS.STATION_WORK_POLIGONS]: userStationWorkPoligons };
       }
       return user;
@@ -648,75 +725,12 @@ const UsersTable = () => {
     setTableData(newTableData);
   };
 
-  /*const getTableDataToDisplay = useMemo(() =>
-    (!filters || !filters.length) ?
-    tableData :
-    tableData.filter((el) => {
-      let ok = true;
-      for (let filter of filters) {
-        switch (filter[0]) {
-          case USER_FIELDS.KEY:
-            if (el[USER_FIELDS.KEY] !== filter[1]) {
-              ok = false;
-            }
-            break;
-          case USER_FIELDS.ROLES:
-            if (!el[USER_FIELDS.ROLES] || !el[USER_FIELDS.ROLES].includes(filter[1])) {
-              ok = false;
-            }
-            break;
-          case USER_FIELDS.STATION_WORK_POLIGONS:
-            if (!el[USER_FIELDS.STATION_WORK_POLIGONS]) {
-              ok = false;
-            } else {
-              let foundStation = false;
-              for (let filterElement of filter[1]) {
-                const ids = filterElement.split('_');
-                const stationId = ids[0];
-                const stationWorkPlaceId = ids.length > 1 ? ids[1] : null;
-                if (el[USER_FIELDS.STATION_WORK_POLIGONS].find((swp) =>
-                  (String(swp.id) === stationId) &&
-                  (
-                    (!swp.workPlaceId && !stationWorkPlaceId) ||
-                    (swp.workPlaceId && stationWorkPlaceId && String(swp.workPlaceId) === stationWorkPlaceId)
-                  )
-                )) {
-                  foundStation = true;
-                  break;
-                }
-              }
-              if (!foundStation) {
-                ok = false;
-              }
-            }
-            break;
-          case USER_FIELDS.DNC_SECTOR_WORK_POLIGONS:
-            if (!el[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS] || !el[USER_FIELDS.DNC_SECTOR_WORK_POLIGONS].includes(filter[1])) {
-              ok = false;
-            }
-            break;
-          case USER_FIELDS.ECD_SECTOR_WORK_POLIGONS:
-            if (!el[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS] || !el[USER_FIELDS.ECD_SECTOR_WORK_POLIGONS].includes(filter[1])) {
-              ok = false;
-            }
-            break;
-          default:
-            break;
-        }
-        if (!ok) {
-          break;
-        }
-      }
-      return ok;
-    }), [tableData, filters]);*/
-
-
   /**
    * Обрабатывает подтверждение со стороны пользователя применения установленных дополнительных
    * фильтров в отношении таблицы пользователей.
    */
   const onFinishSetAdditionalFilters = () => {
-    const currentAdditionalFilters = filterForm.getFieldsValue(); console.log('currentAdditionalFilters',currentAdditionalFilters)
+    const currentAdditionalFilters = filterForm.getFieldsValue();
     if (!currentAdditionalFilters || !Object.keys(currentAdditionalFilters).length) {
       setAdditionalFilters([]);
     } else {
@@ -731,9 +745,12 @@ const UsersTable = () => {
           }
           return true;
         });
-        console.log('newAdditionalFilters',newAdditionalFilters)
+
+      const currentPage = 1;
+      setCurrentTablePage(currentPage);
+
       setAdditionalFilters(newAdditionalFilters);
-      lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters: newAdditionalFilters });
+      lazyLoadUsers({ page: currentPage, sorters: sorterFields, filters: filterFields, additionalFilters: newAdditionalFilters });
     }
   };
 
@@ -745,7 +762,9 @@ const UsersTable = () => {
   const onResetAdditionalFilters = () => {
     setAdditionalFilters([]);
     filterForm.resetFields();
-    lazyLoadUsers({ page: currentTablePage, filters: filterFields, additionalFilters: [] });
+    const currentPage = 1;
+    setCurrentTablePage(currentPage);
+    lazyLoadUsers({ page: currentPage, sorters: sorterFields, filters: filterFields, additionalFilters: [] });
   };
 
 
@@ -789,7 +808,7 @@ const UsersTable = () => {
    */
   const onChangePageNumber = (page, _pageSize) => {
     setCurrentTablePage(page);
-    lazyLoadUsers({ page, filters: filterFields, additionalFilters });
+    lazyLoadUsers({ page, sorters: sorterFields, filters: filterFields, additionalFilters });
   };
 
 
@@ -797,8 +816,6 @@ const UsersTable = () => {
    * Обрабатываем событие установки фильтров / сортировки данных в таблице
    */
   const handleFilterAndSortData = (_pagination, filters, sorter) => {
-    console.log('handleFilterAndSortData', filters, sorter)
-
     const currentFilters = [];
     for (const [field, filter] of Object.entries(filters || {})) {
       if (filter?.length) {
@@ -806,15 +823,24 @@ const UsersTable = () => {
       }
     }
     setFilterFields(currentFilters);
+
+    // Таблица позволяет сортировать данные одновременно только по 1 столбцу
     const currentSorters = {};
     if (sorter.column) {
-      currentSorters[sorter.column.field] = sorter.order;
+      currentSorters[sorter.field] = sorter.order === 'ascend' ? 1 : -1;
     }
+    setSorterFields(currentSorters);
 
     const currentPage = 1;
     setCurrentTablePage(currentPage);
 
-    lazyLoadUsers({ page: currentPage, filters: currentFilters, additionalFilters });
+    lazyLoadUsers({ page: currentPage, sorters: currentSorters, filters: currentFilters, additionalFilters });
+  };
+
+
+  const updateCurrentTablePage = () => {
+    setDataShouldBeUpdated(false);
+    lazyLoadUsers({ page: currentTablePage, sorters: sorterFields, filters: filterFields, additionalFilters });
   };
 
 
@@ -881,7 +907,7 @@ const UsersTable = () => {
                     Найти
                   </Button>
                   {
-                    additionalFilters && additionalFilters.length &&
+                    additionalFilters?.length > 0 &&
                     <Button type="primary" onClick={onResetAdditionalFilters}>
                       Сброс фильтров
                     </Button>
@@ -911,7 +937,7 @@ const UsersTable = () => {
             services={services}
             posts={posts}
             recsBeingAdded={recsBeingAdded}
-            rolesDataForMutipleSelect={rolesDataForMutipleSelect}
+            rolesDataForMutipleSelect={rolesDataForMutipleSelect || []}
             stationsDataForMultipleSelect={stationsDataForMultipleSelect}
             dncSectorsDataForMultipleSelect={dncSectorsDataForMultipleSelect}
             ecdSectorsDataForMultipleSelect={ecdSectorsDataForMultipleSelect}
@@ -920,6 +946,20 @@ const UsersTable = () => {
           <Button type="primary" onClick={showAddNewUserModal}>
             Добавить запись
           </Button>
+
+          {
+            dataShouldBeUpdated &&
+            <Button type="primary" style={{ marginLeft: 16 }} onClick={updateCurrentTablePage}>
+              Обновить текущую страницу
+            </Button>
+          }
+
+          {
+            dataBeingLoadedMessage &&
+            <div>
+              {dataBeingLoadedMessage}
+            </div>
+          }
 
           {/*
             Таблица пользователей
@@ -978,7 +1018,7 @@ const UsersTable = () => {
                   <SavableSelectMultiple
                     key={`roles${record[USER_FIELDS.KEY]}`}
                     placeholder="Выберите роли"
-                    options={rolesDataForMutipleSelect}
+                    options={rolesDataForMutipleSelect || []}
                     selectedItems={record[USER_FIELDS.ROLES]}
                     saveChangesCallback={(selectedVals) => {
                       handleEditUserRoles({
