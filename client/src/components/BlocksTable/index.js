@@ -62,7 +62,7 @@ const BlocksTable = () => {
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
   // Для сортировки данных в столбцах таблицы
-  const { getColumnSearchProps } = useColumnSearchProps();
+  const { getColumnSearchProps } = useColumnSearchProps({});
 
   const [initialEditedRecordValues, setInitialEditedRecordValues] = useState(null);
 

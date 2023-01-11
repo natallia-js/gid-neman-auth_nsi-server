@@ -58,7 +58,7 @@ const StationsTable = () => {
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
   // Для сортировки данных в столбцах таблицы
-  const { getColumnSearchProps } = useColumnSearchProps();
+  const { getColumnSearchProps } = useColumnSearchProps({});
 
   // Результаты синхронизации с ПЭНСИ
   const [syncDataResults, setSyncDataResults] = useState(null);

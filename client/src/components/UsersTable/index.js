@@ -28,7 +28,7 @@ import SavableSelectMultiple from '../SavableSelectMultiple';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
-import { useColumnSearchPropsOnLazyLoad } from '../../hooks/columnSearchPropsOnLazyLoad.hook';
+import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import tagRender from '../tagRender';
 
 const { Text, Title } = Typography;
@@ -125,7 +125,7 @@ const UsersTable = () => {
   const [currentTablePage, setCurrentTablePage] = useState(1);
 
   // Для поиска данных в столбцах таблицы
-  const { getColumnSearchProps } = useColumnSearchPropsOnLazyLoad();
+  const { getColumnSearchProps } = useColumnSearchProps({ useOnFilterEventProcessor: false});
 
 
   /**

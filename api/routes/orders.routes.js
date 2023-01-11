@@ -19,6 +19,7 @@ const { getUserConciseFIOString, userPostFIOString } = require('../routes/additi
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
+const escapeSpecialCharactersInRegexString = require('../additional/escapeSpecialCharactersInRegexString');
 
 const router = Router();
 
@@ -1259,9 +1260,9 @@ router.post(
               confirmDateTime: { $exists: true },
               confirmDateTime: { $ne: null },
               $or: [
-                { placeTitle: new RegExp(value, 'i') },
-                { post: new RegExp(value, 'i') },
-                { fio: new RegExp(value, 'i') },
+                { placeTitle: new RegExp(escapeSpecialCharactersInRegexString(value), 'i') },
+                { post: new RegExp(escapeSpecialCharactersInRegexString(value), 'i') },
+                { fio: new RegExp(escapeSpecialCharactersInRegexString(value), 'i') },
               ],
             },
           };
@@ -1280,9 +1281,9 @@ router.post(
                   "workPoligon.type": WORK_POLIGON_TYPES.ECD_SECTOR,
                   otherToSend: { $elemMatch: {
                     $or: [
-                      { placeTitle: new RegExp(filter.value, 'i') },
-                      { post: new RegExp(filter.value, 'i') },
-                      { fio: new RegExp(filter.value, 'i') },
+                      { placeTitle: new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') },
+                      { post: new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') },
+                      { fio: new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') },
                     ]
                   } },
                 });
@@ -1294,7 +1295,7 @@ router.post(
                 $expr: {
                   $regexMatch: {
                     input: { $toString: `$${filter.field}` },
-                    regex: new RegExp(filter.value),
+                    regex: new RegExp(escapeSpecialCharactersInRegexString(filter.value)),
                   },
                 },
               });
@@ -1302,7 +1303,7 @@ router.post(
             // Поиск по значениям полей объектов массива (для текста распоряжения)
             case 'orderContent':
               matchFilter.$and.push({
-                'orderText.orderText': { $elemMatch: { value: new RegExp(filter.value, 'i') } },
+                'orderText.orderText': { $elemMatch: { value: new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') } },
               });
               break;
             case 'orderAcceptor':
@@ -1376,7 +1377,7 @@ router.post(
         if (notificationNumberFilter) {
           connectedDataFilterExists = true;
           lookupConditions.pipeline[0].$match.$expr.$and.push({
-            $regexMatch: { input: { $toString: '$number'}, regex: new RegExp(notificationNumberFilter.value) },
+            $regexMatch: { input: { $toString: '$number'}, regex: new RegExp((notificationNumberFilter.value)) },
           });
         }
       }
@@ -1416,7 +1417,7 @@ router.post(
       if (filterFields) {
         const orderSenderFilter = filterFields.find((el) => el.field === 'orderSender');
         if (orderSenderFilter) {
-          const orderSenderFilterValue = new RegExp(orderSenderFilter.value, 'i');
+          const orderSenderFilterValue = new RegExp((orderSenderFilter.value), 'i');
           aggregation.push(
             {
               $match: {

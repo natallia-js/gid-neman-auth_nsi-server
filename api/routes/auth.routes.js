@@ -29,6 +29,7 @@ const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerform
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString');
 const { setLastStationPersonalUpdateDate, setLastDNCSectorPersonalUpdateDate } = require('./additional/updateLastPersonalUpdateDates');
+const escapeSpecialCharactersInRegexString = require('../additional/escapeSpecialCharactersInRegexString');
 
 const router = Router();
 
@@ -217,7 +218,7 @@ router.post(
       matchFilter.$and = [];
       filterFields.forEach((filter) => {
         if (filter?.field && filter?.value)
-          matchFilter.$and.push({ [filter.field]: new RegExp(filter.value, 'i') });
+          matchFilter.$and.push({ [filter.field]: new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') });
       });
     }
 
@@ -239,7 +240,7 @@ router.post(
               if (filter.value) {
                 if (!matchFilter.$and) matchFilter.$and = [];
                 addFields._id = { $toString: "$_id" };
-                matchFilter.$and.push({ '_id': new RegExp(filter.value, 'i') });
+                matchFilter.$and.push({ '_id': new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i') });
               }
               break;
             // фильтр по ролям (полагаем, что указана только 1 роль для поиска пользователей, которые ею наделены)

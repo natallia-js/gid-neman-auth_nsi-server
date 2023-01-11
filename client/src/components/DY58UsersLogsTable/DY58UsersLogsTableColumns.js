@@ -2,7 +2,7 @@ import { DY58USER_LOGS_FIELDS } from '../../constants';
 
 
 // Описание столбцов таблицы логов действий пользователей ДУ-58
-const dy58UsersLogsTableColumns = () => {
+const dy58UsersLogsTableColumns = ({ getColumnSearchProps }) => {
   return [
     {
       title: 'Рабочий полигон',
@@ -11,6 +11,7 @@ const dy58UsersLogsTableColumns = () => {
       width: '10%',
       editable: false,
       className: 'main-col',
+      ...getColumnSearchProps(DY58USER_LOGS_FIELDS.WORK_POLIGON),
     },
     {
       title: 'Пользователь',
@@ -18,6 +19,7 @@ const dy58UsersLogsTableColumns = () => {
       key: DY58USER_LOGS_FIELDS.USER,
       width: '10%',
       editable: false,
+      ...getColumnSearchProps(DY58USER_LOGS_FIELDS.USER),
     },
     {
       title: 'Время операции',
@@ -32,6 +34,7 @@ const dy58UsersLogsTableColumns = () => {
       key: DY58USER_LOGS_FIELDS.ACTION,
       width: '20%',
       editable: false,
+      ...getColumnSearchProps(DY58USER_LOGS_FIELDS.ACTION),
     },
     {
       title: 'Параметры действия',
