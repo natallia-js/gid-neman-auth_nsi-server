@@ -11,6 +11,7 @@ const EditableTableCell = ({
   dataIndex,
   title,
   inputType,
+  dataType,
   record,
   index,
   children,
@@ -73,6 +74,25 @@ const EditableTableCell = ({
       break;
   }
 
+  const getFieldRules = () => {
+    if (!required) {
+      return [{
+        type: dataType,
+      }];
+    }
+    return [{
+      type: dataType,
+      required: true,
+      validator: async (_, value) => {
+        if (typeof value !== 'boolean' && (!value || value.length < 1)) {
+          setRequiredErrMess(`Не задано значение поля "${title}"!`);
+        } else {
+          setRequiredErrMess(null);
+        }
+      },
+    }];
+  };
+
   return (
     <td {...restProps}>
       {editing ? (
@@ -82,19 +102,7 @@ const EditableTableCell = ({
           style={{
             margin: 0,
           }}
-          rules={[
-            !required ? {} :
-            {
-              required: true,
-              validator: async (_, value) => {
-                if (typeof value !== 'boolean' && (!value || value.length < 1)) {
-                  setRequiredErrMess(`Не задано значение поля "${title}"!`);
-                } else {
-                  setRequiredErrMess(null);
-                }
-              },
-            },
-          ]}
+          rules={getFieldRules()}
           validateStatus={errMessage || requiredErrMess ? ERR_VALIDATE_STATUS : null}
           help={errMessage || requiredErrMess}
         >

@@ -19,6 +19,11 @@ const addStructuralDivisionValidationRules = () => {
     check('ecdSectorId')
       .exists()
       .withMessage('Не указан id участка ЭЦД'),
+    check('position')
+      .if(body('position').exists())
+      .trim()
+      .isInt({ min: 0, max: 255 })
+      .withMessage('Позиция записи должна находиться в промежутке [0,255]'),
   ];
 };
 
@@ -50,6 +55,11 @@ const modStructuralDivisionValidationRules = () => {
       .trim()
       .isLength({ max: 64 })
       .withMessage('Длина ФИО максимум 64 символа'),
+    check('position')
+      .if(body('position').exists())
+      .trim()
+      .isInt({ min: 0, max: 255 })
+      .withMessage('Позиция записи должна находиться в промежутке [0,255]'),
   ];
 };
 

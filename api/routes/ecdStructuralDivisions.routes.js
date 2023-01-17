@@ -49,7 +49,7 @@ router.post(
         ECDSD_Post: post,
         ECDSD_FIO: fio,
         ECDSD_ECDSectorID: ecdSectorId,
-        ECDSD_Position: position || null,
+        ECDSD_Position: +position || null,
       });
 
       res.status(OK).json({ message: 'Информация успешно сохранена', newRecord });
@@ -59,7 +59,7 @@ router.post(
         errorTime: new Date(),
         action: 'Добавление нового структурного подразделения (работника) участка ЭЦД',
         error: error.message,
-        actionParams: { title, post, fio, ecdSectorId },
+        actionParams: { title, post, fio, ecdSectorId, position },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -154,7 +154,7 @@ router.post(
         updateFields.ECDSD_FIO = fio;
       }
       if (req.body.hasOwnProperty('position')) {
-        updateFields.ECDSD_Position = position || null;
+        updateFields.ECDSD_Position = +position || null;
       }
 
       candidate.set(updateFields);
@@ -167,7 +167,7 @@ router.post(
         errorTime: new Date(),
         action: 'Редактирование информации о структурном подразделении (работнике) участка ЭЦД',
         error: error.message,
-        actionParams: { id, title, post, fio },
+        actionParams: { id, title, post, fio, position },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

@@ -191,12 +191,20 @@ const DNCTrainSectorBlocksTable = (props) => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: (col.dataIndex === BLOCK_FIELDS.BELONGS_TO_SECTOR) ? 'boolean' : 'text',
+        inputType:(col.dataIndex === BLOCK_FIELDS.BELONGS_TO_SECTOR)
+          ? 'boolean'
+          : (col.dataIndex === BLOCK_FIELDS.POS_IN_TRAIN_SECTOR)
+            ? 'number'
+            : 'text',
+        dataType: (col.dataIndex === BLOCK_FIELDS.BELONGS_TO_SECTOR)
+          ? 'boolean'
+          : (col.dataIndex === BLOCK_FIELDS.POS_IN_TRAIN_SECTOR)
+            ? 'number'
+            : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

@@ -26,10 +26,10 @@ const getAppStationObjFromDBStationObj = (dbStationObj, getTrainSectorInfo = fal
   if (getTrainSectorInfo) {
     if (dbStationObj.TDNCTrainSectorStation) {
       appStationObj[STATION_FIELDS.POS_IN_TRAIN_SECTOR] = dbStationObj.TDNCTrainSectorStation.DNCTSS_StationPositionInTrainSector;
-      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = dbStationObj.TDNCTrainSectorStation.DNCTSS_StationBelongsToDNCSector;
+      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = Boolean(dbStationObj.TDNCTrainSectorStation.DNCTSS_StationBelongsToDNCSector);
     } else if (dbStationObj.TECDTrainSectorStation) {
       appStationObj[STATION_FIELDS.POS_IN_TRAIN_SECTOR] = dbStationObj.TECDTrainSectorStation.ECDTSS_StationPositionInTrainSector;
-      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = dbStationObj.TECDTrainSectorStation.ECDTSS_StationBelongsToECDSector;
+      appStationObj[STATION_FIELDS.BELONGS_TO_SECTOR] = Boolean(dbStationObj.TECDTrainSectorStation.ECDTSS_StationBelongsToECDSector);
     }
   }
   return appStationObj;

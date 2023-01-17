@@ -33,6 +33,8 @@ const schema = new Schema({
   ecdToSend: [orderRecipientSchema],
   // Список остальных адресатов
   otherToSend: [otherToSendSchema],
+  // Информация о дополнительно ознакомленных с распоряжением работников
+  additionallyInformedPeople: { type: String, required: false },
   // Список рабочих мест на станциях, на которые направлено распоряжение
   stationWorkPlacesToSend: [orderRecipientSchema],
   // id и тип участка / рабочего полигона пользователя, издавшего распоряжение

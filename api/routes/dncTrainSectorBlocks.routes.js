@@ -245,7 +245,7 @@ router.post(
       const updateFields = {};
 
       if (req.body.hasOwnProperty('posInTrainSector')) {
-        updateFields.DNCTSB_BlockPositionInTrainSector = posInTrainSector;
+        updateFields.DNCTSB_BlockPositionInTrainSector = +posInTrainSector;
       }
       if (req.body.hasOwnProperty('belongsToSector')) {
         updateFields.DNCTSB_BlockBelongsToDNCSector = belongsToSector;

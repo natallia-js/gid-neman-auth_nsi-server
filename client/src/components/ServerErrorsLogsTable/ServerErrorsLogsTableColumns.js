@@ -2,7 +2,7 @@ import { ERROR_LOGS_FIELDS } from '../../constants';
 
 
 // Описание столбцов таблицы логов серверных ошибок
-const serverErrorsLogsTableColumns = () => {
+const serverErrorsLogsTableColumns = ({ getColumnSearchProps }) => {
   return [
     {
       title: 'Время ошибки',
@@ -17,6 +17,7 @@ const serverErrorsLogsTableColumns = () => {
       key: ERROR_LOGS_FIELDS.ERROR,
       width: '20%',
       editable: false,
+      ...getColumnSearchProps(ERROR_LOGS_FIELDS.ERROR),
     },
     {
       title: 'Действие',
@@ -24,6 +25,7 @@ const serverErrorsLogsTableColumns = () => {
       key: ERROR_LOGS_FIELDS.ACTION,
       width: '20%',
       editable: false,
+      ...getColumnSearchProps(ERROR_LOGS_FIELDS.ACTION),
     },
     {
       title: 'Параметры действия',

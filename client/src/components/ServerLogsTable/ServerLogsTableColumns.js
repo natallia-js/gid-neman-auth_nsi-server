@@ -2,7 +2,7 @@ import { SERVER_LOGS_FIELDS } from '../../constants';
 
 
 // Описание столбцов таблицы логов серверных действий.
-const serverLogsTableColumns = () => {
+const serverLogsTableColumns = ({ getColumnSearchProps }) => {
   return [
     {
       title: 'Время операции',
@@ -17,6 +17,7 @@ const serverLogsTableColumns = () => {
       key: SERVER_LOGS_FIELDS.ACTION,
       width: '20%',
       editable: false,
+      ...getColumnSearchProps(SERVER_LOGS_FIELDS.ACTION),
     },
     {
       title: 'Описание',

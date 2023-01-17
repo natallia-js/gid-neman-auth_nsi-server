@@ -33,10 +33,10 @@ const getAppBlockObjFromDBBlockObj = (dbBlockObj, getTrainSectorInfo = false) =>
   if (getTrainSectorInfo) {
     if (dbBlockObj.TDNCTrainSectorBlock) {
       appBlockObj[BLOCK_FIELDS.POS_IN_TRAIN_SECTOR] = dbBlockObj.TDNCTrainSectorBlock.DNCTSB_BlockPositionInTrainSector;
-      appBlockObj[BLOCK_FIELDS.BELONGS_TO_SECTOR] = dbBlockObj.TDNCTrainSectorBlock.DNCTSB_BlockBelongsToDNCSector;
+      appBlockObj[BLOCK_FIELDS.BELONGS_TO_SECTOR] = Boolean(dbBlockObj.TDNCTrainSectorBlock.DNCTSB_BlockBelongsToDNCSector);
     } else if (dbBlockObj.TECDTrainSectorBlock) {
       appBlockObj[BLOCK_FIELDS.POS_IN_TRAIN_SECTOR] = dbBlockObj.TECDTrainSectorBlock.ECDTSB_BlockPositionInTrainSector;
-      appBlockObj[BLOCK_FIELDS.BELONGS_TO_SECTOR] = dbBlockObj.TECDTrainSectorBlock.ECDTSB_BlockBelongsToECDSector;
+      appBlockObj[BLOCK_FIELDS.BELONGS_TO_SECTOR] = Boolean(dbBlockObj.TECDTrainSectorBlock.ECDTSB_BlockBelongsToECDSector);
     }
   }
   return appBlockObj;

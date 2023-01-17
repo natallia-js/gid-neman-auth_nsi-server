@@ -138,7 +138,7 @@ const ECDStructuralDivisionsTable = (props) => {
       [ECD_STRUCTURAL_DIVISION_FIELDS.NAME]: '',
       [ECD_STRUCTURAL_DIVISION_FIELDS.POST]: '',
       [ECD_STRUCTURAL_DIVISION_FIELDS.FIO]: '',
-      [ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]: '',
+      [ECD_STRUCTURAL_DIVISION_FIELDS.POSITION]: null,
       ...record,
     });
     setEditingKey(record[ECD_STRUCTURAL_DIVISION_FIELDS.KEY]);
@@ -173,7 +173,6 @@ const ECDStructuralDivisionsTable = (props) => {
 
     try {
       rowData = await form.validateFields();
-
     } catch (errInfo) {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
@@ -253,12 +252,12 @@ const ECDStructuralDivisionsTable = (props) => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: 'text',
+        inputType: col.dataIndex !== ECD_STRUCTURAL_DIVISION_FIELDS.POSITION ? 'text' : 'number',
+        dataType: col.dataIndex !== ECD_STRUCTURAL_DIVISION_FIELDS.POSITION ? 'string' : 'number',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
@@ -269,7 +268,6 @@ const ECDStructuralDivisionsTable = (props) => {
       }),
     };
   });
-
 
   return (
     <Form form={form} component={false}>

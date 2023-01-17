@@ -5,6 +5,7 @@ const { getLogsRules } = require('../validators/logs.validator');
 const validate = require('../validators/validate');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
+const escapeSpecialCharactersInRegexString = require('../additional/escapeSpecialCharactersInRegexString');
 
 const router = Router();
 
@@ -20,6 +21,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * datetimeStart - дата-время начала поиска информации (обязателен)
  * datetimeEnd - дата-время окончания поиска информации (не обязателен, если не указан, то
  *               информация извлекается начиная с указанной даты до настоящего момента времени)
+ * filterFields - массив объектов {field, value} с условиями поиска по массиву информации (value - строка)
  * page - номер страницы, данные по которой необходимо получить (поддерживается пагинация; если не указан,
  *        то запрос возвращает все найденные документы)
  * docsCount - количество документов, которое запрос должен вернуть (поддерживается пагинация; если не указан,
@@ -37,7 +39,7 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { datetimeStart, datetimeEnd, page, docsCount } = req.body;
+    const { datetimeStart, datetimeEnd, filterFields, page, docsCount } = req.body;
 
     try {
       const startDate = new Date(datetimeStart);
@@ -49,6 +51,13 @@ const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
         matchFilter.actionTime = { $gte: startDate };
       } else {
         matchFilter.actionTime = { $gte: startDate, $lte: endDate };
+      }
+      // Дополнительные критерии фильтрации данных
+      if (filterFields?.length) {
+        filterFields.forEach((filter) => {
+          if (filter?.field && filter?.value)
+            matchFilter[filter.field] = new RegExp(escapeSpecialCharactersInRegexString(filter.value), 'i');
+        });
       }
 
       // Применяем сортировку

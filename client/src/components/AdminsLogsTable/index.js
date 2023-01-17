@@ -4,6 +4,7 @@ import { Button, DatePicker, Form, Pagination, Table, Typography } from 'antd';
 import { ServerAPI } from '../../constants';
 import getAppAdminLogObjFromDBAdminLogObj from '../../mappers/getAppAdminLogObjFromDBAdminLogObj';
 import adminsLogsTableColumns from './AdminsLogsTableColumns';
+import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 
 const { Text, Title } = Typography;
 const ERR_VALIDATE_STATUS = 'error';
@@ -27,6 +28,9 @@ const AdminsLogsTable = () => {
   // Флаг окончания загрузки информации
   const [dataLoaded, setDataLoaded] = useState(true);
 
+  // Фильтры по полям таблицы
+  const [filterFields, setFilterFields] = useState([]);
+
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
 
@@ -43,8 +47,11 @@ const AdminsLogsTable = () => {
   const [startDateFieldErrMessage, setStartDateFieldErrMessage] = useState(null);
   const [endDateFieldErrMessage, setEndDateFieldErrMessage] = useState(null);
 
+  // Для поиска данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchProps({ useOnFilterEventProcessor: false });
+
   // Описание столбцов таблицы
-  const columns = adminsLogsTableColumns();
+  const columns = adminsLogsTableColumns({ getColumnSearchProps });
 
   // Временной промежуток поиска информации
   const [searchDataTimeSpan, setSearchDataTimeSpan] = useState({ startDate: null, endDate: null });
@@ -54,7 +61,7 @@ const AdminsLogsTable = () => {
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
    * и устанавливает ее в локальное состояние
    */
-  const fetchData = useCallback(async (timeSpan, page) => {
+  const fetchData = useCallback(async (timeSpan, page, filters) => {
     if (!timeSpan.startDate) {
       return;
     }
@@ -67,6 +74,7 @@ const AdminsLogsTable = () => {
         {
           datetimeStart: timeSpan.startDate,
           datetimeEnd: timeSpan.endDate,
+          filterFields: filters,
           page,
           docsCount: MAX_TABLE_ROW_COUNT,
         }
@@ -95,8 +103,8 @@ const AdminsLogsTable = () => {
 
 
   useEffect(() => {
-    fetchData(searchDataTimeSpan, currentTablePage);
-  }, [searchDataTimeSpan, currentTablePage]);
+    fetchData(searchDataTimeSpan, currentTablePage, filterFields);
+  }, [searchDataTimeSpan, currentTablePage, filterFields]);
 
 
   /**
@@ -113,10 +121,29 @@ const AdminsLogsTable = () => {
   };
 
 
-  const onChange = (page, _pageSize) => {
+  const onChangePageNumber = (page, _pageSize) => {
     if (page !== currentTablePage) {
       setCurrentTablePage(page);
     }
+  };
+
+
+  /**
+   * Обрабатываем событие установки фильтров / сортировки данных в таблице
+   */
+  const handleFilterAndSortData = (_pagination, filters, _sorter) => {
+    const currentFilters = [];
+    for (const [field, filter] of Object.entries(filters || {})) {
+      if (filter?.length) {
+        currentFilters.push({ field, value: filter[0] });
+      }
+    }
+    setFilterFields(currentFilters);
+
+    const currentPage = 1;
+    setCurrentTablePage(currentPage);
+
+    fetchData(searchDataTimeSpan, currentTablePage, currentFilters);
   };
 
 
@@ -215,13 +242,14 @@ const AdminsLogsTable = () => {
               <Pagination
                 current={currentTablePage}
                 pageSize={MAX_TABLE_ROW_COUNT}
-                onChange={onChange}
+                onChange={onChangePageNumber}
                 total={totalItemsCount}
                 showQuickJumper
                 showTotal={(total, range) => `Всего записей: ${total}, показаны с ${range[0]} по ${range[1]}`}
               />
             </div>
           }
+          onChange={handleFilterAndSortData}
         />
       }
     </>

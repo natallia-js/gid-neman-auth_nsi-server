@@ -104,7 +104,6 @@ const DY58UsersLogsTable = () => {
 
 
   useEffect(() => {
-    console.log('useEffect')
     fetchData(searchDataTimeSpan, currentTablePage, filterFields);
   }, [searchDataTimeSpan, currentTablePage, filterFields]);
 

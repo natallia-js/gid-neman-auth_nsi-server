@@ -559,12 +559,13 @@ const {
 
 /**
  * Обработка запроса на редактирование существующего распоряжения.
- * Позволяется редактировать только одиночные распоряжения.
- * Данный запрос не работает с цепочками распоряжений!
  *
- * Данный запрос ПОКА доступен только в случае редактирования распоряжения ДСП о приеме-сдаче дежурства.
+ * Данный запрос ПОКА доступен только:
+ *  - в случае редактирования распоряжения ДСП о приеме-сдаче дежурства,
+ *  - в случае редактирования ДСП информации о дополнительно ознакомленных с распоряжением лицах.
  * Он не позволяет анализировать изменяемое время действия распоряжения для редактирования времени действия
- * всей цепочки распоряжений.
+ * всей цепочки распоряжений. В связи с этим, редактирование времени возможно только у одиночных распоряжений
+ * (т.е. распоряжений, которые не принадлежат цепочке из 2 и более распоряжений).
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -582,6 +583,7 @@ const {
  *     ref - строка, содержащая смысловое значение параметра в шаблоне
  *     type - тип параметра
  *     value - значение параметра (представленное в виде строки!),
+ * additionallyInformedPeople - лица, дополнительно ознакомленные с распоряжением (строка)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -602,7 +604,7 @@ router.post(
     session.startTransaction();
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, timeSpan, orderText } = req.body;
+    const { id, timeSpan, orderText, additionallyInformedPeople } = req.body;
 
     try {
       const existingOrder = await Order.findById(id).session(session);
@@ -611,16 +613,18 @@ router.post(
         return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });
       }
 
-      const ordersInChain = await Order.countDocuments({
-        "orderChain.chainId": existingOrder.orderChain.chainId,
-      });
-      if (ordersInChain === 0) {
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Цепочка распоряжений не существует в базе данных' });
-      }
-      if (ordersInChain > 1) {
-        await session.abortTransaction();
-        return res.status(ERR).json({ message: 'В цепочке распоряжений более одного распоряжения: редактирование невозможно' });
+      if (timeSpan) {
+        const ordersInChain = await Order.countDocuments({
+          'orderChain.chainId': existingOrder.orderChain.chainId,
+        });
+        if (ordersInChain === 0) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Цепочка распоряжений не существует в базе данных' });
+        }
+        if (ordersInChain > 1) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'В цепочке распоряжений более одного распоряжения: редактирование невозможно' });
+        }
       }
 
       // Редактируем запись в основной коллекции распоряжений
@@ -642,6 +646,11 @@ router.post(
 
       if (orderText) {
         existingOrder.orderText = orderText;
+        edited = true;
+      }
+
+      if (req.body.hasOwnProperty('additionallyInformedPeople')) {
+        existingOrder.additionallyInformedPeople = additionallyInformedPeople;
         edited = true;
       }
 
@@ -784,7 +793,7 @@ router.post(
         actionTime: new Date(),
         action: 'Редактирование распоряжения',
         actionParams: {
-          userId: req.user.userId, orderId: id, timeSpan, orderText,
+          userId: req.user.userId, orderId: id, timeSpan, orderText, additionallyInformedPeople,
         },
       };
       addDY58UserActionInfo(logObject);
@@ -795,7 +804,7 @@ router.post(
         action: 'Редактирование распоряжения',
         error: error.message,
         actionParams: {
-          user: userPostFIOString(req.user), orderId: id, timeSpan, orderText,
+          user: userPostFIOString(req.user), orderId: id, timeSpan, orderText, additionallyInformedPeople
         },
       });
       await session.abortTransaction();
@@ -858,8 +867,8 @@ router.post(
       // Формируем список id станций по указанным кодам ЕСР
       const stationsData = await TStation.findAll({
         raw: true,
-        attributes: ['St_ID', 'St_UNMC'],
-        where: { St_UNMC: stations },
+        attributes: ['St_ID', 'St_GID_UNMC'],
+        where: { St_GID_UNMC: stations },
       });
       if (!stationsData || !stationsData.length) {
         return res.status(OK).json([]);
@@ -910,11 +919,11 @@ router.post(
         let STATION1 = null;
         let STATION2 = null;
         if (item.place.place === 'station') {
-          STATION1 = stationsData.find((station) => String(station.St_ID) === String(item.place.value)).St_UNMC;
+          STATION1 = stationsData.find((station) => String(station.St_ID) === String(item.place.value)).St_GID_UNMC;
         } else {
           const block = blocksData.find((block) => String(block.Bl_ID) === String(item.place.value));
-          STATION1 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_UNMC;
-          STATION2 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_UNMC;
+          STATION1 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_GID_UNMC;
+          STATION2 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_GID_UNMC;
         }
         let ADDITIONALPLACEINFO = null;
         const additionalOrderPlaceInfoElements = item.orderText.orderText.filter((el) =>

@@ -2,7 +2,7 @@ import { ADMIN_LOGS_FIELDS } from '../../constants';
 
 
 // Описание столбцов таблицы логов действий администраторов
-const adminsLogsTableColumns = () => {
+const adminsLogsTableColumns = ({ getColumnSearchProps }) => {
   return [
     {
       title: 'Администратор',
@@ -11,6 +11,7 @@ const adminsLogsTableColumns = () => {
       width: '20%',
       editable: false,
       className: 'main-col',
+      ...getColumnSearchProps(ADMIN_LOGS_FIELDS.USER),
     },
     {
       title: 'Время операции',
@@ -25,6 +26,7 @@ const adminsLogsTableColumns = () => {
       key: ADMIN_LOGS_FIELDS.ACTION,
       width: '20%',
       editable: false,
+      ...getColumnSearchProps(ADMIN_LOGS_FIELDS.ACTION),
     },
     {
       title: 'Параметры действия',
