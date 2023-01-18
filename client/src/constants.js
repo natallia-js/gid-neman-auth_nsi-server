@@ -337,6 +337,8 @@ export const ECD_STRUCTURAL_DIVISION_FIELDS = Object.freeze({
 
 export const ORDER_PATTERN_FIELDS = Object.freeze({
   KEY: '_id',
+  WORK_POLIGON_TYPE: 'workPoligonType',
+  WORK_POLIGON_ID: 'workPoligonId',
   SERVICE: 'service',
   TYPE: 'type',
   CATEGORY: 'category',
@@ -423,3 +425,12 @@ export const ERROR_LOGS_FIELDS = Object.freeze({
 export const InterfaceDesign = Object.freeze({
   EXPANDED_ICON_SIZE: '1.1rem',
 });
+
+
+export const WORK_POLIGON_TYPES = Object.freeze({
+  STATION: 'станция',
+  DNC_SECTOR: 'участок ДНЦ',
+  ECD_SECTOR: 'участок ЭЦД',
+});
+
+export const ALL_SECTORS_MARK = null;

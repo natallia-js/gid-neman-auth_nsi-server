@@ -50,7 +50,8 @@ const {
  * type - тип распоряжения (обязателен),
  * orderNumSaveType - тип распоряжения, под которым хранить информацию о номере последнего изданного документа (обязателен),
  * number - номер распоряжения (обязателен),
- * createDateTime - дата и время издания распоряжения (обязательны),
+ * createDateTime - дата и время издания распоряжения - то время, которое "удобно" пользователю (обязательно),
+ * actualCreateDateTime - дата и время издания распоряжения - когда пользователь нажал на кнопку отправки распоряжения на сервер (обязательно),
  * place - место действия распоряжения (не обязательно) - объект с полями:
  *   place - тип места действия (станция / перегон)
  *   value - идентификатор места действия
@@ -127,7 +128,7 @@ const {
 
     // Считываем находящиеся в пользовательском запросе данные
     const {
-      type, orderNumSaveType, number, createDateTime, place, timeSpan, orderText,
+      type, orderNumSaveType, number, createDateTime, actualCreateDateTime, place, timeSpan, orderText,
       dncToSend, dspToSend, ecdToSend, otherToSend,
       workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
       orderChainId, dispatchedOnOrder, showOnGID, idOfTheOrderToCancel, draftId,
@@ -141,6 +142,8 @@ const {
       // Полагаем по умолчанию, что распоряжение принадлежит цепочке, в которой оно одно
       let orderChainInfo = {
         chainId: newOrderObjectId,
+        // время начала действия рассчитывается на основании того времени, которое "удобно" пользователю
+        // (т.е. время, которое он хочет видеть в качестве времени создания распоряжения)
         chainStartDateTime: timeSpan && timeSpan.start ? timeSpan.start : createDateTime,
         chainEndDateTime: timeSpan && timeSpan.end ? timeSpan.end : null,
       };
@@ -175,27 +178,29 @@ const {
       }
 
       // Если распоряжение:
-      // - издано ЭЦД и имеет только "иных" адресатов,
+      // - имеет только "иных" адресатов,
       // - либо не имеет адресатов,
       // - либо не рассылается ни одного оригинала распоряжения (только копии),
       // то такое распоряжение полагаем утвержденным сразу при издании, дата-время утверждения =
       // дата-время создания распоряжения.
-      // В случае, когда распоряжение издано ЭЦД и имеет "иных" адресатов, сразу проставляем
+      // В случае, когда распоряжение (неважно, какого типа и кем издано) имеет "иных" адресатов, сразу проставляем
       // дату и время утверждения распоряжения за этих "иных" адресатов
       const getOrderAssertDateTime = () => {
-        const case1 =
-          (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR) &&
-          (otherToSend && otherToSend.length) &&
-          (!dncToSend || !dncToSend.length) &&
-          (!dspToSend || !dspToSend.length) &&
-          (!ecdToSend || !ecdToSend.length);
-        const case2 =
+        // true - если распоряжение имеет только "иных" адресатов,
+        // false - если распоряжение не имеет "иных" адресатов либо имеет адресатов, отличных от "иных"
+        const case1 = Boolean(
+          (otherToSend?.length > 0) &&
+          (!dncToSend?.length) && (!dspToSend?.length) && (!ecdToSend?.length));
+        // true - если распоряжение не имеет адресатов либо не имеет адресатов, которым необходимо передать оригинал документа
+        const case2 = Boolean(
           (!dncToSend || !dncToSend.length || !dncToSend.find((el) => el.sendOriginal)) &&
           (!dspToSend || !dspToSend.length || !dspToSend.find((el) => el.sendOriginal)) &&
           (!ecdToSend || !ecdToSend.length || !ecdToSend.find((el) => el.sendOriginal)) &&
-          (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal));
+          (!otherToSend || !otherToSend.length || !otherToSend.find((el) => el.sendOriginal)));
+        // Определяем дату утверждения распоряжения
         const assertDateTime = (case1 || case2) ? createDateTime : null;
-        if (workPoligon.type === WORK_POLIGON_TYPES.ECD_SECTOR && otherToSend && otherToSend.length) {
+        // Автоматическое подтверждение распоряжения за "иных" адресатов
+        if (otherToSend?.length > 0) {
           otherToSend.forEach((el) => { el.confirmDateTime = createDateTime });
         }
         return assertDateTime;
@@ -207,6 +212,7 @@ const {
         type,
         number,
         createDateTime,
+        actualCreateDateTime,
         place,
         timeSpan,
         orderText,
@@ -275,11 +281,11 @@ const {
             workPoligonId: workPoligon.id,
             workSubPoligonId: workPoligon.workPlaceId,
           }),
-          actionTime: createDateTime,
+          actionTime: actualCreateDateTime,
           action: 'Издание распоряжения',
           actionParams: {
             userId: req.user.userId,
-            type, number, createDateTime, place, timeSpan, orderText,
+            type, number, createDateTime, actualCreateDateTime, place, timeSpan, orderText,
             dncToSend, dspToSend, ecdToSend, otherToSend,
             workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
             orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
@@ -392,7 +398,7 @@ const {
                   error: error.message,
                   actionParams: {
                     userId: req.user.userId, user: userPostFIOString(req.user),
-                    type, number, createDateTime, place, timeSpan, orderText,
+                    type, number, createDateTime, actualCreateDateTime, place, timeSpan, orderText,
                     dncToSend, dspToSend, ecdToSend, otherToSend,
                     workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
                     orderChainId, showOnGID, idOfTheOrderToCancel, draftId,
@@ -541,7 +547,7 @@ const {
         error: error.message,
         actionParams: {
           userId: req.user.userId, user: userPostFIOString(req.user),
-          type, number, createDateTime, place, timeSpan, orderText,
+          type, number, createDateTime, actualCreateDateTime, place, timeSpan, orderText,
           dncToSend, dspToSend, ecdToSend, otherToSend,
           workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
           orderChainId, showOnGID, idOfTheOrderToCancel, draftId,

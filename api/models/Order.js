@@ -17,8 +17,10 @@ const schema = new Schema({
   type: { type: String, required: true },
   // Номер распоряжения
   number: { type: Number, required: true },
-  // Дата и время издания распоряжения
+  // Дата и время издания распоряжения - то, которое хочет видеть конечный пользователь
   createDateTime: { type: Date, required: true },
+  // Дата и время издания распоряжения - реальное
+  actualCreateDateTime: { type: Date, required: true },
   // Тип и код места (участка) действия распоряжения
   place: { type: orderPlaceSchema, required: false },
   // Время (временной интервал) действия распоряжения

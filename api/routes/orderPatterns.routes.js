@@ -19,24 +19,28 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обрабатывает запрос на получение списка всех шаблонов распоряжений, которые являются общими
- * (не приватными! т.е. не созданными конкретным лицом лично для себя) для использования.
+ * Обрабатывает запрос на получение списка шаблонов распоряжений.
+ * Результат запроса зависит от параметров запроса и от лица, производящего запрос.
  *
- * Параметр запроса (userId - id пользователя), если указан, то определяет дополнительные шаблоны, которые
- * необходимо включить в выборку: личные шаблоны указанного пользователя.
+ * Так, главный администратор получит информацию обо всех шаблонах, кроме приватных (у которых есть поле
+ * personalPattern), если, конечно, значение поля personalPattern не совпадает с id самого администратора.
  *
- * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют дополнительные шаблоны,
- * которые необходимо включить в выборку: шаблоны пользователей указанного рабочего полигона (для пользователя
- * с userId также в выборку будут включены лишь созданные им шаблоны на заданном полигоне, т.е. значение
- * параметра userId, если указано, будет проигнорировано).
+ * Для пользователей, отличных от главного администратора, в результирующий набор данных попадут шаблоны, для
+ * которых выполняются одновременно следующие условия:
+ * 1) шаблон принадлежит той же службе, что и лицо, запрашивающее действие;
+ * 2) у шаблона не установлено значение рабочего полигона (workPoligon) либо установлено и совпадает с
+ *    рабочим полигоном пользователя, производящего запрос;
+ * 3) у шаблона не установлено значение id создателя (personalPattern) либо установлено и совпадает с
+ *    id пользователя, производящего запрос.
+ *
+ * Параметры запроса (workPoligonType, workPoligonId), если указаны, то определяют фильтр по рабочему полигону.
+ * Главный администратор может получить данные по любому рабочему полигону. Иной пользователь - только по одному из
+ * тех рабочих полигонов, на котором он зарегистрирован.
  *
  * Параметр запроса (getChildPatterns), если указан, то определяет необходимость включения в
  * выборку информации о дочерних шаблонах.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * При этом главный администратор ГИД Неман получит полный список всех неприватных шаблонов распоряжений,
- * иное же лицо получит полный список тех неприватных шаблонов распоряжений, которые закреплены за его службой,
- * а также список тех шаблонов распоряжений (приватных), которые созданы данным пользователем.
  *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -48,9 +52,21 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { userId, workPoligonType, workPoligonId, getChildPatterns } = req.body;
+    const { workPoligonType, workPoligonId, getChildPatterns } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
+    // id лица, запрашивающего действие
+    const userId = req.user.userId;
+    // Данные рабочего полигона лица, запрашивающего действие
+    const userWorkPoligonType = req.user.workPoligon?.type;
+    const userWorkPoligonId = req.user.workPoligon?.id;
+
+    if (
+         (workPoligonType && (!userWorkPoligonType || workPoligonType !== userWorkPoligonType)) ||
+         (workPoligonId && (!userWorkPoligonId || workPoligonId !== userWorkPoligonId))
+    ) {
+      return res.status(ERR).json({ message: 'У Вас нет права просматривать шаблоны документов указанного рабочего полигона' });
+    }
 
     try {
       var dataProjection = {
@@ -61,34 +77,53 @@ router.post(
       }
 
       let data;
+      let matchFilter;
       if (!isMainAdmin(req)) {
-        // Ищем шаблоны распоряжений, принадлежащих заданной службе
-        const matchFilter = { service: serviceName };
-        // Ищем шаблоны распоряжений, принадлежащих указанному рабочему полигону
-        if (workPoligonType && workPoligonId) {
-          matchFilter.$or = [
-            {
-              personalPattern: { $exists: false },
-            },
-            {
-              $and: [
-                { "workPoligon.id": workPoligonId },
-                { "workPoligon.type": workPoligonType },
+        matchFilter = {
+          $and: [
+            // Ищем шаблоны распоряжений, принадлежащих заданной службе
+            { service: serviceName },
+            // Шаблоны распоряжений не должны принадлежать конкретному рабочему полигону либо
+            // принадлежать рабочему полигону пользователя, с которого он произвел запрос
+            { $or: [
+              { workPoligon: { $exists: false } },
+              { $and: [
+                { "workPoligon.id": null },
+                { "workPoligon.type": null },
+              ]},
+              { $and: [
+                { "workPoligon.id": userWorkPoligonId },
+                { "workPoligon.type": userWorkPoligonType },
+              ]},
+            ] },
+            // Шаблоны распоряжений не должны принадлежать конкретному лицу либо принадлежать лицу,
+            // производящему запрос
+            { $or: [
+              { personalPattern: { $exists: false } },
+              { personalPattern: userId }
+            ] },
+          ],
+        };
+      } else {
+        // Для главного администратора извлекаем информацию обо всех шаблонах распоряжений, кроме приватных,
+        // не принадлежащих ему. При необходимости, учитываем рабочий полигон.
+        matchFilter = {
+          $and: [
+            { $or: [
+                { personalPattern: { $exists: false } },
+                { personalPattern: userId },
               ],
             },
-          ];
-        } else if (userId) {
-          // Ищем шаблоны распоряжений, принадлежащих пользователю с id = userId
-          matchFilter.$or = [{ personalPattern: { $exists: false } }, { personalPattern: userId }];
-        } else {
-          matchFilter.personalPattern = { $exists: false };
+          ],
+        };
+        if (workPoligonType && workPoligonId) {
+          matchFilter.$and.push(
+            { "workPoligon.id": workPoligonId },
+            { "workPoligon.type": workPoligonType }
+          );
         }
-
-        data = await OrderPattern.find(matchFilter, dataProjection);
-      } else {
-        // Извлекаем информацию обо всех шаблонах распоряжений, кроме приватных
-        data = await OrderPattern.find({ personalPattern: { $exists: false } }, dataProjection);
       }
+      data = await OrderPattern.find(matchFilter, dataProjection);
 
       res.status(OK).json(data);
     } catch (error) {

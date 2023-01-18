@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { Tree, Row, Col, Popconfirm, Button, Popover, Space, Typography, Input, Select } from 'antd';
-import { ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS, InterfaceDesign, ServerAPI } from '../../../constants';
+import {
+  ORDER_PATTERN_FIELDS,
+  ORDER_PATTERN_ELEMENT_FIELDS,
+  InterfaceDesign,
+  ServerAPI,
+  WORK_POLIGON_TYPES,
+  ALL_SECTORS_MARK,
+} from '../../../constants';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { DownSquareTwoTone } from '@ant-design/icons';
@@ -93,7 +100,7 @@ export const OrderPatternsTree = (props) => {
         setSelectedPattern(null);
       }
     } else {
-      if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) {
+      if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) { console.log(info.node)
         setSelectedPattern({
           [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
           [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
@@ -137,6 +144,7 @@ export const OrderPatternsTree = (props) => {
     if (!selectedPattern || !selectedPattern[ORDER_PATTERN_FIELDS.KEY]) {
       return;
     }
+    console.log(selectedPattern)
     setEditedPattern({
       [ORDER_PATTERN_FIELDS.TITLE]: selectedPattern[ORDER_PATTERN_FIELDS.TITLE],
       [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: selectedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
@@ -680,6 +688,36 @@ export const OrderPatternsTree = (props) => {
                         )
                       }
                     </Select>
+                    <Text strong>Принадлежность рабочему полигону</Text>
+                    <Row gutter={8} wrap={false}>
+                      <Col flex="150px">
+                        <Select value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE]} style={{ width: '100%' }}>
+                        {
+                          [ALL_SECTORS_MARK].concat(Object.values(WORK_POLIGON_TYPES)).map(type =>
+                            <Option key={type} value={type}>
+                              {type}
+                            </Option>
+                          )
+                        }
+                        </Select>
+                      </Col>
+                      {/*{
+                        selectedSectorType &&
+                        <Col flex="auto">
+                          <Form.Item
+                            name={ORDER_PATTERN_FIELDS.WORK_POLIGON_ID}
+                            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID]) ? ERR_VALIDATE_STATUS : null}
+                            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID])}
+                          >
+                            <Select
+                              options={workPoligons}
+                              loading={gettingWorkPoligonsData}
+                            />
+                          </Form.Item>
+                        </Col>
+                      }*/}
+                    </Row>
+
                     <EditOrderPattern
                       orderPattern={editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
                       insertOrderElementPos={insertOrderElementPos}

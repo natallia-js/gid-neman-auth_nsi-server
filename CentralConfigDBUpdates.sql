@@ -382,22 +382,21 @@ ALTER TABLE TStationWorkPoligons
 ADD CONSTRAINT XUniqueStationWorkPoligon UNIQUE (SWP_UserID, SWP_StID, SWP_StWP_ID);
 
 
-
 ALTER TABLE TStationWorkPlaces
 ADD SWP_Type char(1);
-
 ALTER TABLE TStationWorkPlaces
 ALTER COLUMN SWP_Type char(1) NOT NULL;
-
-
-ALTER TABLE TStations
-ADD St_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
-
-ALTER TABLE TDNCSectors
-ADD DNCS_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
-
 
 ALTER TABLE TStations
 ADD St_GID_UNMC nvarchar(6);
 update TStations set St_GID_UNMC = St_UNMC;
 ALTER TABLE TStations ALTER COLUMN St_GID_UNMC NVARCHAR(6) NOT NULL;
+
+/* Эти поля введены исключительно для того чтобы в локальной БД у ДНЦ поддерживать
+   в актуальном состоянии таблицу персонала */
+ALTER TABLE TStations
+ADD St_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
+ALTER TABLE TDNCSectors
+ADD DNCS_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
+ALTER TABLE TDNCSectors
+ADD DNCS_LastUpdatePersonalRequestTime datetime;

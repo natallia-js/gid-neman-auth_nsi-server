@@ -310,8 +310,9 @@ router.post(
  * данное распоряжение никем ранее не подтверждалось.
  *
  * Параметры запроса:
- *   id - идентификатор подтверждаемого распоряжения
+ *   id - идентификатор подтверждаемого распоряжения,
  *   confirmDateTime - дата и время, когда пользователь подтвердил распоряжение,
+ *   additionalConfirmPeople - информация о людях, которые подтверждают распоряжение вместе с текущим лицом.
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(
@@ -328,7 +329,7 @@ router.post(
     session.startTransaction();
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, confirmDateTime } = req.body;
+    const { id, confirmDateTime, additionalConfirmPeople } = req.body;
 
     // Отмечаем подтверждение распоряжения в коллекции рабочих распоряжений, а также
     // (при необходимости) в общей коллеции распоряжений
@@ -409,7 +410,8 @@ router.post(
           return res.status(ERR).json({ message: 'Не удалось найти информацию о лице, подтверждающем распоряжение' });
         }
         userPost = user.post;
-        userFIO = getUserConciseFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname });
+        userFIO = getUserConciseFIOString({ name: user.name, fatherName: user.fatherName, surname: user.surname }) +
+          (additionalConfirmPeople ? `, ${additionalConfirmPeople}` : '');
         if (sector && !sector.confirmDateTime) {
           sector.confirmDateTime = confirmDateTime;
           sector.post = userPost;
@@ -442,6 +444,7 @@ router.post(
       // Логируем действие пользователя
       const logObject = {
         user: userPostFIOString(req.user),
+        additionalConfirmPeople,
         workPoligon: await getUserWorkPoligonString({
           workPoligonType: workPoligon.type,
           workPoligonId: workPoligon.id,
@@ -461,7 +464,7 @@ router.post(
         action: 'Подтверждение распоряжения',
         error: error.message,
         actionParams: {
-          userId: req.user.userId, user: userPostFIOString(req.user), orderId: id, confirmDateTime,
+          userId: req.user.userId, user: userPostFIOString(req.user), additionalConfirmPeople, orderId: id, confirmDateTime,
         },
       });
       await session.abortTransaction();

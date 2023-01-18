@@ -63,6 +63,7 @@ export const OrderPatternsPage = () => {
     currPage.changePageId(PAGES_IDS.ORDER_PATTERNS);
   }, [currPage]);
 
+
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
    * и устанавливает ее в локальное состояние
@@ -153,6 +154,11 @@ export const OrderPatternsPage = () => {
           orderCategory: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
         },
         positionInPatternsCategory: orderPattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY],
+        workPoligon: orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE] && orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID] ?
+          {
+            type: orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE],
+            id: orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID],
+          } : null,
       };
     };
 
