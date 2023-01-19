@@ -162,7 +162,7 @@ router.post(
  *            value - значение элемента шаблона (не обязательный параметр),
  * isPersonalPattern - если true, то создаваемый шаблон принадлежит конкретному лицу, его создавшему;
  *                     в противном случае создаваемый шаблон является общедоступным
- * workPoligonId, workPoligonType - id и тип рабочего полигона пользователей,
+ * workPoligon - объект с полями "id" (id рабочего полигона) и "type" (тип рабочего полигона) либо null (не обязателен),
  * positionInPatternsCategory - необязательный параметр, значение по умолчанию = -1 (определено моделью шаблона документа)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
@@ -179,8 +179,7 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const {
       _id, service, type, category, title, specialTrainCategories,
-      elements, isPersonalPattern, workPoligonId, workPoligonType,
-      positionInPatternsCategory,
+      elements, isPersonalPattern, workPoligon, positionInPatternsCategory,
     } = req.body;
     // Служба, которой принадлежит лицо, запрашивающее действие
     const serviceName = req.user.service;
@@ -214,11 +213,8 @@ router.post(
       if (Boolean(isPersonalPattern)) {
         newPatternObject.personalPattern = req.user.userId;
       }
-      if (Boolean(workPoligonId) && Boolean(workPoligonType)) {
-        newPatternObject.workPoligon = {
-          id: workPoligonId,
-          type: workPoligonType,
-        };
+      if (Boolean(workPoligon)) {
+        newPatternObject.workPoligon = workPoligon;
       }
       if (_id) {
         orderPattern = new OrderPattern({ _id, ...newPatternObject });
@@ -236,7 +232,7 @@ router.post(
         error: error.message,
         actionParams: {
           _id, service, type, category, title, specialTrainCategories,
-          elements, isPersonalPattern, workPoligonId, workPoligonType,
+          elements, isPersonalPattern, workPoligon, positionInPatternsCategory,
         },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
@@ -314,6 +310,7 @@ router.post(
  *            size - размер элемента шаблона (не обязательный параметр),
  *            ref - описание содержимого элемента шаблона (не обязательный параметр),
  *            value - значение элемента шаблона (не обязательный параметр),
+ * workPoligon - объект с полями "id" (id рабочего полигона) и "type" (тип рабочего полигона) либо null (не обязателен),
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(

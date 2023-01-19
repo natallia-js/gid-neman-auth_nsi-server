@@ -13,16 +13,8 @@ import {
   ORDER_PATTERN_ELEMENT_FIELDS,
   ServerAPI,
   SERVICE_FIELDS,
-  WORK_POLIGON_TYPES,
-  STATION_FIELDS,
-  DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
-  ALL_SECTORS_MARK,
 } from '../../../constants';
-import compareStrings from '../../../sorters/compareStrings';
-import getAppStationObjFromDBStationObj from '../../../mappers/getAppStationObjFromDBStationObj';
-import getAppDNCSectorObjFromDBDNCSectorObj from '../../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDSectorObjFromDBECDSectorObj from '../../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import SpecifyWorkPoligon from '../../SpecifyWorkPoligon';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -92,13 +84,6 @@ export const CreateOrderPattern = (props) => {
   // Ошибки, выявленные серверной частью в информационных полях, в процессе обработки
   // запроса о создании нового шаблона распоряжения
   const [orderPatternFieldsErrs, setOrderPatternFieldsErrs] = useState(null);
-
-  // true - идет процесс получения данных о рабочих полигонах
-  const [gettingWorkPoligonsData, setGettingWorkPoligonsData] = useState(false);
-  // тип выбранного рабочего полигона
-  const [selectedSectorType, setSelectedSectorType] = useState(ALL_SECTORS_MARK);
-  // информация обо всех рабочих полигонах выбранного типа
-  const [workPoligons, setWorkPoligons] = useState([]);
 
 
   /**
@@ -210,8 +195,6 @@ export const CreateOrderPattern = (props) => {
       setSelectedService(changedValues[ORDER_PATTERN_FIELDS.SERVICE]);
     } else if (changedValues.hasOwnProperty(ORDER_PATTERN_FIELDS.TYPE)) {
       setSelectedOrderType(changedValues[ORDER_PATTERN_FIELDS.TYPE]);
-    } else if (changedValues.hasOwnProperty(ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE)) {
-      setSelectedSectorType(changedValues[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE]);
     }
   };
 
@@ -243,53 +226,6 @@ export const CreateOrderPattern = (props) => {
       setMissingOrderCategoryErr(null);
     }
   };
-
-
-  const getWorkPoligonsOfGivenType = async () => {
-    let workPoligonsArray = [];
-
-    if (!selectedSectorType) {
-      setWorkPoligons(workPoligonsArray);
-    }
-
-    setGettingWorkPoligonsData(true);
-    try {
-      switch (selectedSectorType) {
-        case WORK_POLIGON_TYPES.STATION:
-          workPoligonsArray = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((station) => getAppStationObjFromDBStationObj(station))
-            .map((station) => ({ label: station[STATION_FIELDS.NAME], value: station[STATION_FIELDS.KEY] }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
-          break;
-        case WORK_POLIGON_TYPES.DNC_SECTOR:
-          workPoligonsArray = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-            .map((sector) => ({ label: sector[DNCSECTOR_FIELDS.NAME], value: sector[DNCSECTOR_FIELDS.KEY] }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
-          break;
-        case WORK_POLIGON_TYPES.ECD_SECTOR:
-          workPoligonsArray = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-            .map((sector) => ({ label: sector[ECDSECTOR_FIELDS.NAME], value: sector[ECDSECTOR_FIELDS.KEY] }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
-          break;
-      }
-    } catch (e) {
-      message(MESSAGE_TYPES.ERROR, e.message);
-    } finally {
-      setGettingWorkPoligonsData(false);
-      setWorkPoligons(workPoligonsArray);
-    }
-  };
-
-
-  useEffect(() => {
-    form.setFieldsValue({ [ORDER_PATTERN_FIELDS.WORK_POLIGON_ID]: null });
-    getWorkPoligonsOfGivenType();
-  }, [selectedSectorType]);
 
 
   /**
@@ -336,6 +272,15 @@ export const CreateOrderPattern = (props) => {
   };
 
 
+  const handleChangeWorkPoligon = (value) => {
+    form.setFieldsValue({ [ORDER_PATTERN_FIELDS.WORK_POLIGON]: value });
+  };
+
+  const handleWorkPoligonError = (errorMessage) => {
+    message(MESSAGE_TYPES.ERROR, errorMessage);
+  };
+
+
   return (
     <Row justify="space-around">
       <Col span={8}>
@@ -359,41 +304,16 @@ export const CreateOrderPattern = (props) => {
 
           { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
 
-          <Form.Item label={<Text strong>Рабочий полигон</Text>}>
-            <Row gutter={8} wrap={false}>
-              <Col flex="150px">
-                <Form.Item
-                  name={ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE}
-                  validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE]) ? ERR_VALIDATE_STATUS : null}
-                  help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE])}
-                >
-                  <Select>
-                  {
-                    [ALL_SECTORS_MARK].concat(Object.values(WORK_POLIGON_TYPES)).map(type =>
-                      <Option key={type} value={type}>
-                        {type}
-                      </Option>
-                    )
-                  }
-                  </Select>
-                </Form.Item>
-              </Col>
-              {
-                selectedSectorType &&
-                <Col flex="auto">
-                  <Form.Item
-                    name={ORDER_PATTERN_FIELDS.WORK_POLIGON_ID}
-                    validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID]) ? ERR_VALIDATE_STATUS : null}
-                    help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID])}
-                  >
-                    <Select
-                      options={workPoligons}
-                      loading={gettingWorkPoligonsData}
-                    />
-                  </Form.Item>
-                </Col>
-              }
-            </Row>
+          <Form.Item
+            label={<Text strong>Рабочий полигон</Text>}
+            name={ORDER_PATTERN_FIELDS.WORK_POLIGON}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON]) ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON])}
+          >
+            <SpecifyWorkPoligon
+              onChangeValue={handleChangeWorkPoligon}
+              onError={handleWorkPoligonError}
+            />
           </Form.Item>
 
           <Form.Item

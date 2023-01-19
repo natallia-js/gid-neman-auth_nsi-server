@@ -5,19 +5,18 @@ import {
   ORDER_PATTERN_ELEMENT_FIELDS,
   InterfaceDesign,
   ServerAPI,
-  WORK_POLIGON_TYPES,
-  ALL_SECTORS_MARK,
 } from '../../../constants';
 import { EditOrderPattern } from '../EditOrderPattern';
 import { OrderPatternPreview } from '../OrderPatternPreview';
 import { DownSquareTwoTone } from '@ant-design/icons';
 import { useHttp } from '../../../hooks/http.hook';
+import { useSearchTree } from '../../../hooks/searchTree.hook';
 import { MESSAGE_TYPES, useCustomMessage } from '../../../hooks/customMessage.hook';
 import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import objectId from '../../../generators/objectId.generator';
 import { OrderPatternsNodeType, SPECIAL_TRAIN_CATEGORIES } from '../constants';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../../../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
-import { useSearchTree } from '../../../hooks/searchTree.hook';
+import SpecifyWorkPoligon from '../../SpecifyWorkPoligon';
 
 const { Text, Title } = Typography;
 const { Search } = Input;
@@ -100,12 +99,13 @@ export const OrderPatternsTree = (props) => {
         setSelectedPattern(null);
       }
     } else {
-      if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) { console.log(info.node)
+      if (info.node.type === OrderPatternsNodeType.ORDER_PATTERN) {
         setSelectedPattern({
           [ORDER_PATTERN_FIELDS.KEY]: selectedKeys[0],
           [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
           [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: info.node.specialTrainCategories,
           [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
+          [ORDER_PATTERN_FIELDS.WORK_POLIGON]: info.node.workPoligon,
         });
         if (selectedOrderCategory) {
           setSelectedOrderCategory(null);
@@ -144,11 +144,11 @@ export const OrderPatternsTree = (props) => {
     if (!selectedPattern || !selectedPattern[ORDER_PATTERN_FIELDS.KEY]) {
       return;
     }
-    console.log(selectedPattern)
     setEditedPattern({
       [ORDER_PATTERN_FIELDS.TITLE]: selectedPattern[ORDER_PATTERN_FIELDS.TITLE],
       [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: selectedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
       [ORDER_PATTERN_FIELDS.ELEMENTS]: [...selectedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]],
+      [ORDER_PATTERN_FIELDS.WORK_POLIGON]: selectedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
     });
     if (patternEdited) {
       setPatternEdited(false);
@@ -341,6 +341,7 @@ export const OrderPatternsTree = (props) => {
           title: editedPattern[ORDER_PATTERN_FIELDS.TITLE],
           specialTrainCategories: editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           elements: editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
+          workPoligon: editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
         }
       );
       message(MESSAGE_TYPES.SUCCESS, res.message);
@@ -354,6 +355,7 @@ export const OrderPatternsTree = (props) => {
           [ORDER_PATTERN_FIELDS.TITLE]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.TITLE],
           [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           [ORDER_PATTERN_FIELDS.ELEMENTS]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
+          [ORDER_PATTERN_FIELDS.WORK_POLIGON]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
         };
       })
       setEditedPattern(null);
@@ -471,6 +473,29 @@ export const OrderPatternsTree = (props) => {
   };
 
 
+  /**
+   * Запоминает правки в принадлежности распоряжения рабочему полигону.
+   */
+  const handleChangeWorkPoligon = (workPoligon) => {
+    if (!editedPattern) {
+      return;
+    }
+    setEditedPattern((value) => {
+      return {
+        ...value,
+        [ORDER_PATTERN_FIELDS.WORK_POLIGON]: workPoligon,
+      };
+    });
+    if (!patternEdited) {
+      setPatternEdited(true);
+    }
+  };
+
+  const handleWorkPoligonError = (errorMessage) => {
+    message(MESSAGE_TYPES.ERROR, errorMessage);
+  };
+
+
   const generateOrderPatternTreeNodes =
     loop(existingOrderAffiliationTree)
       .map((service) => (
@@ -547,6 +572,7 @@ export const OrderPatternsTree = (props) => {
                         isLeaf={true}
                         key={pattern.key}
                         title={nodeTitle}
+                        workPoligon={pattern.workPoligon}
                         type={pattern.type}
                         additionalInfo={pattern.additionalInfo}
                         pattern={pattern.pattern}
@@ -665,12 +691,14 @@ export const OrderPatternsTree = (props) => {
                 <Col span={24} className="order-pattern-border order-pattern-block">
                   <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Title level={4} className="center">Редактирование информации о шаблоне документа</Title>
+
                     <Text strong>Наименование распоряжения</Text>
                     <Input
                       size="small"
                       value={editedPattern[ORDER_PATTERN_FIELDS.TITLE]}
                       onChange={handleEditOrderPatternTitle}
                     />
+
                     <Text strong>Особые отметки</Text>
                     <Select
                       mode="multiple"
@@ -688,35 +716,13 @@ export const OrderPatternsTree = (props) => {
                         )
                       }
                     </Select>
+
                     <Text strong>Принадлежность рабочему полигону</Text>
-                    <Row gutter={8} wrap={false}>
-                      <Col flex="150px">
-                        <Select value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE]} style={{ width: '100%' }}>
-                        {
-                          [ALL_SECTORS_MARK].concat(Object.values(WORK_POLIGON_TYPES)).map(type =>
-                            <Option key={type} value={type}>
-                              {type}
-                            </Option>
-                          )
-                        }
-                        </Select>
-                      </Col>
-                      {/*{
-                        selectedSectorType &&
-                        <Col flex="auto">
-                          <Form.Item
-                            name={ORDER_PATTERN_FIELDS.WORK_POLIGON_ID}
-                            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID]) ? ERR_VALIDATE_STATUS : null}
-                            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON_ID])}
-                          >
-                            <Select
-                              options={workPoligons}
-                              loading={gettingWorkPoligonsData}
-                            />
-                          </Form.Item>
-                        </Col>
-                      }*/}
-                    </Row>
+                    <SpecifyWorkPoligon
+                      workPoligon={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON]}
+                      onChangeValue={handleChangeWorkPoligon}
+                      onError={handleWorkPoligonError}
+                    />
 
                     <EditOrderPattern
                       orderPattern={editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]}
@@ -730,6 +736,7 @@ export const OrderPatternsTree = (props) => {
                       onDelOrderPatternElRef={onDelOrderPatternElRef}
                       onModOrderPatternElRef={onModOrderPatternElRef}
                     />
+
                     <Text strong>Определите элементы шаблона</Text>
                     <EditOrderPatternElement
                       orderPatternElRefs={orderPatternElRefs}

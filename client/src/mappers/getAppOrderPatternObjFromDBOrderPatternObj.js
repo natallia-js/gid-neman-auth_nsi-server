@@ -22,8 +22,7 @@ const getAppOrderPatternObjFromDBOrderPatternObj = (dbOrderPatternObj) => {
       [ORDER_PATTERN_FIELDS.CHILD_PATTERNS]: !dbOrderPatternObj.childPatterns ? [] :
         dbOrderPatternObj.childPatterns.map((childPattern) => getAppChildPatternObjFromDBChildPatternObj(childPattern)),
       [ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY]: dbOrderPatternObj.positionInPatternsCategory,
-      [ORDER_PATTERN_FIELDS.WORK_POLIGON_TYPE]: dbOrderPatternObj.workPoligon?.type,
-      [ORDER_PATTERN_FIELDS.WORK_POLIGON_ID]: dbOrderPatternObj.workPoligon?.id,
+      [ORDER_PATTERN_FIELDS.WORK_POLIGON]: dbOrderPatternObj.workPoligon,
     };
   }
   return null;
