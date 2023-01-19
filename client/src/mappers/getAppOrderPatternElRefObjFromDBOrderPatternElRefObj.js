@@ -1,4 +1,4 @@
-import { ORDER_PATTERN_ELEMENT_REFS_FIELDS } from '../constants';
+import { ORDER_PATTERN_ELEMENT_REFS_FIELDS, ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS } from '../constants';
 import getAppPossibleElRefsObjFromDBPossibleElRefObj from './getAppPossibleElRefsObjFromDBPossibleElRefObj';
 
 /**

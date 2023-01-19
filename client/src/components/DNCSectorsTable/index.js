@@ -9,7 +9,6 @@ import {
   ECDSECTOR_FIELDS,
   ADJACENT_DNCSECTOR_FIELDS,
   NEAREST_SECTOR_FIELDS,
-  STATION_FIELDS,
   BLOCK_FIELDS,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
@@ -19,10 +18,10 @@ import dncSectorsTableColumns from './DNCSectorsTableColumns';
 import DNCTrainSectorsBlock from './DNCTrainSectorsBlock';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
-import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
+import { useStations } from '../../serverRequests/stations';
 
 const { Text, Title } = Typography;
 
@@ -83,6 +82,8 @@ const DNCSectorsTable = () => {
 
   // Результаты синхронизации с ПЭНСИ
   const [syncDataResults, setSyncDataResults] = useState(null);
+
+  const { getShortStationsData } = useStations();
 
 
   /**
@@ -158,11 +159,8 @@ const DNCSectorsTable = () => {
 
       // Получаем информацию о всех станциях
       setDataBeingLoadedMessage('Загружаю информацию о станциях...');
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
-      setStations(res
-        .map((station) => getAppStationObjFromDBStationObj(station))
-        .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
-      );
+      const stationsData = await getShortStationsData({ mapStationToLabelValue: false });
+      setStations(stationsData);
 
       // -------------------
 
@@ -411,6 +409,7 @@ const DNCSectorsTable = () => {
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

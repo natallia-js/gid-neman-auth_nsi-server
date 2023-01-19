@@ -365,6 +365,7 @@ export const ORDER_PATTERN_ELEMENT_REFS_FIELDS = Object.freeze({
 export const ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'refName',
+  WORK_POLIGON: 'workPoligon',
   IS_ORDER_PLACE_FOR_GID: 'additionalOrderPlaceInfoForGID',
   MEANINGS: 'possibleMeanings',
 });

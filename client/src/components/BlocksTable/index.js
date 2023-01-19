@@ -6,12 +6,11 @@ import NewBlockModal from '../NewBlockModal';
 import { ServerAPI, BLOCK_FIELDS, STATION_FIELDS } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
 import blocksTableColumns from './BlocksTableColumns';
-import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
-import compareStrings from '../../sorters/compareStrings';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import expandIcon from '../ExpandIcon';
 import BlockTracksTable from './BlockTracksTable';
+import { useStations } from '../../serverRequests/stations';
 
 const { Text, Title } = Typography;
 
@@ -69,6 +68,8 @@ const BlocksTable = () => {
   // Результаты синхронизации с ПЭНСИ
   const [syncDataResults, setSyncDataResults] = useState(null);
 
+  const { getShortStationsData } = useStations();
+
 
   /**
    * Извлекает информацию по станциям (от нее зависит отображение информации по перегонам) из первоисточника
@@ -86,12 +87,8 @@ const BlocksTable = () => {
       // -------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
 
-      // Хочу, чтобы станции в выпадающих списках были отсортированы по алфавиту
-      const stationsData = res.map((station) => getAppStationObjFromDBStationObj(station));
-      stationsData.sort((a, b) =>
-        compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()));
+      const stationsData = await getShortStationsData({ mapStationToLabelValue: false });
       setStations(stationsData);
 
       // -------------------------------
@@ -351,6 +348,7 @@ const BlocksTable = () => {
           [BLOCK_FIELDS.STATION1, BLOCK_FIELDS.STATION2].includes(col.dataIndex[0]) &&
           (col.dataIndex[1] === STATION_FIELDS.NAME_AND_CODE) ? 'stationsSelect' :
           (col.dataIndex === BLOCK_FIELDS.PENSI_DNCSectorCode) ? 'number' : 'text',
+        dataType: (col.dataIndex === BLOCK_FIELDS.PENSI_DNCSectorCode) ? 'number' :'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

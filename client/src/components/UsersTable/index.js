@@ -23,13 +23,13 @@ import getAppServiceObjFromDBServiceObj from '../../mappers/getAppServiceObjFrom
 import getAppPostObjFromDBPostObj from '../../mappers/getAppPostObjFromDBPostObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
-import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import tagRender from '../tagRender';
+import { useStations } from '../../serverRequests/stations';
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -127,6 +127,8 @@ const UsersTable = () => {
   // Для поиска данных в столбцах таблицы
   const { getColumnSearchProps } = useColumnSearchProps({ useOnFilterEventProcessor: false});
 
+  const { getFullStationsData } = useStations();
+
 
   /**
    * Загрузка требуемой информации по пользователям
@@ -216,9 +218,8 @@ const UsersTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
       setDataBeingLoadedMessage('Загружаю информацию по станциям...');
-      res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
-      const stations = res.map((station) => getAppStationObjFromDBStationObj(station));
-      setStationsData(stations);
+      const stationsData = await getFullStationsData();
+      setStationsData(stationsData);
 
       // ---------------------------------
 
@@ -660,6 +661,7 @@ const UsersTable = () => {
         record,
         inputType: col.dataIndex === USER_FIELDS.SERVICE ? 'servicesSelect' :
                    col.dataIndex === USER_FIELDS.POST ? 'postsSelect' : 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

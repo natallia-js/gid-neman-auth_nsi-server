@@ -13,6 +13,7 @@ const getAppPossibleElRefsObjFromDBPossibleElRefObj = (dbPossibleElRefObj) => {
   const appPossibleElRefObj = {
     [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY]: dbPossibleElRefObj._id,
     [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME]: dbPossibleElRefObj.refName,
+    [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]: dbPossibleElRefObj.workPoligon,
     [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID]: dbPossibleElRefObj.additionalOrderPlaceInfoForGID,
     [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.MEANINGS]: dbPossibleElRefObj.possibleMeanings,
   }

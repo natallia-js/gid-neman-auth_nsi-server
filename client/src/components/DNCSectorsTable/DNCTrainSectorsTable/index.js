@@ -185,6 +185,7 @@ const DNCTrainSectorsTable = (props) => {
       onCell: (rec) => ({
         rec,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(rec),

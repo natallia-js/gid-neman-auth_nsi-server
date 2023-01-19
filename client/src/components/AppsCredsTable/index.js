@@ -252,6 +252,7 @@ const AppsCredsTable = () => {
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

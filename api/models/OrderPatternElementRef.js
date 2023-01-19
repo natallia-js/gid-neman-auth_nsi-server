@@ -9,6 +9,13 @@ const schema = new Schema({
     {
       // название смыслового значения
       refName: { type: String, required: true },
+      // рабочий полигон, для которого применяется данное смысловое значение;
+      // если поля нет либо его значение не установлено, то полагается, что смысловое значение применимо на всех
+      // рабочих полигонах
+      workPoligon: {
+        id: { type: Number, required: false },
+        type: { type: String, required: false },
+      },
       // true - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
       // в ГИД, false - не учитывать
       additionalOrderPlaceInfoForGID: { type: Boolean, required: true },

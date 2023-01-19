@@ -5,19 +5,27 @@ import {
   DNCSECTOR_FIELDS,
   ECDSECTOR_FIELDS,
   ServerAPI,
-  STATION_FIELDS,
   WORK_POLIGON_TYPES,
 } from '../../constants';
 import compareStrings from '../../sorters/compareStrings';
 import { useHttp } from '../../hooks/http.hook';
-import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import { useStations } from '../../serverRequests/stations';
 
 const { Option } = Select;
 
 
-const SpecifyWorkPoligon = ({ workPoligon, onChangeValue, onError }) => {
+const SpecifyWorkPoligon = (props) => {
+  const {
+    workPoligon,
+    onChangeValue,
+    onError,
+    availableStationWorkPoligons,
+    availableDNCSectorWorkPoligons,
+    availableECDSectorWorkPoligons,
+  } = props;
+
   // true - идет процесс получения данных о рабочих полигонах
   const [gettingWorkPoligonsData, setGettingWorkPoligonsData] = useState(false);
   // тип выбранного рабочего полигона
@@ -29,6 +37,8 @@ const SpecifyWorkPoligon = ({ workPoligon, onChangeValue, onError }) => {
 
   // Пользовательский хук для получения информации от сервера
   const { request } = useHttp();
+
+  const { getShortStationsData } = useStations();
 
 
   const getWorkPoligonsOfGivenType = async () => {
@@ -42,24 +52,28 @@ const SpecifyWorkPoligon = ({ workPoligon, onChangeValue, onError }) => {
     try {
       switch (selectedWorkPoligonType) {
         case WORK_POLIGON_TYPES.STATION:
-          workPoligonsArray = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((station) => getAppStationObjFromDBStationObj(station))
-            .map((station) => ({ label: station[STATION_FIELDS.NAME], value: station[STATION_FIELDS.KEY] }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
+          if (!availableStationWorkPoligons) {
+            workPoligonsArray = await getShortStationsData({ mapStationToLabelValue: true });
+          }
           break;
         case WORK_POLIGON_TYPES.DNC_SECTOR:
           workPoligonsArray = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
           workPoligonsArray = workPoligonsArray
             .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-            .map((sector) => ({ label: sector[DNCSECTOR_FIELDS.NAME], value: sector[DNCSECTOR_FIELDS.KEY] }))
+            .map((sector) => ({
+              label: sector[DNCSECTOR_FIELDS.NAME],
+              value: sector[DNCSECTOR_FIELDS.KEY],
+            }))
             .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
           break;
         case WORK_POLIGON_TYPES.ECD_SECTOR:
           workPoligonsArray = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
           workPoligonsArray = workPoligonsArray
             .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-            .map((sector) => ({ label: sector[ECDSECTOR_FIELDS.NAME], value: sector[ECDSECTOR_FIELDS.KEY] }))
+            .map((sector) => ({
+              label: sector[ECDSECTOR_FIELDS.NAME],
+              value: sector[ECDSECTOR_FIELDS.KEY],
+            }))
             .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
           break;
       }
@@ -89,15 +103,17 @@ const SpecifyWorkPoligon = ({ workPoligon, onChangeValue, onError }) => {
 
 
   useEffect(() => {
-    if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonId)
+    if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonId) {
       onChangeValue(null);
-    else
+    }
+    else {
       onChangeValue({ type: selectedWorkPoligonType, id: selectedWorkPoligonId });
+    }
   }, [selectedWorkPoligonId]);
 
 
   return (
-    <Row gutter={8} wrap={false}>
+    <Row gutter={8} wrap={true}>
       <Col flex="150px">
         <Select value={selectedWorkPoligonType} onChange={handleChangeWorkPoligonType} style={{ width: '100%' }}>
         {
@@ -118,6 +134,7 @@ const SpecifyWorkPoligon = ({ workPoligon, onChangeValue, onError }) => {
             style={{ width: '100%' }}
             loading={gettingWorkPoligonsData}
             onChange={handleChangeWorkPoligonId}
+            dropdownMatchSelectWidth={false}
           />
         </Col>
       }

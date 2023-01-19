@@ -11,6 +11,7 @@ import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import expandIcon from '../ExpandIcon';
 import StationTracksTable from './StationTracksTable';
 import StationWorkPlacesTable from './StationWorkPlacesTable';
+import { useStations } from '../../serverRequests/stations';
 
 const { Text, Title } = Typography;
 
@@ -63,6 +64,8 @@ const StationsTable = () => {
   // Результаты синхронизации с ПЭНСИ
   const [syncDataResults, setSyncDataResults] = useState(null);
 
+  const { getFullStationsData } = useStations();
+
 
   /**
    * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
@@ -73,9 +76,9 @@ const StationsTable = () => {
 
     try {
       // Делаем запрос на сервер с целью получения информации по станциям
-      let res = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
-      const tableData = res.map((station) => getAppStationObjFromDBStationObj(station));
+      const tableData = await getFullStationsData();
       setTableData(tableData);
+
       setLoadDataErr(null);
 
     } catch (e) {
@@ -293,6 +296,7 @@ const StationsTable = () => {
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

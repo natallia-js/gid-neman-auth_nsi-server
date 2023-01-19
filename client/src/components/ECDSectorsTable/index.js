@@ -9,7 +9,6 @@ import {
   DNCSECTOR_FIELDS,
   ADJACENT_ECDSECTOR_FIELDS,
   NEAREST_SECTOR_FIELDS,
-  STATION_FIELDS,
   BLOCK_FIELDS,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
@@ -20,10 +19,10 @@ import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
 import ECDStructuralDivisionsTable from './ECDStructuralDivisionsTable';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppStationObjFromDBStationObj from '../../mappers/getAppStationObjFromDBStationObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
+import { useStations } from '../../serverRequests/stations';
 
 const { Text, Title } = Typography;
 
@@ -81,6 +80,8 @@ const ECDSectorsTable = () => {
 
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
+
+  const { getShortStationsData } = useStations();
 
 
   /**
@@ -157,11 +158,8 @@ const ECDSectorsTable = () => {
 
       // Получаем информацию о всех станциях
       setDataBeingLoadedMessage('Загружаю информацию о станциях...');
-      res = await request(ServerAPI.GET_STATIONS_DATA, 'POST', {});
-      setStations(res
-        .map((station) => getAppStationObjFromDBStationObj(station))
-        .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()))
-      );
+      const stationsData = await getShortStationsData({ mapStationToLabelValue: false });
+      setStations(stationsData);
 
       // -------------------
 
@@ -393,6 +391,7 @@ const ECDSectorsTable = () => {
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

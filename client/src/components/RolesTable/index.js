@@ -306,6 +306,7 @@ const RolesTable = () => {
       onCell: (record) => ({
         record,
         inputType: (col.dataIndex === ROLE_FIELDS.SUB_ADMIN_CAN_USE) ? 'boolean' : 'text',
+        dataType: (col.dataIndex === ROLE_FIELDS.SUB_ADMIN_CAN_USE) ? 'boolean' : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

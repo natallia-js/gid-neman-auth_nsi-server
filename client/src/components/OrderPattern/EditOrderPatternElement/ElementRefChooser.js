@@ -145,6 +145,7 @@ export const ElementRefChooser = (props) => {
   const handleStartEditOrderPatternElementRef = (rec) => {
     editTableDataForm.setFieldsValue({
       [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME]: '',
+      [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]: null,
       [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID]: '',
       ...rec,
     });
@@ -163,6 +164,8 @@ export const ElementRefChooser = (props) => {
       message(MESSAGE_TYPES.ERROR, `Ошибка валидации: ${JSON.stringify(errInfo)}`);
       return;
     }
+
+    console.log(rowData); return;
 
     setRecsBeingProcessed((value) => [...value, refId]);
     try {
@@ -236,22 +239,24 @@ export const ElementRefChooser = (props) => {
   });
 
   /**
-   * Правила отображения редактируемых и нередактируемых столбцов таблицы.
+   * Правила отображения редактируемых и нередактируемых столбцов таблицы смысловых значений элемента шаблона распоряжения.
    */
   const mergedColumns = columns.map((col) => {
     if (!col.editable) {
       return col;
     }
-
     return {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' : 'text',
+        inputType:
+          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' :
+          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? 'workPoligonSelect' : 'text',
+        dataType: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: true,
+        required: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? false : true,
         errMessage: modTableFieldsErrs ? modTableFieldsErrs[col.dataIndex] : null,
       }),
     };
@@ -524,7 +529,7 @@ export const ElementRefChooser = (props) => {
         title={`Смысловые значения элемента ${elementType}`}
         footer={null}
         destroyOnClose={true}
-        width={600}
+        width={800}
         visible={isModalOpen}
         onCancel={handleClose}
       >

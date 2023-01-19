@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Checkbox, Modal, Form, Input, Button, Typography } from 'antd';
 import { ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS } from '../../constants';
+import SpecifyWorkPoligon from '../SpecifyWorkPoligon';
 
 const { Text } = Typography;
 
@@ -63,6 +64,15 @@ const NewOrderPatternElementRefModal = ({
   };
 
 
+  const handleChangeWorkPoligon = (value) => {
+    form.setFieldsValue({ [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]: value });
+  };
+
+  const handleWorkPoligonError = (errorMessage) => {
+    //message(MESSAGE_TYPES.ERROR, errorMessage);
+  };
+
+
   return (
     <Modal
       title="Введите информацию о новом смысловом значении"
@@ -100,6 +110,18 @@ const NewOrderPatternElementRefModal = ({
             autoComplete="off"
             placeholder="Введите наименование"
             allowClear
+          />
+        </Form.Item>
+
+        <Form.Item
+          label={<Text strong>Рабочий полигон</Text>}
+          name={ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON}
+          validateStatus={(recFieldsErrs && recFieldsErrs[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]) ? ERR_VALIDATE_STATUS : null}
+          help={(recFieldsErrs && recFieldsErrs[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON])}
+        >
+          <SpecifyWorkPoligon
+            onChangeValue={handleChangeWorkPoligon}
+            onError={handleWorkPoligonError}
           />
         </Form.Item>
 

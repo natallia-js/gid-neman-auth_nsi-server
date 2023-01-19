@@ -243,6 +243,7 @@ const StationWorkPlacesTable = ({ stationId, stationWorkPlaces, setTableDataCall
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

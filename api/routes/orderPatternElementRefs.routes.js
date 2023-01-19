@@ -88,6 +88,8 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  * Параметры тела запроса:
  * elementTypeId - id типа элемента шаблона (обязателен),
  * refName - наименование смыслового значения (обязательно),
+ * workPoligon - объект с полями id (id полигона управления) и type (тип полигона управления) либо null - определяет
+ *   привязку указанного смыслового значения к конкретному полигону управления (не обязателен),
  * additionalOrderPlaceInfoForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
  *   в ГИД (true) или не учитывать (false) (не обязательно, по умолчанию false),
  * Обязательный параметр запроса - applicationAbbreviation!
@@ -100,7 +102,7 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { elementTypeId, refName, additionalOrderPlaceInfoForGID } = req.body;
+    const { elementTypeId, refName, workPoligon, additionalOrderPlaceInfoForGID } = req.body;
 
     try {
       // Ищем в БД указанный тип элемента шаблона распоряжения
@@ -124,6 +126,9 @@ router.post(
         refName,
         additionalOrderPlaceInfoForGID: Boolean(additionalOrderPlaceInfoForGID),
       };
+      if (workPoligon) {
+        newRef.workPoligon = workPoligon;
+      }
       candidate.possibleRefs.push(newRef);
 
       await candidate.save();
@@ -205,6 +210,8 @@ router.post(
  * elementTypeId - id типа элемента шаблона (обязателен),
  * refId - id смыслового значения (обязателен),
  * refName - наименование смыслового значения (не обязательно),
+ * workPoligon - объект с полями id (id полигона управления) и type (тип полигона управления) либо null - определяет
+ *   привязку указанного смыслового значения к конкретному полигону управления (не обязателен),
  * additionalOrderPlaceInfoForGID - учитывать значение элемента как дополнительную информацию о месте действия распоряжения
  *   в ГИД (true) или не учитывать (false) (не обязательно),
  * possibleMeanings - массив допустимых значений элемента шаблона распоряжения с заданным смысловым значением (не обязательно),
@@ -218,7 +225,7 @@ router.post(
   hasUserRightToPerformAction,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { elementTypeId, refId, refName, additionalOrderPlaceInfoForGID, possibleMeanings } = req.body;
+    const { elementTypeId, refId, refName, workPoligon, additionalOrderPlaceInfoForGID, possibleMeanings } = req.body;
 
     try {
       // Ищем в БД указанный тип элемента шаблона распоряжения
@@ -241,6 +248,8 @@ router.post(
 
       if (req.body.hasOwnProperty('refName'))
         refCandidate.refName = refName;
+      if (req.body.hasOwnProperty('workPoligon'))
+        refCandidate.workPoligon = workPoligon;
       if (req.body.hasOwnProperty('additionalOrderPlaceInfoForGID'))
         refCandidate.additionalOrderPlaceInfoForGID = additionalOrderPlaceInfoForGID;
       if (req.body.hasOwnProperty('possibleMeanings')) {

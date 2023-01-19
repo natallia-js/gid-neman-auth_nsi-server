@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { STATION_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
+import SpecifyWorkPoligon from '../SpecifyWorkPoligon';
 
 const { Option } = Select;
 const ERR_VALIDATE_STATUS = 'error';
@@ -69,10 +70,28 @@ const EditableTableCell = ({
     case 'boolean':
       inputNode = <Checkbox defaultChecked={data} />
       break;
+    case 'workPoligonSelect':
+      inputNode =
+        <SpecifyWorkPoligon
+          onChangeValue={/*handleChangeWorkPoligon*/() => {}}
+          onError={/*handleWorkPoligonError*/() => {}}
+        />
+      break;
     default:
       inputNode = <Input autoComplete="off" />;
       break;
   }
+
+  const getValuePropName = () => {
+    switch (inputType) {
+      case 'boolean':
+        return 'checked';
+      //case 'workPoligonSelect':
+      //  return 'workPoligon';
+      default:
+        return 'value';
+    }
+  };
 
   const getFieldRules = () => {
     if (!required) {
@@ -98,7 +117,7 @@ const EditableTableCell = ({
       {editing ? (
         <Form.Item
           name={dataIndex}
-          valuePropName={inputType !== 'boolean' ? 'value' : 'checked'}
+          valuePropName={getValuePropName()}
           style={{
             margin: 0,
           }}

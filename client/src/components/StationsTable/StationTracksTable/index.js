@@ -243,6 +243,7 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
       onCell: (record) => ({
         record,
         inputType: 'text',
+        dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

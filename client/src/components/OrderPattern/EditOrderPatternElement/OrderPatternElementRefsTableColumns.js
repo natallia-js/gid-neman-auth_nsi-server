@@ -21,11 +21,18 @@ const orderPatternElementRefsTableColumns = (props) => {
       title: 'Наименование',
       dataIndex: ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME,
       key: ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME,
-      width: '30%',
+      width: '20%',
       editable: true,
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(
         (a[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME] || '').toLowerCase(), (b[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME] || '').toLowerCase()),
+    },
+    {
+      title: 'Рабочий полигон',
+      dataIndex: ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON,
+      key: ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON,
+      width: '20%',
+      editable: true,
     },
     {
       title: 'Доп.инфо о месте действия для ГИД',
