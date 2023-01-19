@@ -20,6 +20,8 @@ const EditableTableCell = ({
   services,
   posts,
   stations,
+  dncSectors,
+  ecdSectors,
   data,
   errMessage,
   ...restProps
@@ -73,8 +75,9 @@ const EditableTableCell = ({
     case 'workPoligonSelect':
       inputNode =
         <SpecifyWorkPoligon
-          onChangeValue={/*handleChangeWorkPoligon*/() => {}}
-          onError={/*handleWorkPoligonError*/() => {}}
+          availableStationWorkPoligons={stations || []}
+          availableDNCSectorWorkPoligons={dncSectors || []}
+          availableECDSectorWorkPoligons={ecdSectors || []}
         />
       break;
     default:
@@ -86,8 +89,6 @@ const EditableTableCell = ({
     switch (inputType) {
       case 'boolean':
         return 'checked';
-      //case 'workPoligonSelect':
-      //  return 'workPoligon';
       default:
         return 'value';
     }

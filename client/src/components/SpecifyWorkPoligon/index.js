@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Col, Row, Select } from 'antd';
-import {
-  ALL_SECTORS_MARK,
-  DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
-  ServerAPI,
-  WORK_POLIGON_TYPES,
-} from '../../constants';
-import compareStrings from '../../sorters/compareStrings';
-import { useHttp } from '../../hooks/http.hook';
-import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
+import { ALL_SECTORS_MARK, WORK_POLIGON_TYPES } from '../../constants';
 import { useStations } from '../../serverRequests/stations';
+import { useDNCSectors } from '../../serverRequests/dncSectors';
+import { useECDSectors } from '../../serverRequests/ecdSectors';
 
 const { Option } = Select;
 
 
 const SpecifyWorkPoligon = (props) => {
   const {
-    workPoligon,
-    onChangeValue,
+    value = null,
+    onChange,
     onError,
     availableStationWorkPoligons,
     availableDNCSectorWorkPoligons,
@@ -29,16 +21,15 @@ const SpecifyWorkPoligon = (props) => {
   // true - идет процесс получения данных о рабочих полигонах
   const [gettingWorkPoligonsData, setGettingWorkPoligonsData] = useState(false);
   // тип выбранного рабочего полигона
-  const [selectedWorkPoligonType, setSelectedWorkPoligonType] = useState(workPoligon?.type || ALL_SECTORS_MARK);
+  const [selectedWorkPoligonType, setSelectedWorkPoligonType] = useState(value?.type || ALL_SECTORS_MARK);
   // id выбранного рабочего полигона
-  const [selectedWorkPoligonId, setSelectedWorkPoligonId] = useState(workPoligon?.id || null);
+  const [selectedWorkPoligonId, setSelectedWorkPoligonId] = useState(value?.id || null);
   // информация обо всех рабочих полигонах выбранного типа
   const [workPoligons, setWorkPoligons] = useState([]);
 
-  // Пользовательский хук для получения информации от сервера
-  const { request } = useHttp();
-
   const { getShortStationsData } = useStations();
+  const { getShortDNCSectorsData } = useDNCSectors();
+  const { getShortECDSectorsData } = useECDSectors();
 
 
   const getWorkPoligonsOfGivenType = async () => {
@@ -52,29 +43,28 @@ const SpecifyWorkPoligon = (props) => {
     try {
       switch (selectedWorkPoligonType) {
         case WORK_POLIGON_TYPES.STATION:
+          // Пустой массив пропускаем
           if (!availableStationWorkPoligons) {
             workPoligonsArray = await getShortStationsData({ mapStationToLabelValue: true });
+          } else {
+            workPoligonsArray = availableStationWorkPoligons;
           }
           break;
         case WORK_POLIGON_TYPES.DNC_SECTOR:
-          workPoligonsArray = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-            .map((sector) => ({
-              label: sector[DNCSECTOR_FIELDS.NAME],
-              value: sector[DNCSECTOR_FIELDS.KEY],
-            }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
+          // Пустой массив пропускаем
+          if (!availableDNCSectorWorkPoligons) {
+            workPoligonsArray = await getShortDNCSectorsData({ mapSectorToLabelValue: true });
+          } else {
+            workPoligonsArray = availableDNCSectorWorkPoligons;
+          }
           break;
         case WORK_POLIGON_TYPES.ECD_SECTOR:
-          workPoligonsArray = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
-          workPoligonsArray = workPoligonsArray
-            .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-            .map((sector) => ({
-              label: sector[ECDSECTOR_FIELDS.NAME],
-              value: sector[ECDSECTOR_FIELDS.KEY],
-            }))
-            .sort((a, b) => compareStrings(a.label.toLowerCase(), b.label.toLowerCase()));
+          // Пустой массив пропускаем
+          if (!availableECDSectorWorkPoligons) {
+            workPoligonsArray = await getShortECDSectorsData({ mapSectorToLabelValue: true });
+          } else {
+            workPoligonsArray = availableECDSectorWorkPoligons;
+          }
           break;
       }
     } catch (e) {
@@ -104,10 +94,9 @@ const SpecifyWorkPoligon = (props) => {
 
   useEffect(() => {
     if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonId) {
-      onChangeValue(null);
-    }
-    else {
-      onChangeValue({ type: selectedWorkPoligonType, id: selectedWorkPoligonId });
+      onChange(null);
+    } else {
+      onChange({ type: selectedWorkPoligonType, id: selectedWorkPoligonId });
     }
   }, [selectedWorkPoligonId]);
 

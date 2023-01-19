@@ -719,8 +719,8 @@ export const OrderPatternsTree = (props) => {
 
                     <Text strong>Принадлежность рабочему полигону</Text>
                     <SpecifyWorkPoligon
-                      workPoligon={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON]}
-                      onChangeValue={handleChangeWorkPoligon}
+                      value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON]}
+                      onChange={handleChangeWorkPoligon}
                       onError={handleWorkPoligonError}
                     />
 

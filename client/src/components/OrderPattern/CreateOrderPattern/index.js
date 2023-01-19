@@ -311,7 +311,7 @@ export const CreateOrderPattern = (props) => {
             help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON])}
           >
             <SpecifyWorkPoligon
-              onChangeValue={handleChangeWorkPoligon}
+              onChange={handleChangeWorkPoligon}
               onError={handleWorkPoligonError}
             />
           </Form.Item>

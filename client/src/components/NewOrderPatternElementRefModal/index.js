@@ -120,7 +120,7 @@ const NewOrderPatternElementRefModal = ({
           help={(recFieldsErrs && recFieldsErrs[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON])}
         >
           <SpecifyWorkPoligon
-            onChangeValue={handleChangeWorkPoligon}
+            onChange={handleChangeWorkPoligon}
             onError={handleWorkPoligonError}
           />
         </Form.Item>

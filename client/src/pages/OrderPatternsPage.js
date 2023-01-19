@@ -12,6 +12,7 @@ import Loader from '../components/Loader';
 import { OrderPatternsNodeType } from '../components/OrderPattern/constants';
 import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../hooks/customMessage.hook';
+import { useStations } from '../serverRequests/stations';
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
@@ -37,6 +38,15 @@ export const OrderPatternsPage = () => {
   // Массив объектов служб
   const [services, setServices] = useState(null);
 
+  // Массив объектов станций
+  const [stations, setStations] = useState(null);
+
+  // Массив объектов участков ДНЦ
+  const [dncSectors, setDNCSectors] = useState(null);
+
+  // Массив объектов участков ЭЦД
+  const [ecdsectors, setECDSectors] = useState(null);
+
   // Массив возможных смысловых значений элементов шаблонов распоряжений
   const [orderPatternElRefs, setOrderPatternElRefs] = useState(null);
 
@@ -57,6 +67,8 @@ export const OrderPatternsPage = () => {
 
   // Для вывода всплывающих сообщений
   const message = useCustomMessage();
+
+  const { getShortStationsData } = useStations();
 
 
   useEffect(() => {
@@ -86,6 +98,14 @@ export const OrderPatternsPage = () => {
       res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'POST', {});
       tableData = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref));
       setOrderPatternElRefs(tableData);
+
+      // Делаем запрос на сервер с целью получения информациия по станциям
+      res = await getShortStationsData({ mapStationToLabelValue: false });
+      setStations(res);
+
+      // Делаем запрос на сервер с целью получения информациия по участкам ДНЦ
+
+      // Делаем запрос на сервер с целью получения информациия по участкам ЭЦД
 
       setLoadDataErr(null);
 

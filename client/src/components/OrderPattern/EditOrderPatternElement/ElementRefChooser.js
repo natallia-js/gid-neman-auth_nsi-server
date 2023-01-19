@@ -252,7 +252,9 @@ export const ElementRefChooser = (props) => {
         inputType:
           (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' :
           (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? 'workPoligonSelect' : 'text',
-        dataType: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' : 'string',
+        dataType:
+          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' :
+          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? 'object' : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
