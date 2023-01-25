@@ -40,6 +40,9 @@ export const OrderPatternsTree = (props) => {
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
     onModOrderPatternElRef,
+    stations,
+    dncSectors,
+    ecdSectors,
   } = props;
 
   // Выбранный пользователем шаблон распоряжения в дереве шаблонов
@@ -722,6 +725,9 @@ export const OrderPatternsTree = (props) => {
                       value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON]}
                       onChange={handleChangeWorkPoligon}
                       onError={handleWorkPoligonError}
+                      availableStationWorkPoligons={stations}
+                      availableDNCSectorWorkPoligons={dncSectors}
+                      availableECDSectorWorkPoligons={ecdSectors}
                     />
 
                     <EditOrderPattern
@@ -745,6 +751,9 @@ export const OrderPatternsTree = (props) => {
                       onNewOrderPatternElRef={onNewOrderPatternElRef}
                       onDelOrderPatternElRef={onDelOrderPatternElRef}
                       onModOrderPatternElRef={onModOrderPatternElRef}
+                      stations={stations}
+                      dncSectors={dncSectors}
+                      ecdSectors={ecdSectors}
                     />
                     {
                       patternEdited &&

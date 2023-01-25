@@ -8,7 +8,7 @@ export const useStations = () => {
 
   //
   async function getFullStationsData() {
-    let response = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
+    const response = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
     return response
       .map((station) => getAppStationObjFromDBStationObj(station))
       .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()));

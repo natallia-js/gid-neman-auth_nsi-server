@@ -17,11 +17,12 @@ import NearestECDSectorsBlock from './NearestECDSectorsBlock';
 import dncSectorsTableColumns from './DNCSectorsTableColumns';
 import DNCTrainSectorsBlock from './DNCTrainSectorsBlock';
 import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
 import { useStations } from '../../serverRequests/stations';
+import { useDNCSectors } from '../../serverRequests/dncSectors';
+import { useECDSectors } from '../../serverRequests/ecdSectors';
 
 const { Text, Title } = Typography;
 
@@ -84,6 +85,8 @@ const DNCSectorsTable = () => {
   const [syncDataResults, setSyncDataResults] = useState(null);
 
   const { getShortStationsData } = useStations();
+  const { getFullDNCSectorsData } = useDNCSectors();
+  const { getShortECDSectorsData } = useECDSectors();
 
 
   /**
@@ -96,19 +99,16 @@ const DNCSectorsTable = () => {
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
       // (запрос возвратит информацию в виде массива объектов участков ДНЦ; для каждого
-      // объекта участка ДНЦ будет определен массив объектов поездных участков ДНЦ; для
+      // объекта участка ДНЦ ниже будет определен массив объектов поездных участков ДНЦ; для
       // каждого поездного участка ДНЦ будет определен массив объектов соответствующих станций)
       setDataBeingLoadedMessage('Загружаю информацию по участкам ДНЦ...');
-      let res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'POST', {});
-      const tableData = res
-        .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
+      const tableData = await getFullDNCSectorsData();
 
       // -------------------
 
       // Теперь получаем информацию о смежных участках ДНЦ
       setDataBeingLoadedMessage('Загружаю информацию по смежным участкам ДНЦ...');
-      res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'POST', {});
+      let res = await request(ServerAPI.GET_ADJACENTDNCSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ДНЦ
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -128,10 +128,7 @@ const DNCSectorsTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
       setDataBeingLoadedMessage('Загружаю информацию по участкам ЭЦД...');
-      res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'POST', {});
-      const ecdSectors = res
-        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
+      const ecdSectors = await getShortECDSectorsData({ mapSectorToLabelValue: false });
       setECDSectorsData(ecdSectors);
 
       // -------------------
@@ -157,7 +154,7 @@ const DNCSectorsTable = () => {
 
       // -------------------
 
-      // Получаем информацию о всех станциях
+      // Получаем информацию обо всех станциях
       setDataBeingLoadedMessage('Загружаю информацию о станциях...');
       const stationsData = await getShortStationsData({ mapStationToLabelValue: false });
       setStations(stationsData);

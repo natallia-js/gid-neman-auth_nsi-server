@@ -40,6 +40,9 @@ export const CreateOrderPattern = (props) => {
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
     onModOrderPatternElRef,
+    stations,
+    dncSectors,
+    ecdSectors,
   } = props;
 
   // Массив элементов создаваемого шаблона
@@ -313,6 +316,9 @@ export const CreateOrderPattern = (props) => {
             <SpecifyWorkPoligon
               onChange={handleChangeWorkPoligon}
               onError={handleWorkPoligonError}
+              availableStationWorkPoligons={stations}
+              availableDNCSectorWorkPoligons={dncSectors}
+              availableECDSectorWorkPoligons={ecdSectors}
             />
           </Form.Item>
 
@@ -455,6 +461,9 @@ export const CreateOrderPattern = (props) => {
                 onNewOrderPatternElRef={onNewOrderPatternElRef}
                 onDelOrderPatternElRef={onDelOrderPatternElRef}
                 onModOrderPatternElRef={onModOrderPatternElRef}
+                stations={stations}
+                dncSectors={dncSectors}
+                ecdSectors={ecdSectors}
               />
             </Space>
           </Col>

@@ -27,6 +27,9 @@ export const EditOrderPattern = (props) => {
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
     onModOrderPatternElRef,
+    stations,
+    dncSectors,
+    ecdSectors,
   } = props;
   const [orderPatternArrays, setOrderPatternArrays] = useState([]);
   const [editedPatternElementId, setEditedPatternElementId] = useState(null);
@@ -167,6 +170,9 @@ export const EditOrderPattern = (props) => {
               onNewOrderPatternElRef={onNewOrderPatternElRef}
               onDelOrderPatternElRef={onDelOrderPatternElRef}
               onModOrderPatternElRef={onModOrderPatternElRef}
+              stations={stations}
+              dncSectors={dncSectors}
+              ecdSectors={ecdSectors}
             />
           </Space>
         </div>

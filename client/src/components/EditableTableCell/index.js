@@ -24,6 +24,7 @@ const EditableTableCell = ({
   ecdSectors,
   data,
   errMessage,
+  handleError,
   ...restProps
 }) => {
   let inputNode;
@@ -75,6 +76,7 @@ const EditableTableCell = ({
     case 'workPoligonSelect':
       inputNode =
         <SpecifyWorkPoligon
+          onError={handleError}
           availableStationWorkPoligons={stations || []}
           availableDNCSectorWorkPoligons={dncSectors || []}
           availableECDSectorWorkPoligons={ecdSectors || []}

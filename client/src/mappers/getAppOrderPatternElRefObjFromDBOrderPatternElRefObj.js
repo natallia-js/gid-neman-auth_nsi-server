@@ -8,7 +8,7 @@ import getAppPossibleElRefsObjFromDBPossibleElRefObj from './getAppPossibleElRef
  *
  * @param {object} dbOrderPatternElementRefObj
  */
-const getAppOrderPatternElRefObjFromDBOrderPatternElRefObj = (dbOrderPatternElementRefObj) => {
+const getAppOrderPatternElRefObjFromDBOrderPatternElRefObj = (dbOrderPatternElementRefObj, stations, dncSectors, ecdSectors) => {
   if (dbOrderPatternElementRefObj) {
     return {
       [ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY]: dbOrderPatternElementRefObj._id,

@@ -35,6 +35,9 @@ export const EditOrderPatternElement = (props) => {
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
     onModOrderPatternElRef,
+    stations,
+    dncSectors,
+    ecdSectors,
   } = props;
   // Исходный массив объектов допустимых элементов шаблона распоряжения. Все элементы, за исключением элемента такого
   // же типа, как у element (если он задан), принимают значения по умолчанию. Элемент же типа element
@@ -330,6 +333,9 @@ export const EditOrderPatternElement = (props) => {
               onNewOrderPatternElRef={onNewOrderPatternElRef}
               onDelOrderPatternElRef={onDelOrderPatternElRef}
               onModOrderPatternElRef={onModOrderPatternElRef}
+              stations={stations}
+              dncSectors={dncSectors}
+              ecdSectors={ecdSectors}
             />
           </Col>
         }

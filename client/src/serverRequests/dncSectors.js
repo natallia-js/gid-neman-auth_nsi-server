@@ -7,11 +7,11 @@ export const useDNCSectors = () => {
   const { request } = useHttp();
 
   //
-  async function getFullStationsData() {
-    let response = await request(ServerAPI.GET_FULL_STATIONS_DATA, 'POST', {});
+  async function getFullDNCSectorsData() {
+    const response = await request(ServerAPI.GET_DNCSECTORS_DATA, 'POST', {});
     return response
-      .map((station) => getAppStationObjFromDBStationObj(station))
-      .sort((a, b) => compareStrings(a[STATION_FIELDS.NAME].toLowerCase(), b[STATION_FIELDS.NAME].toLowerCase()));
+      .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
+      .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
   }
 
   //
@@ -31,6 +31,7 @@ export const useDNCSectors = () => {
   }
 
   return {
+    getFullDNCSectorsData,
     getShortDNCSectorsData,
   };
 }

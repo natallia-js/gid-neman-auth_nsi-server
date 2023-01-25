@@ -18,11 +18,12 @@ import ecdSectorsTableColumns from './ECDSectorsTableColumns';
 import ECDTrainSectorsBlock from './ECDTrainSectorsBlock';
 import ECDStructuralDivisionsTable from './ECDStructuralDivisionsTable';
 import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
-import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
 import getAppBlockObjFromDBBlockObj from '../../mappers/getAppBlockObjFromDBBlockObj';
 import expandIcon from '../ExpandIcon';
 import compareStrings from '../../sorters/compareStrings';
 import { useStations } from '../../serverRequests/stations';
+import { useDNCSectors } from '../../serverRequests/dncSectors';
+import { useECDSectors } from '../../serverRequests/ecdSectors';
 
 const { Text, Title } = Typography;
 
@@ -82,6 +83,8 @@ const ECDSectorsTable = () => {
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
   const { getShortStationsData } = useStations();
+  const { getShortDNCSectorsData } = useDNCSectors();
+  const { getFullECDSectorsData } = useECDSectors();
 
 
   /**
@@ -94,20 +97,15 @@ const ECDSectorsTable = () => {
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
       // (запрос возвратит информацию в виде массива объектов участков ЭЦД; для каждого
-      // объекта участка ЭЦД будет определен массив объектов поездных участков ЭЦД и массив
+      // объекта участка ЭЦД ниже будет определен массив объектов поездных участков ЭЦД и массив
       // структурных подразделений ЭЦД; для каждого поездного участка ЭЦД будет определен
       // массив объектов соответствующих станций)
       setDataBeingLoadedMessage('Загружаю информацию по участкам ЭЦД...');
-      let res = await request(ServerAPI.GET_ECDSECTORS_DATA, 'POST', {});
-      const tableData = res
-        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
-
-      // -------------------
+      const tableData = await getFullECDSectorsData();
 
       // Теперь получаем информацию о смежных участках ЭЦД
       setDataBeingLoadedMessage('Загружаю информацию по смежным участкам ЭЦД...');
-      res = await request(ServerAPI.GET_ADJACENTECDSECTORS_DATA, 'POST', {});
+      let res = await request(ServerAPI.GET_ADJACENTECDSECTORS_DATA, 'POST', {});
       // Для каждой полученной записи создаем в tableData элемент массива смежных участков ЭЦД
       // у двух записей - соответствующих смежным участкам
       res.forEach((data) => {
@@ -127,10 +125,7 @@ const ECDSectorsTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
       setDataBeingLoadedMessage('Загружаю информацию по участкам ДНЦ...');
-      res = await request(ServerAPI.GET_DNCSECTORS_DATA, 'POST', {});
-      const dncSectors = res
-        .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()));
+      const dncSectors = await getShortDNCSectorsData({ mapSectorToLabelValue: false });
       setDNCSectorsData(dncSectors);
 
       // -------------------

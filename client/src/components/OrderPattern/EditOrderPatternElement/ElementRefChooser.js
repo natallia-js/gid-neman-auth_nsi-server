@@ -23,6 +23,9 @@ export const ElementRefChooser = (props) => {
     onNewOrderPatternElRef,
     onDelOrderPatternElRef,
     onModOrderPatternElRef,
+    stations,
+    dncSectors,
+    ecdSectors,
   } = props;
 
   // --------------- ФОРМЫ
@@ -260,6 +263,10 @@ export const ElementRefChooser = (props) => {
         editing: isEditing(record),
         required: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? false : true,
         errMessage: modTableFieldsErrs ? modTableFieldsErrs[col.dataIndex] : null,
+        stations,
+        dncSectors,
+        ecdSectors,
+        handleError: (errorMessage) => message(MESSAGE_TYPES.ERROR, errorMessage),
       }),
     };
   });
@@ -438,6 +445,10 @@ export const ElementRefChooser = (props) => {
     setIsAddNewOrderPatternRefVisible(false);
   };
 
+  const handleCreateOrderPatternElementRefError = (errorMessage) => {
+    message(MESSAGE_TYPES.ERROR, errorMessage);
+  };
+
   /**
    * Чистит все сообщения добавления информации о смысловом значении (ошибки и успех).
    */
@@ -497,13 +508,13 @@ export const ElementRefChooser = (props) => {
                 style={{ width: '100%' }}
                 options={
                   currentElRefsInfoObj && currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
-                  ? currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
+                  ? [{ value: '' }].concat(currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
                       .map((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME])
                       .map((ref) => {
                         return {
                           value: ref,
                         };
-                      })
+                      }))
                   : []
                 }
                 value={chosenRef}
@@ -540,9 +551,13 @@ export const ElementRefChooser = (props) => {
             isModalVisible={isAddNewOrderPatternRefVisible}
             handleAddNewRecOk={handleAddNewOrderPatternRefOk}
             handleAddNewRecCancel={handleAddNewOrderPatternRefCancel}
+            handleError={handleCreateOrderPatternElementRefError}
             recFieldsErrs={orderPatternElementRefFieldsErrs}
             clearAddRecMessages={clearAddOrderPatternRefMessages}
             recsBeingAdded={orderPatternRefRecsBeingAdded}
+            stations={stations}
+            dncSectors={dncSectors}
+            ecdSectors={ecdSectors}
           />
 
           <NewOrderPatternElementRefMeaningModal

@@ -13,6 +13,9 @@ import { OrderPatternsNodeType } from '../components/OrderPattern/constants';
 import { PAGES_IDS, CurrentPageContext } from '../context/CurrentPageContext';
 import { MESSAGE_TYPES, useCustomMessage } from '../hooks/customMessage.hook';
 import { useStations } from '../serverRequests/stations';
+import { useDNCSectors } from '../serverRequests/dncSectors';
+import { useECDSectors } from '../serverRequests/ecdSectors';
+
 
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
@@ -45,7 +48,7 @@ export const OrderPatternsPage = () => {
   const [dncSectors, setDNCSectors] = useState(null);
 
   // Массив объектов участков ЭЦД
-  const [ecdsectors, setECDSectors] = useState(null);
+  const [ecdSectors, setECDSectors] = useState(null);
 
   // Массив возможных смысловых значений элементов шаблонов распоряжений
   const [orderPatternElRefs, setOrderPatternElRefs] = useState(null);
@@ -69,6 +72,8 @@ export const OrderPatternsPage = () => {
   const message = useCustomMessage();
 
   const { getShortStationsData } = useStations();
+  const { getShortDNCSectorsData } = useDNCSectors();
+  const { getShortECDSectorsData } = useECDSectors();
 
 
   useEffect(() => {
@@ -100,12 +105,16 @@ export const OrderPatternsPage = () => {
       setOrderPatternElRefs(tableData);
 
       // Делаем запрос на сервер с целью получения информациия по станциям
-      res = await getShortStationsData({ mapStationToLabelValue: false });
+      res = await getShortStationsData({ mapStationToLabelValue: true });
       setStations(res);
 
       // Делаем запрос на сервер с целью получения информациия по участкам ДНЦ
+      res = await getShortDNCSectorsData({ mapSectorToLabelValue: true });
+      setDNCSectors(res);
 
       // Делаем запрос на сервер с целью получения информациия по участкам ЭЦД
+      res = await getShortECDSectorsData({ mapSectorToLabelValue: true });
+      setECDSectors(res);
 
       setLoadDataErr(null);
 
@@ -147,7 +156,7 @@ export const OrderPatternsPage = () => {
       default:
         return null;
     }
-  }
+  };
 
   /**
    *
@@ -601,6 +610,9 @@ export const OrderPatternsPage = () => {
               onNewOrderPatternElRef={handleNewOrderPatternElRef}
               onDelOrderPatternElRef={handleDelOrderPatternElRef}
               onModOrderPatternElRef={handleModOrderPatternElRef}
+              stations={stations}
+              dncSectors={dncSectors}
+              ecdSectors={ecdSectors}
             />
           </TabPane>
           <TabPane tab="Создать шаблон" key={PageTabs.CREATE_ORDER_PATTERN}>
@@ -612,6 +624,9 @@ export const OrderPatternsPage = () => {
               onNewOrderPatternElRef={handleNewOrderPatternElRef}
               onDelOrderPatternElRef={handleDelOrderPatternElRef}
               onModOrderPatternElRef={handleModOrderPatternElRef}
+              stations={stations}
+              dncSectors={dncSectors}
+              ecdSectors={ecdSectors}
             />
           </TabPane>
           <TabPane tab="Связи между шаблонами" key={PageTabs.CREATE_ORDER_PATTERN_CONNECTIONS}>

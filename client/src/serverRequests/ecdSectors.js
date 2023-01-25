@@ -7,6 +7,14 @@ export const useECDSectors = () => {
   const { request } = useHttp();
 
   //
+  async function getFullECDSectorsData() {
+    const response = await request(ServerAPI.GET_ECDSECTORS_DATA, 'POST', {});
+    return response
+      .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
+      .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()));
+  }
+
+  //
   async function getShortECDSectorsData({ mapSectorToLabelValue = false }) {
     let response = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
     response = response.map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector));
@@ -23,6 +31,7 @@ export const useECDSectors = () => {
   }
 
   return {
+    getFullECDSectorsData,
     getShortECDSectorsData,
   };
 }

@@ -11,8 +11,6 @@ import {
   POST_FIELDS,
   STATION_FIELDS,
   STATION_WORK_PLACE_FIELDS,
-  DNCSECTOR_FIELDS,
-  ECDSECTOR_FIELDS,
   STATION_WORKPLACE_TYPES,
 } from '../../constants';
 import { MESSAGE_TYPES, useCustomMessage } from '../../hooks/customMessage.hook';
@@ -21,8 +19,6 @@ import getAppUserObjFromDBUserObj from '../../mappers/getAppUserObjFromDBUserObj
 import getAppRoleObjFromDBRoleObj from '../../mappers/getAppRoleObjFromDBRoleObj';
 import getAppServiceObjFromDBServiceObj from '../../mappers/getAppServiceObjFromDBServiceObj';
 import getAppPostObjFromDBPostObj from '../../mappers/getAppPostObjFromDBPostObj';
-import getAppDNCSectorObjFromDBDNCSectorObj from '../../mappers/getAppDNCSectorObjFromDBDNCSectorObj';
-import getAppECDSectorObjFromDBECDSectorObj from '../../mappers/getAppECDSectorObjFromDBECDSectorObj';
 import SavableSelectMultiple from '../SavableSelectMultiple';
 import ChangePasswordBlock from './ChangePasswordBlock';
 import expandIcon from '../ExpandIcon';
@@ -30,6 +26,8 @@ import compareStrings from '../../sorters/compareStrings';
 import { useColumnSearchProps } from '../../hooks/columnSearchProps.hook';
 import tagRender from '../tagRender';
 import { useStations } from '../../serverRequests/stations';
+import { useDNCSectors } from '../../serverRequests/dncSectors';
+import { useECDSectors } from '../../serverRequests/ecdSectors';
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -128,6 +126,8 @@ const UsersTable = () => {
   const { getColumnSearchProps } = useColumnSearchProps({ useOnFilterEventProcessor: false});
 
   const { getFullStationsData } = useStations();
+  const { getShortDNCSectorsData } = useDNCSectors();
+  const { getShortECDSectorsData } = useECDSectors();
 
 
   /**
@@ -149,6 +149,8 @@ const UsersTable = () => {
       });
 
       const tableData = res.data.map((user) => getAppUserObjFromDBUserObj(user));
+
+      console.log(tableData)
 
       setTableData(tableData);
       setTotalItemsCount(res.totalRecords);
@@ -188,33 +190,13 @@ const UsersTable = () => {
     try {
       // Делаем запрос на сервер с целью получения информации по участкам ДНЦ
       setDataBeingLoadedMessage('Загружаю информацию по участкам ДНЦ...');
-      let res = await request(ServerAPI.GET_DNCSECTORS_SHORT_DATA, 'POST', {});
-      // Участки ДНЦ будем сортировать при отображении в списках выбора
-      const dncSectors = res
-        .map((sector) => getAppDNCSectorObjFromDBDNCSectorObj(sector))
-        .sort((a, b) => compareStrings(a[DNCSECTOR_FIELDS.NAME].toLowerCase(), b[DNCSECTOR_FIELDS.NAME].toLowerCase()))
-        .map((sector) => ({
-          label: sector[DNCSECTOR_FIELDS.NAME],
-          value: sector[DNCSECTOR_FIELDS.KEY],
-        }));
+      const dncSectors = await getShortDNCSectorsData({ mapSectorToLabelValue: true });
       setDNCSectorsDataForMultipleSelect(dncSectors);
-
-      // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по участкам ЭЦД
       setDataBeingLoadedMessage('Загружаю информацию по участкам ЭЦД...');
-      res = await request(ServerAPI.GET_ECDSECTORS_SHORT_DATA, 'POST', {});
-      // Участки ЭЦД будем сортировать при отображении в списках выбора
-      const ecdSectors = res
-        .map((sector) => getAppECDSectorObjFromDBECDSectorObj(sector))
-        .sort((a, b) => compareStrings(a[ECDSECTOR_FIELDS.NAME].toLowerCase(), b[ECDSECTOR_FIELDS.NAME].toLowerCase()))
-        .map((sector) => ({
-          label: sector[ECDSECTOR_FIELDS.NAME],
-          value: sector[ECDSECTOR_FIELDS.KEY],
-        }));
+      const ecdSectors = await getShortECDSectorsData({ mapSectorToLabelValue: true });
       setECDSectorsDataForMultipleSelect(ecdSectors);
-
-      // ---------------------------------
 
       // Делаем запрос на сервер с целью получения информации по станциям и их рабочим местам
       setDataBeingLoadedMessage('Загружаю информацию по станциям...');
@@ -225,7 +207,7 @@ const UsersTable = () => {
 
       // Делаем запрос на сервер с целью получения информации по ролям
       setDataBeingLoadedMessage('Загружаю информацию по ролям пользователей...');
-      res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'POST', {});
+      let res = await request(ServerAPI.GET_ROLES_ABBR_DATA, 'POST', {});
       // Роли отсортируем перед отображением в списках выбора
       const rolesData = res
         .map((role) => getAppRoleObjFromDBRoleObj(role))

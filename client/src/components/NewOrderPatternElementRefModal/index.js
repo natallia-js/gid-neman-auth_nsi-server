@@ -15,9 +15,13 @@ const NewOrderPatternElementRefModal = ({
   isModalVisible,
   handleAddNewRecOk,
   handleAddNewRecCancel,
+  handleError,
   recFieldsErrs,
   clearAddRecMessages,
   recsBeingAdded,
+  stations,
+  dncSectors,
+  ecdSectors,
 }) => {
   // Сюда помещается информация, содержащаяся в полях ввода формы
   const [form] = Form.useForm();
@@ -69,7 +73,7 @@ const NewOrderPatternElementRefModal = ({
   };
 
   const handleWorkPoligonError = (errorMessage) => {
-    //message(MESSAGE_TYPES.ERROR, errorMessage);
+    handleError(errorMessage);
   };
 
 
@@ -122,6 +126,9 @@ const NewOrderPatternElementRefModal = ({
           <SpecifyWorkPoligon
             onChange={handleChangeWorkPoligon}
             onError={handleWorkPoligonError}
+            availableStationWorkPoligons={stations}
+            availableDNCSectorWorkPoligons={dncSectors}
+            availableECDSectorWorkPoligons={ecdSectors}
           />
         </Form.Item>
 
