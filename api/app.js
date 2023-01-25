@@ -172,7 +172,7 @@ connectToMongoDB(mongoURI)
   app.use('/api/upload', require('./routes/files.routes'));
 
   // Запускаем https-сервер на заданном порту
-  httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`));  
+  httpsServer.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 
   // Запускаем таймер для периодического удаления ненужной информации о распоряжениях из БД
   setTimeout(function delDBData() {

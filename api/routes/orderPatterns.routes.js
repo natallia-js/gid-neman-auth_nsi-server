@@ -341,14 +341,17 @@ router.post(
         return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование шаблона распоряжения в службе ${candidate.service}` });
       }
 
-      // Ищем в БД шаблон распоряжения, title которого совпадает с переданным пользователем
-      if (title || (title === '')) {
-        const antiCandidate = await OrderPattern.findOne({ title });
+      if (req.body.hasOwnProperty('title') && !title) {
+        return res.status(ERR).json({ message: 'Не указано наименование распоряжения' });
+      }
 
-        // Если находим, то смотрим, тот ли это самый шаблон. Если нет, продолжать не можем.
-        if (antiCandidate && (String(antiCandidate._id) !== String(candidate._id))) {
-          return res.status(ERR).json({ message: 'Шаблон распоряжения с таким наименованием в заданной категории шаблонов распоряжений уже существует' });
-        }
+      // Ищем в БД отличный от текущего шаблон распоряжения в той же категории распоряжений, которой принадлежит текущий шаблон;
+      // интересует наличие шаблона, title которого совпадает с переданным пользователем
+      const antiCandidate = await OrderPattern.findOne({ title, type: candidate.type, _id: { $ne: id } });
+
+      // Если находим, то продолжать не можем
+      if (antiCandidate) {
+        return res.status(ERR).json({ message: 'Шаблон распоряжения с таким наименованием в заданной категории шаблонов распоряжений уже существует' });
       }
 
       // Редактируем в БД запись
