@@ -824,7 +824,8 @@ router.post(
 
 
 /**
- * Обработка запроса на получение информации о распоряжениях, которые необходимо отобразить на ГИД.
+ * Обработка запроса на получение информации о распоряжениях, которые необходимо отобразить на ГИД участка ДНЦ,
+ * а также циркулярных распоряжений ДНЦ этого участка.
  * Распоряжения извлекаются и сортируются в порядке увеличения времени их создания.
  *
  * Предполагается, что данный запрос будет выполняться службой (программой, установленной на рабочем месте ДНЦ).
@@ -832,11 +833,11 @@ router.post(
  *
  * Параметры тела запроса:
  * startDate - дата-время начала временного интервала выполнения запроса (не обязательно) - с этим параметром
- *   сравниваются даты издания распоряжений, которые необходимо отобразить на ГИД: если дата издания распоряжения
- *   больше startDate, то такое распоряжение включается в выборку; если startDate не указана либо null, то
- *   извлекаются все распоряжения, которые необходимо отобразить на ГИД
- * stations - массив ЕСР-кодов станций, по которым необходимо осуществлять выборку распоряжений (обязателен) -
- *   если данный массив не указан либо пуст, то поиск информации производиться не будет
+ *   сравниваются даты издания распоряжений ДНЦ: если дата издания распоряжения больше startDate, то такое
+ *   распоряжение включается в выборку; если startDate не указана либо null, то извлекаются все распоряжения требуемых типов;
+ * stations - массив ЕСР-кодов станций, по которым необходимо осуществлять выборку распоряжений о закрытии-открытии перегонов
+ *   (не обязателен, ведь ДНЦ могут быть нужны только циркуляры) - если данный массив не указан либо пуст, то поиск информации
+ *   по распоряжениям о закрытии-открытии перегонов производиться не будет;
  */
  router.post(
   '/getDataForGID',
@@ -871,34 +872,39 @@ router.post(
 
     try {
       // Формируем список id станций по указанным кодам ЕСР
-      const stationsData = await TStation.findAll({
-        raw: true,
-        attributes: ['St_ID', 'St_GID_UNMC'],
-        where: { St_GID_UNMC: stations },
-      });
-      if (!stationsData || !stationsData.length) {
+      const stationsData = !stations?.length ? null :
+        await TStation.findAll({
+          raw: true,
+          attributes: ['St_ID', 'St_GID_UNMC'],
+          where: { St_GID_UNMC: stations },
+        });
+      /*if (!stationsData || !stationsData.length) {
         return res.status(OK).json([]);
+      }*/
+      const stationIds = !stationsData?.length ? null : stationsData.map((item) => item.St_ID);
+
+      const blocksData = !stationIds?.length ? null :
+        (await TBlock.findAll({
+          raw: true,
+          attributes: ['Bl_ID', 'Bl_StationID1', 'Bl_StationID2'],
+          where: {
+            [Op.and]: [{ Bl_StationID1: stationIds }, { Bl_StationID2: stationIds }],
+          },
+        }) || []);
+      const blockIds = !blocksData?.length ? null : blocksData.map((item) => item.Bl_ID);
+
+      const possibleOrdersPlaces = [];
+      if (stationIds?.length) {
+        possibleOrdersPlaces.push(
+          {
+            $and: [
+              { "place.place": "station" },
+              { "place.value": stationIds },
+            ],
+          },
+        );
       }
-      const stationIds = stationsData.map((item) => item.St_ID);
-
-      const blocksData = await TBlock.findAll({
-        raw: true,
-        attributes: ['Bl_ID', 'Bl_StationID1', 'Bl_StationID2'],
-        where: {
-          [Op.and]: [{ Bl_StationID1: stationIds }, { Bl_StationID2: stationIds }],
-        },
-      }) || [];
-      const blockIds = blocksData.map((item) => item.Bl_ID);
-
-      const possibleOrdersPlaces = [
-        {
-          $and: [
-            { "place.place": "station" },
-            { "place.value": stationIds },
-          ],
-        },
-      ];
-      if (blockIds && blockIds.length) {
+      if (blockIds?.length) {
         possibleOrdersPlaces.push(
           {
             $and: [
@@ -910,9 +916,16 @@ router.post(
       }
 
       const ordersMatchFilter = {
-        $and: [
-          { showOnGID: true },
-          { $or: possibleOrdersPlaces },
+        $or: [
+          // условия для распоряжений о закрытии-открытии перегона
+          { showOnGID: true, $or: possibleOrdersPlaces },
+          // условия для циркулярных распоряжений
+          {
+            showOnGID: false,
+            specialTrainCategories: TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+            "workPoligon.id": '',
+            "workPoligon.type": '',
+          },
         ],
       };
       if (startDate) {
