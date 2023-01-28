@@ -1,5 +1,5 @@
 import { Typography, Popconfirm, Row, Col } from 'antd';
-import { ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS } from '../../../constants';
+import { ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS, WORK_POLIGON_FIELDS } from '../../../constants';
 import Loader from '../../Loader';
 import compareStrings from '../../../sorters/compareStrings';
 
@@ -33,6 +33,15 @@ const orderPatternElementRefsTableColumns = (props) => {
       key: ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON,
       width: '20%',
       editable: true,
+      render: (_, record) => {
+        return <span>
+          {
+            record[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON] &&
+            record[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON][WORK_POLIGON_FIELDS.NAME] ?
+            record[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON][WORK_POLIGON_FIELDS.NAME] : ''
+          }
+          </span>
+      },
     },
     {
       title: 'Доп.инфо о месте действия для ГИД',

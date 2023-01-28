@@ -1,4 +1,4 @@
-import { ORDER_PATTERN_ELEMENT_REFS_FIELDS, ORDER_PATTERN_FIELDS, ORDER_PATTERN_ELEMENT_FIELDS } from '../constants';
+import { ORDER_PATTERN_ELEMENT_REFS_FIELDS } from '../constants';
 import getAppPossibleElRefsObjFromDBPossibleElRefObj from './getAppPossibleElRefsObjFromDBPossibleElRefObj';
 
 /**
@@ -14,7 +14,7 @@ const getAppOrderPatternElRefObjFromDBOrderPatternElRefObj = (dbOrderPatternElem
       [ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY]: dbOrderPatternElementRefObj._id,
       [ORDER_PATTERN_ELEMENT_REFS_FIELDS.ELEMENT_TYPE]: dbOrderPatternElementRefObj.elementType,
       [ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]: !dbOrderPatternElementRefObj.possibleRefs ? [] :
-        dbOrderPatternElementRefObj.possibleRefs.map((ref) => getAppPossibleElRefsObjFromDBPossibleElRefObj(ref)),
+        dbOrderPatternElementRefObj.possibleRefs.map((ref) => getAppPossibleElRefsObjFromDBPossibleElRefObj(ref, stations, dncSectors, ecdSectors)),
     };
   }
   return null;

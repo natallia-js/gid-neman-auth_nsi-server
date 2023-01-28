@@ -90,31 +90,31 @@ export const OrderPatternsPage = () => {
     try {
       // Делаем запрос на сервер с целью получения информации по созданным шаблонам распоряжений
       let res = await request(ServerAPI.GET_ORDER_PATTERNS_LIST, 'POST', { getChildPatterns: true });
-      let tableData = res.map((orderPattern) => getAppOrderPatternObjFromDBOrderPatternObj(orderPattern));
-      setOrderPatterns(tableData);
+      res = res.map((orderPattern) => getAppOrderPatternObjFromDBOrderPatternObj(orderPattern));
+      setOrderPatterns(res);
 
       // Делаем запрос на сервер с целью получения информации по службам
       res = await request(ServerAPI.GET_SERVICES_DATA, 'POST', {});
-      tableData = res.map((service) => getAppServiceObjFromDBServiceObj(service));
-      setServices(tableData);
+      res = res.map((service) => getAppServiceObjFromDBServiceObj(service));
+      setServices(res);
+
+      // Делаем запрос на сервер с целью получения информациия по станциям
+      const stations = await getShortStationsData({ mapStationToLabelValue: true });
+      setStations(stations);
+
+      // Делаем запрос на сервер с целью получения информациия по участкам ДНЦ
+      const dncSectors = await getShortDNCSectorsData({ mapSectorToLabelValue: true });
+      setDNCSectors(dncSectors);
+
+      // Делаем запрос на сервер с целью получения информациия по участкам ЭЦД
+      const ecdSectors = await getShortECDSectorsData({ mapSectorToLabelValue: true });
+      setECDSectors(ecdSectors);
 
       // Делаем запрос на сервер с целью получения списков возможных смысловых значений
       // элементов шаблонов распоряжений
       res = await request(ServerAPI.GET_ORDER_PATTERNS_ELEMENTS_REFS, 'POST', {});
-      tableData = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref));
-      setOrderPatternElRefs(tableData);
-
-      // Делаем запрос на сервер с целью получения информациия по станциям
-      res = await getShortStationsData({ mapStationToLabelValue: true });
-      setStations(res);
-
-      // Делаем запрос на сервер с целью получения информациия по участкам ДНЦ
-      res = await getShortDNCSectorsData({ mapSectorToLabelValue: true });
-      setDNCSectors(res);
-
-      // Делаем запрос на сервер с целью получения информациия по участкам ЭЦД
-      res = await getShortECDSectorsData({ mapSectorToLabelValue: true });
-      setECDSectors(res);
+      res = res.map((ref) => getAppOrderPatternElRefObjFromDBOrderPatternElRefObj(ref, stations, dncSectors, ecdSectors));
+      setOrderPatternElRefs(res);
 
       setLoadDataErr(null);
 

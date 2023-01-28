@@ -150,8 +150,6 @@ const UsersTable = () => {
 
       const tableData = res.data.map((user) => getAppUserObjFromDBUserObj(user));
 
-      console.log(tableData)
-
       setTableData(tableData);
       setTotalItemsCount(res.totalRecords);
       // Если после загрузки данных окажется, что пользователь запросил страницу, которая не существует в БД,

@@ -168,8 +168,6 @@ export const ElementRefChooser = (props) => {
       return;
     }
 
-    console.log(rowData); return;
-
     setRecsBeingProcessed((value) => [...value, refId]);
     try {
       const res = await request(ServerAPI.MOD_ORDER_PATTERN_ELEMENT_REF, 'POST', {
@@ -178,7 +176,7 @@ export const ElementRefChooser = (props) => {
         ...rowData,
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      onModOrderPatternElRef(res.data.elementTypeId, getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref));
+      onModOrderPatternElRef(res.data.elementTypeId, getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref, stations, dncSectors, ecdSectors));
       finishEditing();
 
     } catch (e) {
@@ -254,14 +252,14 @@ export const ElementRefChooser = (props) => {
         record,
         inputType:
           (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' :
-          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? 'workPoligonSelect' : 'text',
+          col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON ? 'workPoligonSelect' : 'text',
         dataType:
           (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.IS_ORDER_PLACE_FOR_GID) ? 'boolean' :
-          (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? 'object' : 'string',
+          col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON ? 'object' : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: (col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON) ? false : true,
+        required: col.dataIndex === ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON ? false : true,
         errMessage: modTableFieldsErrs ? modTableFieldsErrs[col.dataIndex] : null,
         stations,
         dncSectors,
@@ -283,7 +281,7 @@ export const ElementRefChooser = (props) => {
         ...orderPatternElementRef,
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const newOrderPatternElementRef = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.ref);
+      const newOrderPatternElementRef = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.ref, stations, dncSectors, ecdSectors);
       onNewOrderPatternElRef(res.ref.typeId, newOrderPatternElementRef);
 
     } catch (e) {
@@ -339,7 +337,7 @@ export const ElementRefChooser = (props) => {
         ],
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const updatedElRefObject = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref);
+      const updatedElRefObject = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref, stations, dncSectors, ecdSectors);
       onModOrderPatternElRef(res.data.elementTypeId, updatedElRefObject);
       setCurrentElRefsMeaningObj(updatedElRefObject);
       finishEditingElRefMeaning();
@@ -389,7 +387,7 @@ export const ElementRefChooser = (props) => {
         possibleMeanings: ref[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.MEANINGS].filter((el) => el !== meaning),
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      onModOrderPatternElRef(res.data.elementTypeId, getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref));
+      onModOrderPatternElRef(res.data.elementTypeId, getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref, stations, dncSectors, ecdSectors));
 
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
@@ -412,7 +410,7 @@ export const ElementRefChooser = (props) => {
         possibleMeanings: [...currentElRefsMeaningObj[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.MEANINGS], meaning],
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
-      const updatedElRefObject = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref);
+      const updatedElRefObject = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref, stations, dncSectors, ecdSectors);
       onModOrderPatternElRef(res.data.elementTypeId, updatedElRefObject);
       setCurrentElRefsMeaningObj(updatedElRefObject);
 

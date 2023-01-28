@@ -362,6 +362,12 @@ export const ORDER_PATTERN_ELEMENT_REFS_FIELDS = Object.freeze({
   REFS: 'possibleRefs',
 });
 
+export const WORK_POLIGON_FIELDS = Object.freeze({
+  TYPE: 'type',
+  ID: 'id',
+  NAME: 'name',
+});
+
 export const ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'refName',

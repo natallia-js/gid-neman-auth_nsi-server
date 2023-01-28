@@ -92,11 +92,28 @@ const SpecifyWorkPoligon = (props) => {
   };
 
 
+  const getWorkPoligonName = () => {
+    if (!selectedWorkPoligonType || !selectedWorkPoligonId) return null;
+    switch (selectedWorkPoligonType) {
+      case WORK_POLIGON_TYPES.STATION:
+        if (!availableStationWorkPoligons?.length) return null;
+        return availableStationWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+      case WORK_POLIGON_TYPES.DNC_SECTOR:
+        if (!availableDNCSectorWorkPoligons?.length) return null;
+        return availableDNCSectorWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+      case WORK_POLIGON_TYPES.ECD_SECTOR:
+        if (!availableECDSectorWorkPoligons?.length) return null;
+        return availableECDSectorWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+    }
+    return null;
+  }
+
+
   useEffect(() => {
     if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonId) {
       onChange(null);
     } else {
-      onChange({ type: selectedWorkPoligonType, id: selectedWorkPoligonId });
+      onChange({ type: selectedWorkPoligonType, id: selectedWorkPoligonId, name: getWorkPoligonName() });
     }
   }, [selectedWorkPoligonId]);
 
