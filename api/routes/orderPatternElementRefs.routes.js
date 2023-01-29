@@ -5,6 +5,7 @@ const { addError } = require('../serverSideProcessing/processLogsActions');
 const hasUserRightToPerformAction = require('../middleware/hasUserRightToPerformAction.middleware');
 const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 const testUniqueArrayElements = require('../additional/testUniqueArrayElements');
+const { isMainAdmin } = require('../middleware/checkMainAdmin');
 
 const router = Router();
 
@@ -13,7 +14,11 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 /**
  * Обрабатывает запрос на получение списка всех возможных смысловых значений элементов
- * шаблонов распоряжений. Возвращается вся информация, содержащаяся в коллекции.
+ * шаблонов распоряжений. Возвращается вся информация, содержащаяся в коллекции, если
+ * запрашивает информацию главный администратор. Если запрашивает информацию лицо, не
+ * имеющее прав главного администратора, то возвращается информация, не привязанная к
+ * конкретному рабочему полигону, а также та информация, которая привязана к рабочему полигону
+ * пользователя, осуществляющего запрос.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
@@ -25,9 +30,23 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
-  async (_req, res) => {
+  async (req, res) => {
     try {
-      const data = await OrderPatternElementRef.find();
+      const matchFilter = {};
+      if (!isMainAdmin(req)) {
+        const userWorkPoligon = req.user.workPoligon;
+        matchFilter.$or = [
+          { workPoligon: { $exists: false } },
+          { workPoligon: null },
+        ];
+        if (userWorkPoligon) {
+          matchFilter.$or.push({
+            "workPoligon.type": userWorkPoligon.type,
+            "workPoligon.id": userWorkPoligon.id,
+          });
+        }
+      }
+      const data = await OrderPatternElementRef.find(matchFilter);
       res.status(OK).json(data);
     } catch (error) {
       addError({
@@ -51,7 +70,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
- router.post(
+ /*router.post(
   '/data',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_ALL_ORDER_PATTERN_ELEMENT_REFS_AS_STRING_ARRAYS; next(); },
@@ -76,7 +95,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
-);
+);*/
 
 
 /**
