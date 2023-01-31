@@ -10,6 +10,7 @@ import expandIcon from '../../ExpandIcon';
 import NewOrderPatternElementRefModal from '../../NewOrderPatternElementRefModal';
 import NewOrderPatternElementRefMeaningModal from '../../NewOrderPatternElementRefMeaningModal';
 import getAppPossibleElRefsObjFromDBPossibleElRefObj from '../../../mappers/getAppPossibleElRefsObjFromDBPossibleElRefObj';
+import compareStrings from '../../../sorters/compareStrings';
 
 const chosenRefSelectName = 'chosenRefSelectName';
 
@@ -107,7 +108,9 @@ export const ElementRefChooser = (props) => {
       setCurrentElRefsInfoObj(null);
       return;
     }
-    setCurrentElRefsInfoObj(orderPatternElRefs.find((ref) => ref[ORDER_PATTERN_ELEMENT_REFS_FIELDS.ELEMENT_TYPE] === elementType));
+    setCurrentElRefsInfoObj(orderPatternElRefs
+      .find((ref) => ref[ORDER_PATTERN_ELEMENT_REFS_FIELDS.ELEMENT_TYPE] === elementType)
+    );
   }, [orderPatternElRefs, elementType]);
 
 
@@ -571,6 +574,9 @@ export const ElementRefChooser = (props) => {
             Добавить запись
           </Button>
 
+          {/* Таблица смысловых значений выбранного типа элемента шаблона распоряжения.
+              Записи сортируются по наименованиям смысловых значений.
+           */}
           <Table
             components={{
               body: {
@@ -582,6 +588,8 @@ export const ElementRefChooser = (props) => {
             dataSource={
               currentElRefsInfoObj && currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
               ? currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
+                  .sort((a, b) => compareStrings(a[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME].toLowerCase(),
+                                                 b[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME].toLowerCase()))
               : []
             }
             columns={mergedColumns}
