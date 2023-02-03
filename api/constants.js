@@ -152,6 +152,10 @@ const SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN = 'ДСП_ПД';
 // в котором хранится информация о персонале, принимающем дежурство
 const TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF = 'Персонал, принимающий дежурство';
 
+// смысловое значение элемента шаблона распоряжения о принятии дежурства,
+// в котором хранится информация о лице, принимающем дежурство
+const TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF = 'Дежурство принял';
+
 
 module.exports = {
   ...PROJECT_CONSTANTS,
@@ -175,6 +179,7 @@ module.exports = {
   TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
   SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
   TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
+  TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,
 
   Get_GidNemanAuthNSIUtil_AllCredentials: () => Object.values(AUTH_NSI_UTIL_CREDENTIALS),
 };

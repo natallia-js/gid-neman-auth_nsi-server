@@ -11,6 +11,7 @@ const {
 } = require('../validators/orders.validator');
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
+const { TDNCSector } = require('../models/TDNCSector');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
@@ -27,7 +28,7 @@ const {
   OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
   WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
   SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN, TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
-  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN, TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,
 } = require('../constants');
 
 
@@ -835,9 +836,10 @@ router.post(
  * startDate - дата-время начала временного интервала выполнения запроса (не обязательно) - с этим параметром
  *   сравниваются даты издания распоряжений ДНЦ: если дата издания распоряжения больше startDate, то такое
  *   распоряжение включается в выборку; если startDate не указана либо null, то извлекаются все распоряжения требуемых типов;
- * stations - массив ЕСР-кодов станций, по которым необходимо осуществлять выборку распоряжений о закрытии-открытии перегонов
+ * stations - массив ЕСР-кодов станций, по которым необходимо осуществлять выборку распоряжений о закрытии-открытии перегонов/станций
  *   (не обязателен, ведь ДНЦ могут быть нужны только циркуляры) - если данный массив не указан либо пуст, то поиск информации
  *   по распоряжениям о закрытии-открытии перегонов производиться не будет;
+ * dncSectorName - наименование участка ДНЦ, нужно для поиска циркуляров; если не указано, то циркуляры искаться не будут
  */
  router.post(
   '/getDataForGID',
@@ -849,7 +851,17 @@ router.post(
   getDataForGIDValidationRules(),
   validate,
   async (req, res) => {
-    // Извлекаем типы и смысловые значения элементов текста шаблона распоряжения, значения которых передаются ГИД
+    // Считываем находящиеся в пользовательском запросе данные
+    const { startDate, stations, dncSectorName } = req.body;
+
+    // Если указан массив станций stations, то будет произведен поиск распоряжений о закрытии-открытии перегонов/станций,
+    // в тексте которых могут содержаться дополнительные данные, которые необходимо отобразить на ГИД.
+    // Дополнительные данные - это элементы шаблона распоряжения. Они содержат текст, который является частью
+    // общего текста распоряжения. Однако среди таких элементов шаблона необходимо выбрать только те, которые
+    // важны для ГИД. Для этого в самом начале извлекаем типы и смысловые значения тех возможных элементов текстов шаблонов
+    // распоряжений, значения которых должны точно передаваться ГИД (далее - список DisplayGIDElements).
+    // В дальнейшем, анализируя очередное найденное распоряжение о закрытии-открытии перегона/станции, из него
+    // извлечем только те значения элементов текста, которые будут находиться в списке DisplayGIDElements.
     let orderParamsRefsForGID = [];
     try {
       orderParamsRefsForGID = await OrderPatternElementRef.find() || [];
@@ -863,14 +875,19 @@ router.post(
               .map((el) => el.refName),
           };
         });
-    } catch {
-      orderParamsRefsForGID = [];
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Получение смысловых значений элементов для распоряжений, отправляемых ГИД',
+        error: error.message,
+        actionParams: {},
+      });
     }
 
-    // Считываем находящиеся в пользовательском запросе данные
-    const { startDate, stations } = req.body;
-
     try {
+      // Ищем данные по указанному в запросе рабочему полигону
+      const workPoligon = !dncSectorName ? null : await TDNCSector.findOne({ where: { DNCS_Title: dncSectorName } });
+
       // Формируем список id станций по указанным кодам ЕСР
       const stationsData = !stations?.length ? null :
         await TStation.findAll({
@@ -878,87 +895,115 @@ router.post(
           attributes: ['St_ID', 'St_GID_UNMC'],
           where: { St_GID_UNMC: stations },
         });
-      /*if (!stationsData || !stationsData.length) {
+      // Если станции найдены не будут - все равно продолжаем: могут быть найдены циркуляры.
+      // Но если при этом не указано наименование участка для поиска циркуляров, то искать нечего: выходим.
+      if (!stationsData?.length && !workPoligon)
         return res.status(OK).json([]);
-      }*/
+
       const stationIds = !stationsData?.length ? null : stationsData.map((item) => item.St_ID);
 
+      // Формируем список перегонов по найденным станциям
       const blocksData = !stationIds?.length ? null :
-        (await TBlock.findAll({
+        await TBlock.findAll({
           raw: true,
           attributes: ['Bl_ID', 'Bl_StationID1', 'Bl_StationID2'],
           where: {
             [Op.and]: [{ Bl_StationID1: stationIds }, { Bl_StationID2: stationIds }],
           },
-        }) || []);
+        });
       const blockIds = !blocksData?.length ? null : blocksData.map((item) => item.Bl_ID);
 
+      // Для поиска распоряжений о закрытии/открытии, необходимо определить те места (станции, перегоны),
+      // на которые распространяется действие распоряжений.
       const possibleOrdersPlaces = [];
       if (stationIds?.length) {
-        possibleOrdersPlaces.push(
-          {
-            $and: [
-              { "place.place": "station" },
-              { "place.value": stationIds },
-            ],
-          },
-        );
+        possibleOrdersPlaces.push({
+          $and: [
+            { "place.place": "station" },
+            { "place.value": stationIds },
+          ],
+        });
       }
       if (blockIds?.length) {
-        possibleOrdersPlaces.push(
-          {
-            $and: [
-              { "place.place": "span" },
-              { "place.value": blockIds },
-            ],
-          }
-        );
+        possibleOrdersPlaces.push({
+          $and: [
+            { "place.place": "span" },
+            { "place.value": blockIds },
+          ],
+        });
       }
 
-      const ordersMatchFilter = {
-        $or: [
+      // Формируем критерии выборки данных из коллекции распоряжений
+      const ordersMatchFilter = {};
+      if (possibleOrdersPlaces.length) {
+        ordersMatchFilter.$or = [
           // условия для распоряжений о закрытии-открытии перегона
           { showOnGID: true, $or: possibleOrdersPlaces },
-          // условия для циркулярных распоряжений
-          {
-            showOnGID: false,
-            specialTrainCategories: TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
-            "workPoligon.id": '',
-            "workPoligon.type": '',
-          },
-        ],
-      };
+        ];
+      }
+      if (workPoligon) {
+        // условия для циркулярных распоряжений
+        const circularOrdersConditions = {
+          showOnGID: false,
+          specialTrainCategories: TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+          "workPoligon.id": workPoligon.DNCS_ID,
+          "workPoligon.type": WORK_POLIGON_TYPES.DNC_SECTOR,
+        };
+        if (ordersMatchFilter.$or) {
+          ordersMatchFilter.push(circularOrdersConditions);
+        } else {
+          Object.assign(ordersMatchFilter, circularOrdersConditions);
+        }
+      }
+      // Дата начала извлечения информации
       if (startDate) {
         ordersMatchFilter.$and.push({ createDateTime: { $gt: new Date(startDate) } });
       }
 
+      // Ищем данные, сортируя найденные распоряжения по времени их создания
       const data = await Order.find(ordersMatchFilter).sort([['createDateTime', 'ascending']]) || [];
 
+      // Перед отправкой распоряжений ГИД форматирую их в соответствии с форматом предоставления данных ГИД
       res.status(OK).json(data.map((item) => {
         let STATION1 = null;
         let STATION2 = null;
-        if (item.place.place === 'station') {
-          STATION1 = stationsData.find((station) => String(station.St_ID) === String(item.place.value)).St_GID_UNMC;
+        if (item.place?.place === 'station') {
+          STATION1 = stationsData?.find((station) => String(station.St_ID) === String(item.place.value)).St_GID_UNMC;
         } else {
-          const block = blocksData.find((block) => String(block.Bl_ID) === String(item.place.value));
-          STATION1 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_GID_UNMC;
-          STATION2 = stationsData.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_GID_UNMC;
+          const block = blocksData?.find((block) => String(block.Bl_ID) === String(item.place.value));
+          STATION1 = stationsData?.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_GID_UNMC;
+          STATION2 = stationsData?.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_GID_UNMC;
         }
         let ADDITIONALPLACEINFO = null;
-        const additionalOrderPlaceInfoElements = item.orderText.orderText.filter((el) =>
-          (el.value !== null) &&
-          orderParamsRefsForGID.find((r) => (r.elementType === el.type) && r.possibleRefs.includes(el.ref))
-        );
-        if (additionalOrderPlaceInfoElements && additionalOrderPlaceInfoElements.length) {
-          ADDITIONALPLACEINFO = additionalOrderPlaceInfoElements.reduce((accumulator, currentValue, index) =>
-            accumulator + `${currentValue.ref}: ${currentValue.value}${index === additionalOrderPlaceInfoElements.length - 1 ? '' : ', '}`, '');
+        let TAKEDUTY = null;
+        let TAKEDUTYPERSONAL = null;
+        if (!item.specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN)) {
+          // если не циркуляр, то ищем дополнительную информацию о месте действия
+          const additionalOrderPlaceInfoElements = item.orderText.orderText.filter((el) =>
+            (el.value !== null) &&
+            orderParamsRefsForGID?.find((r) => (r.elementType === el.type) && r.possibleRefs.includes(el.ref))
+          );
+          if (additionalOrderPlaceInfoElements?.length) {
+            ADDITIONALPLACEINFO = additionalOrderPlaceInfoElements.reduce((accumulator, currentValue, index) =>
+              accumulator + `${currentValue.ref}: ${currentValue.value}${index === additionalOrderPlaceInfoElements.length - 1 ? '' : ', '}`, '');
+          }
+        } else {
+          // если циркуляр, то ищем информацию о лице, принявшем дежурство
+          TAKEDUTY = item.orderText.orderText.find((el) => el.ref === TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF)?.value;
+          if (item.dspToSend?.length) {
+            TAKEDUTYPERSONAL = item.dspToSend.map((el) => ({ stationId: el.id, fio: el.fio }));
+          }
         }
         return {
           ORDERID: item._id,
+          // 0 - циркуляр, 1 - распоряжение о закрытии-открытии
+          ORDERTYPE: item.specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN) ? 0 : 1,
           ORDERGIVINGTIME: item.createDateTime,
           STATION1,
           STATION2,
           ADDITIONALPLACEINFO,
+          TAKEDUTY,
+          TAKEDUTYPERSONAL,
           ORDERSTARTTIME: item.timeSpan.start,
           ORDERENDTIME: item.timeSpan.end,
           ORDERTITLE: item.orderText.orderTitle,
@@ -972,7 +1017,7 @@ router.post(
         action: 'Получение информации о распоряжениях для отображения на ГИД',
         error: error.message,
         actionParams: {
-          startDate, stations,
+          startDate, stations, dncSectorName,
         },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
