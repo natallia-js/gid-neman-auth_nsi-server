@@ -490,6 +490,17 @@ export const ElementRefChooser = (props) => {
     editingElRefMeaningInfo.ref[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY] === rec[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.KEY] &&
     editingElRefMeaningInfo.meaning === item;
 
+  const getUniqueOrderPatternElementRefs = (allRefs) => {
+    // Массив уникальных значений наименований смысловых значений спереди дополняем пустой строкой -
+    // элементом, определяющим отсутствие смыслового значения
+    return [''].concat([...new Set(allRefs.map((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME]))])
+      .map((ref) => {
+        return {
+          value: ref,
+        };
+      });
+  };
+
 
   return (
     <>
@@ -507,17 +518,7 @@ export const ElementRefChooser = (props) => {
             <Col flex="auto">
               <Select
                 style={{ width: '100%' }}
-                options={
-                  currentElRefsInfoObj && currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
-                  ? [{ value: '' }].concat(currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS]
-                      .map((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME])
-                      .map((ref) => {
-                        return {
-                          value: ref,
-                        };
-                      }))
-                  : []
-                }
+                options={getUniqueOrderPatternElementRefs(currentElRefsInfoObj ? currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.REFS] : [])}
                 value={chosenRef}
                 onChange={handleChangeRef}
               />

@@ -43,6 +43,16 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
+ * Сравнивает два объекта, wp1, wp2, содержащие информацию о полигонах управления, на равенство.
+ */
+function checkWorkPoligonsEquality(wp1, wp2) {
+  if (!wp1?.type && !wp1?.id && !wp2?.type && !wp2?.id) return true;
+  if (wp1?.type === wp2?.type && wp1?.id == wp2?.id) return true;
+  return false;
+}
+
+
+/**
  * Обработка запроса на добавление нового смыслового значения указанного (существующего) типа
  * элементов шаблонов распоряжений.
  *
@@ -79,8 +89,15 @@ router.post(
       if (!candidate.possibleRefs) {
         candidate.possibleRefs = [];
       } else {
-        if (candidate.possibleRefs.find((ref) => ref.refName === refName)) {
-          return res.status(ERR).json({ message: 'У данного типа элемента шаблона уже существует смысловое значение с таким названием' });
+        // Теперь нам нужно убедиться в том, что в БД для указанного типа элемента шаблона нет смыслового
+        // значения, наименование и рабочий перегон которого совпадают (одновременно!) с аналогичными параметрами
+        // добавляемого смыслового значения
+        if (candidate.possibleRefs.find((ref) => ref.refName === refName && checkWorkPoligonsEquality(ref.workPoligon, workPoligon))) {
+          let errMessage = 'У данного типа элемента шаблона уже существует смысловое значение с таким названием';
+          if (workPoligon && workPoligon.type && workPoligon.id)
+            return res.status(ERR).json({ message: errMessage + ' на данном полигоне управления' });
+          else
+            return res.status(ERR).json({ message: errMessage });
         }
       }
 
@@ -203,10 +220,17 @@ router.post(
         return res.status(ERR).json({ message: 'Не найдено указанное смысловое значение типа элементов шаблонов распоряжений' });
       }
 
-      // Если изменилось название смыслового значения, то проверяем его на уникальность в рамках
-      // типа распоряжений
-      if (candidate.possibleRefs && candidate.possibleRefs.find((el) => String(el._id) !== String(refId) && el.refName === refName)) {
-        return res.status(ERR).json({ message: 'Смысловое значение с таким наименованием уже существует' });
+      // Если изменилось название смыслового значения либо его рабочий полигон, то проверяем комбинацию
+      // "название смыслового значения - рабочий полигон" на уникальность в рамках типа распоряжений
+      if (candidate.possibleRefs?.find((el) =>
+        String(el._id) !== String(refId) &&
+        el.refName === refName &&
+        checkWorkPoligonsEquality(el.workPoligon, workPoligon))
+      ) {
+        if (workPoligon && workPoligon.type && workPoligon.id)
+          return res.status(ERR).json({ message: 'Смысловое значение с таким наименованием на данном полигоне управления уже существует' });
+        else
+          return res.status(ERR).json({ message: 'Смысловое значение с таким наименованием уже существует' });
       }
 
       if (req.body.hasOwnProperty('refName'))
@@ -232,7 +256,7 @@ router.post(
         errorTime: new Date(),
         action: 'Изменение смыслового значения',
         error: error.message,
-        actionParams: { elementTypeId, refId, refName, additionalOrderPlaceInfoForGID },
+        actionParams: { elementTypeId, refId, refName, workPoligon, additionalOrderPlaceInfoForGID, possibleMeanings },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
