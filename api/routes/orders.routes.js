@@ -950,7 +950,7 @@ router.post(
           "workPoligon.type": WORK_POLIGON_TYPES.DNC_SECTOR,
         };
         if (ordersMatchFilter.$or) {
-          ordersMatchFilter.push(circularOrdersConditions);
+          ordersMatchFilter.$or.push(circularOrdersConditions);
         } else {
           Object.assign(ordersMatchFilter, circularOrdersConditions);
         }
@@ -967,9 +967,11 @@ router.post(
       res.status(OK).json(data.map((item) => {
         let STATION1 = null;
         let STATION2 = null;
+        // если у распоряжения есть место действия, то это точно не циркуляр - это может быть только
+        // распоряжение о закрытии-открытии
         if (item.place?.place === 'station') {
           STATION1 = stationsData?.find((station) => String(station.St_ID) === String(item.place.value)).St_GID_UNMC;
-        } else {
+        } else if (item.place?.place === 'span') {
           const block = blocksData?.find((block) => String(block.Bl_ID) === String(item.place.value));
           STATION1 = stationsData?.find((station) => String(station.St_ID) === String(block.Bl_StationID1)).St_GID_UNMC;
           STATION2 = stationsData?.find((station) => String(station.St_ID) === String(block.Bl_StationID2)).St_GID_UNMC;
