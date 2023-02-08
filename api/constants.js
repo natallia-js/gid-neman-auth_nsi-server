@@ -145,6 +145,11 @@ const ORDER_PATTERN_TYPES = Object.freeze({
 // отметка особой категории распоряжений о принятии дежурства ДНЦ/ЭЦД
 const TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN = 'ЦР';
 
+// отметка особой категории распоряжений ДНЦ о закрытии перегона
+const SPECIAL_CLOSE_BLOCK_ORDER_SIGN = 'ЗП';
+// отметка особой категории распоряжений ДНЦ об открытии перегона
+const SPECIAL_OPEN_BLOCK_ORDER_SIGN = 'ОП';
+
 // отметка особой категории распоряжений о принятии дежурства ДСП
 const SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN = 'ДСП_ПД';
 
@@ -177,6 +182,8 @@ module.exports = {
   DY58_APP_CODE_NAME: 'DY-58',
 
   TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+  SPECIAL_CLOSE_BLOCK_ORDER_SIGN,
+  SPECIAL_OPEN_BLOCK_ORDER_SIGN,
   SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
   TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
   TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,

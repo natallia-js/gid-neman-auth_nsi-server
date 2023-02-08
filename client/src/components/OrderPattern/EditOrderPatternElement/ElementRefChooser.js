@@ -410,7 +410,7 @@ export const ElementRefChooser = (props) => {
       const res = await request(ServerAPI.MOD_ORDER_PATTERN_ELEMENT_REF, 'POST', {
         elementTypeId: currentElRefsInfoObj[ORDER_PATTERN_ELEMENT_REFS_FIELDS.KEY],
         refId,
-        possibleMeanings: [...currentElRefsMeaningObj[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.MEANINGS], meaning],
+        possibleMeanings: [...currentElRefsMeaningObj[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.MEANINGS] || [], meaning],
       });
       message(MESSAGE_TYPES.SUCCESS, res.message);
       const updatedElRefObject = getAppPossibleElRefsObjFromDBPossibleElRefObj(res.data.ref, stations, dncSectors, ecdSectors);
