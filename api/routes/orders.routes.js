@@ -1427,22 +1427,21 @@ router.post(
         }
       } else {
         // Поиск по времени действия соответствующих цепочек распоряжений
+        const chainEndDateTimeFilter = {
+          $or: [
+            // The { item : null } query matches documents that either contain the item field
+            // whose value is null or that do not contain the item field
+            { "orderChain.chainEndDateTime": null },
+            { "orderChain.chainEndDateTime": { $gte: startDate } },
+          ],
+        };
         if (!datetimeEnd) {
-          matchFilter.$and.push(
-            {
-              $or: [
-                // The { item : null } query matches documents that either contain the item field
-                // whose value is null or that do not contain the item field
-                { "orderChain.chainEndDateTime": null },
-                { "orderChain.chainEndDateTime": { $gte: startDate } },
-              ],
-            },
-          );
+          matchFilter.$and.push(chainEndDateTimeFilter);
         } else {
           matchFilter.$and.push(
             {
               "orderChain.chainStartDateTime": { $lte: endDate },
-              "orderChain.chainEndDateTime": { $gte: startDate },
+              ...chainEndDateTimeFilter,
             },
           );
         }

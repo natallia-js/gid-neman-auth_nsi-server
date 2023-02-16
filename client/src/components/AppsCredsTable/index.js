@@ -9,6 +9,7 @@ import appCredsTableColumns from './AppCredsTableColumns';
 import getAppCredsGroupObjFromDBCredsGroupObj from '../../mappers/getAppCredsGroupObjFromDBCredsGroupObj';
 import AppCredsTable from './AppCredsTable';
 import expandIcon from '../ExpandIcon';
+import { useAppCredentials } from '../../serverRequests/appCredentials';
 
 const { Text, Title } = Typography;
 
@@ -55,29 +56,31 @@ const AppsCredsTable = () => {
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
 
+  // методы для работы с api сервера
+  const { getFullAppCredentialsData, addNewAppCredsGroup, delAppCredsGroup } = useAppCredentials();
+
 
   /**
-   * Извлекает информацию, которая должна быть отображена в таблице, из первоисточника
-   * и устанавливает ее в локальное состояние
+   * Извлекает информацию, которая должна быть отображена в таблице групп полномочий,
+   * из первоисточника и устанавливает ее в локальное состояние
    */
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     setDataLoaded(false);
     try {
-      // Запрашиваем у сервера все имеющиеся группы полномочий
-      const res = await request(ServerAPI.GET_APPS_CREDS_DATA, 'POST', {});
-      const tableData = res.map((app) => getAppCredsGroupObjFromDBCredsGroupObj(app));
+      const tableData = await getFullAppCredentialsData();
       setTableData(tableData);
       setLoadDataErr(null);
     } catch (e) {
       setTableData(null);
       setLoadDataErr(e.message);
+    } finally {
+      setDataLoaded(true);
     }
-    setDataLoaded(true);
-  }, [request]);
+  };
 
 
   /**
-   * При рендере компонента подгружает информацию для отображения в таблице из БД
+   * При первом рендере компонента подгружает информацию для отображения в таблице из БД
    */
   useEffect(() => {
     fetchData();
@@ -89,21 +92,21 @@ const AppsCredsTable = () => {
    */
   const clearAddAppCredsGroupMessages = () => {
     setAppFieldsErrs(null);
-  }
+  };
 
 
   /**
-   * Добавляет информацию о группе полномочий в БД.
+   * Добавляет информацию о новой группе полномочий.
    *
-   * @param {object} groupData
+   * @param {object} groupData - информация о новой группе группе полномочий
    */
   const handleAddNewAppCredsGroup = async (groupData) => {
     setRecsBeingAdded((value) => value + 1);
     try {
       // Делаем запрос на сервер с целью добавления информации о группе полномочий
-      const res = await request(ServerAPI.ADD_APP_CREDS_GROUP_DATA, 'POST', { ...groupData, credentials: [] });
-      message(MESSAGE_TYPES.SUCCESS, res.message);
-      setTableData([...tableData, getAppCredsGroupObjFromDBCredsGroupObj(res.credsGroup)]);
+      const response = await addNewAppCredsGroup(groupData);
+      message(MESSAGE_TYPES.SUCCESS, response.message);
+      setTableData([...tableData, getAppCredsGroupObjFromDBCredsGroupObj(response.credsGroup)]);
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);
       if (e.errors) {
@@ -117,16 +120,16 @@ const AppsCredsTable = () => {
 
 
   /**
-   * Удаляет информацию о группе полномочий из БД.
+   * Удаляет информацию о группе полномочий.
    *
-   * @param {number} groupId
+   * @param {number} groupId - id группы полномочий, которую необходимо удалить
    */
   const handleDelAppCredsGroup = async (groupId) => {
     setRecsBeingProcessed((value) => [...value, groupId]);
     try {
       // Делаем запрос на сервер с целью удаления всей информации о группе полномочий
-      const res = await request(ServerAPI.DEL_APP_CREDS_GROUP_DATA, 'POST', { credsGroupId: groupId });
-      message(MESSAGE_TYPES.SUCCESS, res.message);
+      const response = await delAppCredsGroup(groupId);
+      message(MESSAGE_TYPES.SUCCESS, response.message);
       setTableData(tableData.filter((app) => String(app[APP_CREDS_GROUP_FIELDS.KEY]) !== String(groupId)));
     } catch (e) {
       message(MESSAGE_TYPES.ERROR, e.message);

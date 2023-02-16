@@ -87,7 +87,7 @@ const StationsTable = () => {
     }
 
     setDataLoaded(true);
-  }, [request]);
+  }, []);
 
 
   /**

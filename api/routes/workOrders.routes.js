@@ -1033,4 +1033,95 @@ router.post(
 );
 
 
+/**
+ * Обрабатывает запрос на принудительное завершение цепочки документов.
+ * Это означает, что у всех документов имеющейся цепочки, при отсутствии у нее даты окончания действия,
+ * в качестве нее проставляется дата начала действия последнего документа цепочки.
+ * Эти действия выполняются как в БД рабочих распоряжений, так и в единой БД распоряжений.
+ *
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * Принудительно завершить цепочку документов может только находящийся на дежурстве работник
+ * того рабочего полигона, на котором распоряжение было издано.
+ *
+ * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
+ * Если этой информации в токене нет, то запрос не будет обработан.
+ *
+ * Параметры запроса:
+ *   orderChainId - идентификатор цепочки распоряжений
+ *
+ * Обязательный параметр запроса - applicationAbbreviation!
+ */
+router.post(
+  '/forceCloseOrOpenOrdersChain',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.FORCE_CLOSE_ORDERS_CHAIN; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    const userWorkPoligon = req.user.workPoligon;
+
+    // Считываем находящиеся в пользовательском запросе данные
+    const { orderChainId } = req.body;
+
+    // Действия выполняем в транзакции
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Ищем последнее (по времени издания) распоряжение, принадлежащее указанной цепочке, в основной коллекции
+      const order = await Order.findOne({ "orderChain.chainId": orderChainId }).sort({ createDateTime: -1 }).limit(1).session(session);
+      if (!order) {
+        return res.status(ERR).json({ message: 'Цепочка распоряжений не найдена' });
+      }
+
+      // Проверяем, имеет ли пользователь право принудительно завершать данную цепочку документов
+
+      /*const recordToDelete = !order.stationWorkPlacesToSend ? null :
+        order.stationWorkPlacesToSend.find((item) =>
+          item.type === userWorkPoligon.type && String(item.id) === String(userWorkPoligon.id) &&
+          (
+            (!item.workPlaceId && !workPlaceId) ||
+            (item.workPlaceId && workPlaceId && String(item.workPlaceId) === String(workPlaceId))
+          )
+        );
+
+      if (!recordToDelete) {
+        return res.status(ERR).json({ message: 'Получатель распоряжения на станции не найден' });
+      }
+
+      if (recordToDelete.confirmDateTime) {
+        return res.status(ERR).json({ message: 'Нельзя удалить подтвержденную запись' });
+      }*/
+
+
+      await WorkOrder.updateMany(
+        { "orderChain.chainId": orderChainId },
+        { $set: { "orderChain.chainEndDateTime": order.timeSpan.start } },
+        { session });
+      await Order.updateMany(
+        { "orderChain.chainId": orderChainId },
+        { $set: { "orderChain.chainEndDateTime": order.timeSpan.end } },
+        { session });
+
+      await session.commitTransaction();
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Принудительное завершение цепочки документов',
+        error: error.message,
+        actionParams: {
+          userId: req.user.userId, user: userPostFIOString(req.user), orderChainId,
+        },
+      });
+      await session.abortTransaction();
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
+    }
+  }
+);
+
+
 module.exports = router;
