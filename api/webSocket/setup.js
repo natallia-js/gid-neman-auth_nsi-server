@@ -83,25 +83,30 @@ function setupWebSocket(server) {
       // PONG-ответ клиента
       if (messageString.match(PONG_MESSAGE_PATTERN)) {
         const clientData = messageString.slice(5).split(',');
-        const clientID = clientData.length >= 1 ? clientData[0] : null;
-        const clientWorkPoligonType = clientData.length >= 2 ? clientData[1] : null;
-        const clientWorkPoligonId = clientData.length >= 3 ? clientData[2] : null;
-        const clientWorkSubPoligonId = clientData.length >= 4 ? clientData[3] : null;
-        const isClientOnDuty = clientData.length >= 5 ? clientData[4] : null;
+        const clientID = clientData.length < 1 ? null :
+          (clientData[0] === 'null' || clientData[0] === 'undefined') ? null : clientData[0]; // string | null
+        const clientWorkPoligonType = clientData.length < 2 ? null :
+          (clientData[1] === 'null' || clientData[1] === 'undefined') ? null : clientData[1]; // string | null
+        const clientWorkPoligonId = clientData.length < 3 ? null :
+          (clientData[2] === 'null' || clientData[2] === 'undefined') ? null : clientData[2]; // string | null
+        const clientWorkSubPoligonId = clientData.length < 4 ? null :
+          (clientData[3] === 'null' || clientData[3] === 'undefined') ? null : clientData[3]; // string | null
+        const isClientOnDuty = clientData.length < 5 ? null :
+          (clientData[4] === 'null' || clientData[4] === 'undefined') ? null : clientData[4]; // string | null
         if (ctx.clientID !== clientID) {
-          ctx.clientID = (clientID === 'null') ? null : clientID;
+          ctx.clientID = clientID;
         }
         if (ctx.clientWorkPoligonType !== clientWorkPoligonType) {
-          ctx.clientWorkPoligonType = (clientWorkPoligonType === 'null') ? null : clientWorkPoligonType;
+          ctx.clientWorkPoligonType = clientWorkPoligonType;
         }
         if (ctx.clientWorkPoligonId !== clientWorkPoligonId) {
-          ctx.clientWorkPoligonId = (clientWorkPoligonId === 'null') ? null : clientWorkPoligonId;
+          ctx.clientWorkPoligonId = clientWorkPoligonId;
         }
         if (ctx.clientWorkSubPoligonId !== clientWorkSubPoligonId) {
-          ctx.clientWorkSubPoligonId = (clientWorkSubPoligonId === 'null') ? null : clientWorkSubPoligonId;
+          ctx.clientWorkSubPoligonId = clientWorkSubPoligonId;
         }
         if (ctx.isClientOnDuty !== isClientOnDuty) {
-          ctx.isClientOnDuty = (isClientOnDuty === 'null') ? null : isClientOnDuty;
+          ctx.isClientOnDuty = isClientOnDuty;
         }
         return;
       }
