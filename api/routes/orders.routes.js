@@ -725,7 +725,7 @@ router.post(
       }
 
       if (edited) {
-        await existingOrder.save();
+        await existingOrder.save({ session });
       }
 
       // Редактируем (при необходимости) записи в коллекции рабочих распоряжений.
@@ -1255,7 +1255,7 @@ router.post(
 
 /**
  * Обрабатывает запрос на пометку ранее изданного и находящегося в работе документа как
- * действительного / недействительного.
+ * недействительного.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием. Но реально пометить документ
  * как действительный / недействительный сможет только тот пользователь, который его издал и только с того
@@ -1264,9 +1264,7 @@ router.post(
  * Информация о пользователе, о типе и id его рабочего полигона извлекается из токена пользователя.
  *
  * Параметры тела запроса:
- * orderId - id документа, который необходимо пометить как действительный / недействительный (обязателен),
- * invalid - true - если документ необходимо пометить как недействительный, false - если документ необходимо
- * пометить как действительный,
+ * orderId - id документа, который необходимо пометить как недействительный (обязателен)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -1281,7 +1279,7 @@ router.post(
       return res.status(ERR).json({ message: 'Не указан рабочий полигон' });
     }
     // Считываем находящиеся в пользовательском запросе данные
-    const { orderId, invalid } = req.body;
+    const { orderId } = req.body;
 
     try {
       // Ищем документ по id
@@ -1298,14 +1296,24 @@ router.post(
          (!order.workPoligon.workPlaceId && workPoligon.workPlaceId)) {
         return res.status(ERR).json({ message: 'Документ издан не на этом рабочем полигоне' });
       }
-      // Делаем отметку о действительности / недействительности документа
-      order.invalid = invalid;
+      // Делаем отметку о недействительности документа
+      order.invalid = true;
+
+      // Выделяем документ в новую цепочку.
+      // Для этого вначале генерируем id новой цепочки
+      const newOrderChainId = new mongoose.Types.ObjectId();
+      // Обновляем id цепочки у документа
+      order.orderChain.chainId = newOrderChainId;
+      // Принудительно завершаем цепочку
+      order.orderChain.chainEndDateTime = order.createDateTime;
+
       await order.save();
 
       res.status(OK).json({
-        message: `Распоряжение помечено как ${invalid ? 'недействительное' : 'действительное'}`,
+        message: `Распоряжение помечено как недействительное`,
         orderId,
-        invalid,
+        orderChainId: order.orderChain.chainId,
+        orderChainEndDateTime: order.orderChain.chainEndDateTime,
       });
 
       // Логируем действие пользователя
@@ -1318,10 +1326,7 @@ router.post(
         }),
         actionTime: new Date(),
         action: 'Проставление отметки о действительности документа',
-        actionParams: {
-          userId: req.user.userId,
-          workPoligon, orderId, invalid,
-        },
+        actionParams: { userId: req.user.userId, workPoligon, orderId },
       };
       addDY58UserActionInfo(logObject);
 
@@ -1330,9 +1335,7 @@ router.post(
         errorTime: new Date(),
         action: 'Проставление отметки о действительности документа',
         error: error.message,
-        actionParams: {
-          workPoligon, orderId, invalid,
-        },
+        actionParams: { workPoligon, orderId },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

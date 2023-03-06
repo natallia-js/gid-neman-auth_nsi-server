@@ -8,6 +8,7 @@ db.orders.createIndex({"createDateTime":1})
 db.workorders.createIndex({"recipientWorkPoligon.id":1,"recipientWorkPoligon.type":1})
 db.orders.createIndex({"type":1})
 db.orders.createIndex({"type":1,"createDateTime":1})
+db.orders.createIndex({"type":1,"orderChain.chainId":1})
 db.orders.createIndex({"type":1,"orderChain.chainId":1,"dispatchedOnOrder":1})
 
 Проблема на сервере: при запуске запроса на создание индекса консоль (mongo) подвисает.
