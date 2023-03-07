@@ -1257,9 +1257,9 @@ router.post(
  * Обрабатывает запрос на пометку ранее изданного и находящегося в работе документа как
  * недействительного.
  *
- * Данный запрос доступен любому лицу, наделенному соответствующим полномочием. Но реально пометить документ
- * как действительный / недействительный сможет только тот пользователь, который его издал и только с того
- * рабочего полигона, на котором документ был издан.
+ * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
+ * Но реально пометить документ как недействительный сможет только тот пользователь, который его издал,
+ * и только с того рабочего полигона, на котором документ был издан.
  *
  * Информация о пользователе, о типе и id его рабочего полигона извлекается из токена пользователя.
  *
@@ -1281,39 +1281,92 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { orderId } = req.body;
 
+    // Действия выполняем в транзакции
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       // Ищем документ по id
-      const order = await Order.findById(orderId);
+      const order = await Order.findById(orderId).session(session);
       if (!order) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Документ не найден' });
       }
       // Смотрим, был ли издан найденный документ на полигоне workPoligon пользователем с id = req.user.userId
       if (String(order.creator?.id) !== String(req.user?.userId)) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Документ издан не Вами' });
       }
       if (order.workPoligon?.type !== workPoligon.type || order.workPoligon?.id !== workPoligon.id ||
          (order.workPoligon.workPlaceId && order.workPoligon.workPlaceId !== workPoligon.workPlaceId) ||
          (!order.workPoligon.workPlaceId && workPoligon.workPlaceId)) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Документ издан не на этом рабочем полигоне' });
       }
-      // Делаем отметку о недействительности документа
-      order.invalid = true;
 
-      // Выделяем документ в новую цепочку.
-      // Для этого вначале генерируем id новой цепочки
+      // Ниже выделим найденный документ в новую (отдельную) цепочку.
+      // Для этого генерируем id этой цепочки
       const newOrderChainId = new mongoose.Types.ObjectId();
+
+      // Для документов, которые принадлежат цепочке найденного документа, кроме него самого, делаем следующее:
+      // устанавливаем дату и время окончания действия цепочки равной дате и времени окончания действия последнего
+      // документа этой цепочки (не учитываем документ, который нужно отметить как недействительный)
+
+      // Ищем последний документ цепочки, отличный от документа order, найденного выше
+      const lastOrderInChain = await Order.findOne({ _id: { $ne: orderId }, "orderChain.chainId": order.orderChain.chainId })
+        .sort({ createDateTime: -1 }).limit(1).session(session);
+
+      // Если такой документ есть, то для него и всех иных документов его цепочки обновляем дату окончания действия цепочки
+      // (если она могла измениться при удалении документа из цепочки)
+
+      // Документ, который будет помечен как недействительный, - единственный документ в цепочке?
+      const theOnlyDocInChain = !lastOrderInChain ? true : false;
+
+      // Новая дата окончания действия той цепочки документов, которой недействительный документ принадлежал вначале
+      let prevOrderChainNewEndDateTime = !lastOrderInChain ? null : lastOrderInChain.timeSpan.end;
+
+      if (lastOrderInChain && lastOrderInChain.orderChain.chainEndDateTime !== lastOrderInChain.timeSpan.end) {
+        await Order.updateMany(
+          // filter
+          { _id: { $ne: orderId }, "orderChain.chainId": lastOrderInChain.orderChain.chainId },
+          // update
+          { "orderChain.chainEndDateTime": lastOrderInChain.timeSpan.end },
+          { session }
+        );
+        await WorkOrder.updateMany(
+          // filter
+          { orderId: { $ne: orderId }, "orderChain.chainId": lastOrderInChain.orderChain.chainId },
+          // update
+          { "orderChain.chainEndDateTime": lastOrderInChain.timeSpan.end },
+          { session }
+        );
+      }
+
+      // Делаем отметку о недействительности документа в основной коллекции распоряжений
+      order.invalid = true;
       // Обновляем id цепочки у документа
       order.orderChain.chainId = newOrderChainId;
       // Принудительно завершаем цепочку
       order.orderChain.chainEndDateTime = order.createDateTime;
 
-      await order.save();
+      await order.save({ session });
+
+      // Осталось только обновить информацию по цепочке недействительного документа в коллекции рабочих распоряжений
+      await WorkOrder.updateMany(
+        { orderId },
+        { "orderChain.chainId": newOrderChainId, "orderChain.chainEndDateTime": order.orderChain.chainEndDateTime },
+        { session }
+      );
+
+      await session.commitTransaction();
 
       res.status(OK).json({
         message: `Распоряжение помечено как недействительное`,
         orderId,
         orderChainId: order.orderChain.chainId,
         orderChainEndDateTime: order.orderChain.chainEndDateTime,
+        theOnlyDocInChain,
+        prevOrderChainNewEndDateTime,
       });
 
       // Логируем действие пользователя
@@ -1326,7 +1379,7 @@ router.post(
         }),
         actionTime: new Date(),
         action: 'Проставление отметки о действительности документа',
-        actionParams: { userId: req.user.userId, workPoligon, orderId },
+        actionParams: { userId: req.user.userId, user: userPostFIOString(req.user), workPoligon, orderId },
       };
       addDY58UserActionInfo(logObject);
 
@@ -1337,7 +1390,11 @@ router.post(
         error: error.message,
         actionParams: { workPoligon, orderId },
       });
+      await session.abortTransaction();
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+
+    } finally {
+      session.endSession();
     }
   }
 );

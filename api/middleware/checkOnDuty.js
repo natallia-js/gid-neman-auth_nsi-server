@@ -113,6 +113,7 @@ async function checkOnDuty(req) {
     DY58_ACTIONS.DEL_CONFIRMED_ORDERS_FROM_CHAIN,
     DY58_ACTIONS.DEL_STATION_WORK_PLACE_RECEIVER,
     DY58_ACTIONS.SET_ORDER_INVALID_MARK,
+    DY58_ACTIONS.FORCE_CLOSE_OR_OPEN_ORDERS_CHAIN,
     ].includes(req.requestedAction)
   ) {
     return await isOnDuty(req);

@@ -1034,84 +1034,121 @@ router.post(
 
 
 /**
- * Обрабатывает запрос на принудительное завершение цепочки документов.
- * Это означает, что у всех документов имеющейся цепочки, при отсутствии у нее даты окончания действия,
+ * Обрабатывает запрос на принудительное завершение цепочки документов / отмену принудительного завершения цепочки документов.
+ * Принудительное завершение означает, что у всех документов имеющейся цепочки, при отсутствии у нее даты окончания действия,
  * в качестве нее проставляется дата начала действия последнего документа цепочки.
- * Эти действия выполняются как в БД рабочих распоряжений, так и в единой БД распоряжений.
+ * Отмена принудительного завершения означает, что у всех документов имеющейся цепочки дата окончания действия цепочки проставляется
+ * равной дате окончания действия последнего документа цепочки.
+ * Все эти действия выполняются как в коллекции рабочих распоряжений, так и в единой коллекции распоряжений.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Принудительно завершить цепочку документов может только находящийся на дежурстве работник
- * того рабочего полигона, на котором распоряжение было издано.
+ * того рабочего полигона, на котором было издано хотя бы одно распоряжение из этой цепочки.
  *
  * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
  * Если этой информации в токене нет, то запрос не будет обработан.
  *
  * Параметры запроса:
- *   orderChainId - идентификатор цепочки распоряжений
- *
+ *   orderChainId - идентификатор цепочки распоряжений,
+ *   forceClose - true (принудительно завершить цепочку) либо false (отменить принудительное завершение цепочки)
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
   '/forceCloseOrOpenOrdersChain',
   // определяем действие, которое необходимо выполнить
-  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.FORCE_CLOSE_ORDERS_CHAIN; next(); },
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.FORCE_CLOSE_OR_OPEN_ORDERS_CHAIN; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
     const userWorkPoligon = req.user.workPoligon;
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { orderChainId } = req.body;
+    const { orderChainId, forceClose } = req.body;
 
     // Действия выполняем в транзакции
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // Ищем последнее (по времени издания) распоряжение, принадлежащее указанной цепочке, в основной коллекции
-      const order = await Order.findOne({ "orderChain.chainId": orderChainId }).sort({ createDateTime: -1 }).limit(1).session(session);
-      if (!order) {
+      // Ищем все распоряжения указанной цепочки, сортируя их по возрастанию времени издания
+      const chainOrders = await Order.find({ "orderChain.chainId": orderChainId }).sort({ createDateTime: 1 }).session(session);
+      if (!chainOrders?.length) {
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Цепочка распоряжений не найдена' });
       }
-
-      // Проверяем, имеет ли пользователь право принудительно завершать данную цепочку документов
-
-      /*const recordToDelete = !order.stationWorkPlacesToSend ? null :
-        order.stationWorkPlacesToSend.find((item) =>
-          item.type === userWorkPoligon.type && String(item.id) === String(userWorkPoligon.id) &&
-          (
-            (!item.workPlaceId && !workPlaceId) ||
-            (item.workPlaceId && workPlaceId && String(item.workPlaceId) === String(workPlaceId))
-          )
-        );
-
-      if (!recordToDelete) {
-        return res.status(ERR).json({ message: 'Получатель распоряжения на станции не найден' });
+      // Смотрим, есть ли в цепочке распоряжение, изданное на рабочем полигоне, с которого пришел запрос
+      const firstPoligonOrder = chainOrders.find((order) =>
+        (order.workPoligon.type === userWorkPoligon.type) &&
+        (String(order.workPoligon.id) === String(userWorkPoligon.id)) &&
+        (
+          (!order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
+          (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) === String(userWorkPoligon.workPlaceId))
+        )
+      );
+      if (!firstPoligonOrder) {
+        await session.abortTransaction();
+        return res.status(ERR).json({
+          message: `${forceClose ? 'Принудительно завершить цепочку' : 'Отменить принудительное завершение цепочки'} ` +
+          'документов можно лишь с того рабочего полигона, на котором был издан хотя бы один документ, принадлежащий этой цепочке' });
       }
 
-      if (recordToDelete.confirmDateTime) {
-        return res.status(ERR).json({ message: 'Нельзя удалить подтвержденную запись' });
-      }*/
+      // Извлекаем последнее (по времени издания) распоряжение в цепочке
+      const lastOrderInChain = chainOrders[chainOrders.length - 1];
 
+      let orderChainEndDateTime;
 
-      await WorkOrder.updateMany(
-        { "orderChain.chainId": orderChainId },
-        { $set: { "orderChain.chainEndDateTime": order.timeSpan.start } },
-        { session });
-      await Order.updateMany(
-        { "orderChain.chainId": orderChainId },
-        { $set: { "orderChain.chainEndDateTime": order.timeSpan.end } },
-        { session });
+      // Принудительное завершение цепочки документов
+      if (forceClose) {
+        // Смотрим, есть ли дата окончания действия у найденной цепочки
+        if (lastOrderInChain.orderChain.chainEndDateTime) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Цепочка документов уже имеет дату окончания действия: ' +
+            `${lastOrderInChain.orderChain.chainEndDateTime.toLocaleDateString('ru', { day: 'numeric', month: 'numeric', year: 'numeric' })} ` +
+            `${lastOrderInChain.orderChain.chainEndDateTime.toLocaleTimeString('ru', { hour: 'numeric', minute: 'numeric' })}`});
+        }
+        orderChainEndDateTime = lastOrderInChain.timeSpan.start;
+        await WorkOrder.updateMany(
+          { "orderChain.chainId": orderChainId },
+          { $set: { "orderChain.chainEndDateTime": orderChainEndDateTime } },
+          { session });
+        await Order.updateMany(
+          { "orderChain.chainId": orderChainId },
+          { $set: { "orderChain.chainEndDateTime": orderChainEndDateTime } },
+          { session });
+      }
+      // Отмена принудительного завершения цепочки документов
+      else {
+        // Смотрим, совпадает ли дата окончания действия у найденной цепочки с датой окончания действия последнего ее документа
+        if (lastOrderInChain.orderChain.chainEndDateTime === lastOrderInChain.timeSpan.end) {
+          await session.abortTransaction();
+          return res.status(ERR).json({ message: 'Дата окончания действия цепочки документов совпадает с датой окончания действия последнего документа в ней'});
+        }
+        orderChainEndDateTime = lastOrderInChain.timeSpan.end;
+        await WorkOrder.updateMany(
+          { "orderChain.chainId": orderChainId },
+          { $set: { "orderChain.chainEndDateTime": orderChainEndDateTime } },
+          { session });
+        await Order.updateMany(
+          { "orderChain.chainId": orderChainId },
+          { $set: { "orderChain.chainEndDateTime": orderChainEndDateTime } },
+          { session });
+      }
 
       await session.commitTransaction();
+
+      res.status(OK).json({
+        message: `${forceClose ? 'Цепочка документов принудительно завершена' : 'Произведена отмена принудительного завершения цепочки документов'}`,
+        orderChainId,
+        orderChainEndDateTime,
+      });
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Принудительное завершение цепочки документов',
+        action: `${forceClose ? 'Принудительное завершение цепочки документов' : 'Отмена принудительного завершения цепочки документов'}`,
         error: error.message,
         actionParams: {
-          userId: req.user.userId, user: userPostFIOString(req.user), orderChainId,
+          userId: req.user.userId, user: userPostFIOString(req.user), orderChainId, forceClose,
         },
       });
       await session.abortTransaction();
