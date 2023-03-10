@@ -121,7 +121,7 @@ router.post(
       }
 
       const dataToReturn = [];
-      if (data && data.length) {
+      if (data?.length) {
         users.forEach((user) => {
           const userInfo = data.find((ui) => String(ui._id) === String(user.SWP_UserID));
           if (!userInfo) {

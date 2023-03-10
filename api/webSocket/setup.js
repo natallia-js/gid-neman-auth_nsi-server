@@ -56,20 +56,31 @@ function setupWebSocket(server) {
 
   // what to do after a connection is established
   wss.on(CONNECTION_EVENT, (ctx, req) => {
-    // print number of active connections
+    // getting ip-address from which the connection was established
     let clientIP;
     try {
       clientIP = req.headers['x-forwarded-for'].split(',')[0].trim();
     } catch {
       clientIP = req.socket.remoteAddress;
     }
+    // getting user browser description (from which the connection was established)
+    let userAgent;
+    try {
+      userAgent = req.headers['user-agent'];
+    } catch {
+      userAgent = 'unknown';
+    }
+    // log number of active connections
     addServerActionInfo({
       actionTime: new Date(),
       action: 'Новое подключение',
-      description: `Подключение с ip=${clientIP}, общее количество подключенных клиентов=${wss.clients.size}`,
+      description: `Подключение с ip=${clientIP} (через ${userAgent}), общее количество подключенных клиентов=${wss.clients.size}`,
     });
 
     ctx.isAlive = true;
+    ctx.clientIP = clientIP;
+    ctx.userAgent = userAgent;
+
     const timerId = ping(ctx);
 
     // handle message events
@@ -83,6 +94,7 @@ function setupWebSocket(server) {
       // PONG-ответ клиента
       if (messageString.match(PONG_MESSAGE_PATTERN)) {
         const clientData = messageString.slice(5).split(',');
+
         const clientID = clientData.length < 1 ? null :
           (clientData[0] === 'null' || clientData[0] === 'undefined') ? null : clientData[0]; // string | null
         const clientWorkPoligonType = clientData.length < 2 ? null :
@@ -93,6 +105,9 @@ function setupWebSocket(server) {
           (clientData[3] === 'null' || clientData[3] === 'undefined') ? null : clientData[3]; // string | null
         const isClientOnDuty = clientData.length < 5 ? null :
           (clientData[4] === 'null' || clientData[4] === 'undefined') ? null : clientData[4]; // string | null
+        const userCredential = clientData.length < 6 ? null :
+          (clientData[5] === 'null' || clientData[5] === 'undefined') ? null : clientData[5]; // string | null
+
         if (ctx.clientID !== clientID) {
           ctx.clientID = clientID;
         }
@@ -108,6 +123,9 @@ function setupWebSocket(server) {
         if (ctx.isClientOnDuty !== isClientOnDuty) {
           ctx.isClientOnDuty = isClientOnDuty;
         }
+        if (ctx.userCredential !== userCredential) {
+          ctx.userCredential = userCredential;
+        }
         return;
       }
       // Запрос клиента на получение списка online-пользователей на указанных рабочих полигонах
@@ -120,7 +138,8 @@ function setupWebSocket(server) {
         }
         // сюда поместим информацию, которую отошлем клиенту по его текущему запросу
         let onlineUsers = [];
-        // цикл по всем подключившимся к системе пользователям
+        // цикл по всем подключившимся к системе пользователям (один и тот же пользователь может быть подключен к системе
+        // с разных рабочих мест / браузеров)
         for (let client of wss.clients.values()) {
           // смотрим, есть ли для очередного пользователя рабочий полигон в списке workPoligonsObjects
           const wp = workPoligonsObjects.find((wp) =>
@@ -128,9 +147,8 @@ function setupWebSocket(server) {
             String(wp.id) === String(client.clientWorkPoligonId)
           );
           // если нет - переходим к следующему пользователю
-          if (!wp) {
+          if (!wp)
             continue;
-          }
           // смотрим, помещали ли мы ранее информацию по рабочему полигону wp в массив onlineUsers
           const existingItem = onlineUsers.find((el) =>
             el.type === wp.type &&
@@ -139,12 +157,21 @@ function setupWebSocket(server) {
               (!el.workPlaceId && !client.clientWorkSubPoligonId) ||
               (el.workPlaceId && client.clientWorkSubPoligonId && String(el.workPlaceId) === String(client.clientWorkSubPoligonId))
             ));
-          // если информация по рабочему полигону wp есть в onlineUsers и при этом там нет текущего
-          // пользователя, то включаем информацию о нем
+          // информация о пользователе, которая будет включена в итоговый массив
+          const userData = {
+            clientIP: client.clientIP,
+            userAgent: client.userAgent,
+            clientId: client.clientID,
+            isClientOnDuty: client.isClientOnDuty,
+            userCredential: client.userCredential,
+          };
+          // если информация по рабочему полигону wp есть в onlineUsers, то включаем информацию о текущем пользователе
+          // (в этот момент может оказаться так, что по одному и тому же пользователю информация в массив попадет повторно -
+          // если он на одном и том же полигоне работает с разных рабочих мест / браузеров)
           if (existingItem) {
-            if (!existingItem.people.includes(client.clientID)) {
-              existingItem.people.push({ clientId: client.clientID, isClientOnDuty: client.isClientOnDuty });
-            }
+            //if (!existingItem.people.includes(client.clientID)) {
+              existingItem.people.push(userData);
+            //}
           }
           // если информации по рабочему полигону wp нет в onlineUsers, то создаем в onlineUsers
           // одну запись, относящуюся к wp, с привязкой к ней текущего пользователя
@@ -153,7 +180,7 @@ function setupWebSocket(server) {
               type: wp.type,
               id: String(wp.id),
               workPlaceId: client.clientWorkSubPoligonId ? String(client.clientWorkSubPoligonId): null,
-              people: [{ clientId: client.clientID, isClientOnDuty: client.isClientOnDuty }],
+              people: [userData],
             });
           }
         }
