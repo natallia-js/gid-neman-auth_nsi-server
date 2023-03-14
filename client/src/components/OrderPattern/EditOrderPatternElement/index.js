@@ -109,7 +109,12 @@ export const EditOrderPatternElement = (props) => {
     let elementValue = selectedPatternElement.value;
     let elementSize = selectedPatternElement.size;
     let changed = false;
-    if (![OrderPatternElementType.TEXT, OrderPatternElementType.TEXT_AREA].includes(selectedPatternElement.type)) {
+    // Значение по умолчанию разрешаем иметь только элементам указанных типов
+    if (![
+      OrderPatternElementType.TEXT,
+      OrderPatternElementType.TEXT_AREA,
+      OrderPatternElementType.INPUT].includes(selectedPatternElement.type))
+    {
       elementValue = null;
       changed = true;
     }
@@ -191,10 +196,15 @@ export const EditOrderPatternElement = (props) => {
           allowClear
         />;
       case OrderPatternElementType.INPUT:
-        return <Input
-          style={{ width: ElementSizesCorrespondence[selectedPatternElement.size] }}
-          size="small"
-        />;
+        return <>
+          <Input
+            style={{ width: ElementSizesCorrespondence[selectedPatternElement.size] }}
+            size="small"
+            value={selectedPatternElement.value}
+            onChange={changePatternElementValue}
+          />
+          <div>*Текст, введенный в поле выше, будет полагаться значением по умолчанию</div>
+        </>;
       case OrderPatternElementType.TEXT_AREA:
         return <>
           <TextArea

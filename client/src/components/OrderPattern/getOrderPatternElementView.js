@@ -30,6 +30,7 @@ const getOrderPatternElementView = (element, showPlaceholder = true) => {
           style={{ width: ElementSizesCorrespondence[element[ORDER_PATTERN_ELEMENT_FIELDS.SIZE]] }}
           size="small"
           placeholder={showPlaceholder ? element[ORDER_PATTERN_ELEMENT_FIELDS.REF] : null}
+          value={element[ORDER_PATTERN_ELEMENT_FIELDS.VALUE]}
         />
       </Tooltip>;
     case OrderPatternElementType.TEXT_AREA:
