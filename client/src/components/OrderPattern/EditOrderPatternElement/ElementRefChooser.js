@@ -494,6 +494,7 @@ export const ElementRefChooser = (props) => {
     // Массив уникальных значений наименований смысловых значений спереди дополняем пустой строкой -
     // элементом, определяющим отсутствие смыслового значения
     return [''].concat([...new Set(allRefs.map((r) => r[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.NAME]))])
+      .sort((a, b) => compareStrings(a.toLowerCase(), b.toLowerCase()))
       .map((ref) => {
         return {
           value: ref,
