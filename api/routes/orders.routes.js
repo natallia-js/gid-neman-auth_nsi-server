@@ -601,6 +601,7 @@ const {
  * dspToSend - массив участков ДСП, на которые необходимо отправить распоряжение (не обязателен)
  * ecdToSend - массив участков ЭЦД, на которые необходимо отправить распоряжение (не обязателен)
  * otherToSend - массив иных адресатов, которым необходимо отправить распоряжение (не обязателен)
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -621,38 +622,56 @@ router.post(
     session.startTransaction();
 
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, timeSpan, orderText, additionallyInformedPeople } = req.body;
+    const { id, timeSpan, orderText, additionallyInformedPeople,
+      dncToSend, dspToSend, ecdToSend, otherToSend } = req.body;
 
     try {
+      // Ищем документ, который необходимо отредактировать
       const existingOrder = await Order.findById(id).session(session);
       if (!existingOrder) {
         await session.abortTransaction();
-        return res.status(ERR).json({ message: 'Указанное распоряжение не существует в базе данных' });
+        return res.status(ERR).json({ message: 'Указанный документ не существует в базе данных' });
       }
 
+      // Если нужно изменить время действия документа, то такой документ должен быть единственным в цепочке
       if (timeSpan) {
         const ordersInChain = await Order.countDocuments({
           'orderChain.chainId': existingOrder.orderChain.chainId,
         });
         if (ordersInChain === 0) {
           await session.abortTransaction();
-          return res.status(ERR).json({ message: 'Цепочка распоряжений не существует в базе данных' });
+          return res.status(ERR).json({ message: 'Цепочка документов не существует в базе данных' });
         }
         if (ordersInChain > 1) {
           await session.abortTransaction();
-          return res.status(ERR).json({ message: 'В цепочке распоряжений более одного распоряжения: редактирование невозможно' });
+          return res.status(ERR).json({ message: 'В цепочке документов более одного документа: редактирование невозможно' });
         }
       }
 
-      // Редактируем запись в основной коллекции распоряжений
+      // Редактируем запись в основной коллекции документов
       let edited = false;
 
-      // Запоминаем рабочие места на станции, которым текущее распоряжение было адресовано ранее
+      // Запоминаем рабочие места ДСП, которым текущий документ был адресован ранее
+      let dspWorkPlacesToSend = [...existingOrder.dspToSend || []];
+      // Запоминаем рабочие места ДНЦ, которым текущий документ был адресован ранее
+      let dncWorkPlacesToSend = [...existingOrder.dncToSend || []];
+      // Запоминаем рабочие места ЭЦД, которым текущий документ был адресован ранее
+      let ecdWorkPlacesToSend = [...existingOrder.ecdToSend || []];
+      // Запоминаем рабочие места на станции, которым текущий документ был адресован ранее
       let stationWorkPlacesToSend = [...existingOrder.stationWorkPlacesToSend || []];
 
+      // Сюда поместим id тех рабочих мест ДСП, по которым были изменения
+      const deletedDSPWorkPlacesIds = [];
+      const newDSPWorkPlacesIds = [];
+      // Сюда поместим id тех рабочих мест ДНЦ, по которым были изменения
+      const deletedDNCWorkPlacesIds = [];
+      const newDNCWorkPlacesIds = [];
+      // Сюда поместим id тех рабочих мест ЭЦД, по которым были изменения
+      const deletedECDWorkPlacesIds = [];
+      const newECDWorkPlacesIds = [];
       // Сюда поместим id тех рабочих мест на станции, по которым были изменения
-      const deletedWorkPlacesIds = [];
-      const newWorkPlacesIds = [];
+      const deletedStationWorkPlacesIds = [];
+      const newStationWorkPlacesIds = [];
 
       if (timeSpan) {
         existingOrder.timeSpan = timeSpan;
@@ -671,21 +690,20 @@ router.post(
         edited = true;
       }
 
-      // Если редактируется распоряжение о приеме-сдаче дежурства ДСП, то количество рабочих мест
+      // Если редактируется документ о приеме-сдаче дежурства ДСП, то количество рабочих мест
       // ОПЕРАТОРОВ при ДСП на станции, которым адресуется документ, должно соответствовать количеству
-      // ОПЕРАТОРОВ при ДСП, указанных в тексте распоряжения в качестве персонала, принимающего дежурство вместе с ДСП станции.
+      // ОПЕРАТОРОВ при ДСП, указанных в тексте документа в качестве персонала, принимающего дежурство вместе с ДСП станции.
       if (existingOrder.specialTrainCategories?.includes(SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN)) {
-        // Извлекаем элемент текста распоряжения, в котором приводится список рабочих мест на станции, принимающих
+        // Извлекаем элемент текста документа, в котором приводится список рабочих мест на станции, принимающих
         // дежурство наряду с текущим ДСП
         const takeDutyPersonalInfo = orderText?.orderText?.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF) || { value: '[]' };
-
         try {
-          // Получаем список рабочих мест, которым необходимо адресовать текущее распоряжение
+          // Получаем список рабочих мест, которым необходимо адресовать текущий документ
           const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
           // Просто заменить текущий список новым не можем: затрем время доставки и подтверждения документа на
           // рабочих местах станции. Придется анализировать каждый элемент списка отдельно.
 
-          // Удаляем тех получателей распоряжения на станции, которых нет в новом списке получателей
+          // Удаляем тех получателей документа на станции, которых нет в новом списке получателей
           stationWorkPlacesToSend = stationWorkPlacesToSend.filter((el) => {
             const doNotDeleteRecord =
               el.type !== WORK_POLIGON_TYPES.STATION ||
@@ -693,11 +711,11 @@ router.post(
               el.workPlaceId === null ||
               Boolean(takeDutyPersonal.find((newEl) => el.workPlaceId === newEl.workPlaceId));
             if (!doNotDeleteRecord)
-              deletedWorkPlacesIds.push(el.workPlaceId);
+              deletedStationWorkPlacesIds.push(el.workPlaceId);
             return doNotDeleteRecord;
           });
 
-          // Добавляем новых получателей распоряжения на рабочих местах станции
+          // Добавляем новых получателей документа на рабочих местах станции
           takeDutyPersonal.forEach((newWorkPlaceInfo) => {
             const existingElement = stationWorkPlacesToSend.find((el) =>
               el.type === WORK_POLIGON_TYPES.STATION &&
@@ -712,11 +730,11 @@ router.post(
                 placeTitle: newWorkPlaceInfo.placeTitle,
                 sendOriginal: true,
               });
-              newWorkPlacesIds.push(newWorkPlaceInfo.workPlaceId);
+              newStationWorkPlacesIds.push(newWorkPlaceInfo.workPlaceId);
             }
           });
 
-          if (deletedWorkPlacesIds.length || newWorkPlacesIds.length) {
+          if (deletedStationWorkPlacesIds.length || newStationWorkPlacesIds.length) {
             existingOrder.stationWorkPlacesToSend = stationWorkPlacesToSend;
             edited = true;
           }
@@ -724,20 +742,28 @@ router.post(
         } catch (err) {
           addError({
             errorTime: new Date(),
-            action: 'Редактирование распоряжения',
+            action: 'Редактирование документа',
             error: error.message,
             actionParams: {
-              user: userPostFIOString(req.user), orderId: id, timeSpan, orderText,
+              user: userPostFIOString(req.user), orderId: id, timeSpan, orderText, additionallyInformedPeople,
+              dncToSend, dspToSend, ecdToSend, otherToSend,
             },
           });
         }
+      }
+      // Если редактируется документ, отличный от документа о приеме-сдаче дежурства ДСП, то в нем списки
+      // получателей (ДСП, ДНЦ, ЭЦД, иные адресаты) находятся не в тексте, а в отдельных полях.
+      // С этими полями и необходимо сравнить переданные значения, чтобы определить, какие значения
+      // были изменены, какие - добавлены, какие - удалены.
+      else {
+
       }
 
       if (edited) {
         await existingOrder.save({ session });
       }
 
-      // Редактируем (при необходимости) записи в коллекции рабочих распоряжений.
+      // Редактируем (при необходимости) записи в коллекции рабочих документов.
 
       if (timeSpan) {
         await WorkOrder.updateMany(
@@ -753,24 +779,46 @@ router.post(
         );
       }
 
-      // При редактировании учитываем тот факт, что список адресатов среди рабочих мест на теущей станции
+      // При редактировании учитываем тот факт, что список адресатов
       // после выполнения кода выше мог измениться.
 
-      // Из WorkOrders удаляем те записи по рабочим местам станции, которых нет в stationWorkPlacesToSend
-      // для распоряжения с id
-      if (deletedWorkPlacesIds.length) {
-        await WorkOrder.deleteMany({
+      const deleteWorkOrderRecords = async (workPoligonType, workPoligonId, workPlaceIds) => {
+        await WorkOrder[workPlaceIds?.length ? 'deleteMany' : 'deleteOne']({
           orderId: id,
-          "recipientWorkPoligon.type": WORK_POLIGON_TYPES.STATION,
-          "recipientWorkPoligon.id": workPoligon.id,
-          "recipientWorkPoligon.workPlaceId": deletedWorkPlacesIds,
+          "recipientWorkPoligon.type": workPoligonType,
+          "recipientWorkPoligon.id": workPoligonId,
+          "recipientWorkPoligon.workPlaceId": workPlaceIds,
         }, { session });
       }
 
+      // Из WorkOrders удаляем те записи по рабочим местам ДСП, которых нет в dspWorkPlacesToSend
+      // для документа с id
+      if (deletedDSPWorkPlacesIds.length) {
+        for (let dspWorkPlaceId in deletedDSPWorkPlacesIds)
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.STATION, dspWorkPlaceId, null);
+      }
+      // Из WorkOrders удаляем те записи по рабочим местам ДНЦ, которых нет в dncWorkPlacesToSend
+      // для документа с id
+      if (deletedDNCWorkPlacesIds.length) {
+        for (let dncWorkPlaceId in deletedDNCWorkPlacesIds)
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.DNC_SECTOR, dncWorkPlaceId, null);
+      }
+      // Из WorkOrders удаляем те записи по рабочим местам ЭЦД, которых нет в ecdWorkPlacesToSend
+      // для документа с id
+      if (deletedECDWorkPlacesIds.length) {
+        for (let ecdWorkPlaceId in deletedECDWorkPlacesIds)
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.ECD_SECTOR, ecdWorkPlaceId, null);
+      }
+      // Из WorkOrders удаляем те записи по рабочим местам станции, которых нет в stationWorkPlacesToSend
+      // для документа с id
+      if (deletedStationWorkPlacesIds.length) {
+        await deleteWorkOrderRecords(WORK_POLIGON_TYPES.STATION, workPoligon.id, deletedStationWorkPlacesIds);
+      }
+
       // Записи из stationWorkPlacesToSend, которых нет в WorkOrders, добавляем туда.
-      if (newWorkPlacesIds.length) {
+      if (newStationWorkPlacesIds.length) {
         await WorkOrder.insertMany(
-          newWorkPlacesIds.map((wp) => new WorkOrder({
+          newStationWorkPlacesIds.map((wp) => new WorkOrder({
             senderWorkPoligon: {
               id: workPoligon.id,
               workPlaceId: workPoligon.workPlaceId,
@@ -808,9 +856,10 @@ router.post(
           workSubPoligonId: req.user.workPoligon.workPlaceId,
         }),
         actionTime: new Date(),
-        action: 'Редактирование распоряжения',
+        action: 'Редактирование документа',
         actionParams: {
           userId: req.user.userId, orderId: id, timeSpan, orderText, additionallyInformedPeople,
+          dncToSend, dspToSend, ecdToSend, otherToSend,
         },
       };
       addDY58UserActionInfo(logObject);
@@ -818,10 +867,11 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Редактирование распоряжения',
+        action: 'Редактирование документа',
         error: error.message,
         actionParams: {
-          user: userPostFIOString(req.user), orderId: id, timeSpan, orderText, additionallyInformedPeople
+          user: userPostFIOString(req.user), orderId: id, timeSpan, orderText, additionallyInformedPeople,
+          dncToSend, dspToSend, ecdToSend, otherToSend,
         },
       });
       await session.abortTransaction();
