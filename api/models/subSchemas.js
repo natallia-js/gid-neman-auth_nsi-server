@@ -31,6 +31,10 @@ const orderRecipientSchema = new Schema({
   confirmDateTime: { type: Date, required: false, default: null },
   // должность и ФИО лица, которое подтвердило документ за его адресата
   confirmForPostFIO: { type: String, required: false },
+  // = null при создании документа для всех указанных в нем адресатов адресат; в дальнейшем, если адресат
+  // в документе редактируется либо появляется новый адресат в результате редактирования документа (в исходном,
+  // только изданом, документе его не было), то это поле заполняется датой-временем редактирования документа
+  editDateTime: { type: Date, required: false, default: null },
 });
 
 const workPoligonSchema = new Schema({
@@ -99,6 +103,10 @@ const otherToSendSchema = new Schema({
   existingStructuralDivision: { type: Boolean, required: false },
   sendOriginal: { type: Boolean, required: true },
   confirmDateTime: { type: Date, required: false, default: null },
+  // = null при создании документа для всех указанных в нем адресатов адресат; в дальнейшем, если адресат
+  // в документе редактируется либо появляется новый адресат в результате редактирования документа (в исходном,
+  // только изданом, документе его не было), то это поле заполняется датой-временем редактирования документа
+  editDateTime: { type: Date, required: false, default: null },
 });
 
 const orderTextSchema = new Schema({

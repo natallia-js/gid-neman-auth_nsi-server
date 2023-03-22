@@ -784,6 +784,7 @@ router.post(
                 workPlaceId: newWorkPlaceInfo.workPlaceId,
                 placeTitle: newWorkPlaceInfo.placeTitle,
                 sendOriginal: true,
+                editDateTime: new Date(),
               });
               newWorkPoligonAddressees.push({
                 type: workPoligon.type,
@@ -811,7 +812,9 @@ router.post(
           // Добавляем новых получателей документа из числа ДСП/ДНЦ/ЭЦД (тех, которых нет в предыдущем списке)
           for (let el of newAddresseesList || []) {
             if (!addresseesListToCheck?.find((item) => item.id === el.id)) {
-              addresseesListToCheck.push(el);
+              // редактируем текущий документ
+              addresseesListToCheck.push({ ...el, editDateTime: new Date() });
+              // для коллекции рабочих документов
               newWorkPoligonAddressees.push({
                 type: workPoligonType,
                 id: el.id,
@@ -839,11 +842,13 @@ router.post(
                     actionParams,
                     session,
                   });
+                  // для коллекции рабочих документов
                   orderCopies.forEach((orderCopy) => {
                     if (orderCopy.recipientWorkPoligon.workPlaceId)
                       newStationWorkPlaceAddressees.push(orderCopy);
                   });
-                  existingOrder.stationWorkPlacesToSend.push(...stationWorkPlacesOrderIsSentTo);
+                  // редактируем текущий документ
+                  existingOrder.stationWorkPlacesToSend.push(...stationWorkPlacesOrderIsSentTo.map((el) => ({ ...el, editDateTime: new Date() })));
               }
             }
           }
@@ -855,10 +860,12 @@ router.post(
               arrayOfDeletedIds.push(el.id);
               return false;
             }
-            if (el.post !== addressee.post) el.post = addressee.post;
-            if (el.fio !== addressee.fio) el.fio = addressee.fio;
-            if (el.sendOriginal !== addressee.sendOriginal) el.sendOriginal = addressee.sendOriginal;
-            if (el.placeTitle !== addressee.placeTitle) el.placeTitle = addressee.placeTitle;
+            let edited = false;
+            if (el.post !== addressee.post) { el.post = addressee.post; edited = true; }
+            if (el.fio !== addressee.fio) { el.fio = addressee.fio; edited = true; }
+            if (el.sendOriginal !== addressee.sendOriginal) { el.sendOriginal = addressee.sendOriginal; edited = true; }
+            if (el.placeTitle !== addressee.placeTitle) { el.placeTitle = addressee.placeTitle; edited = true; }
+            if (edited) el.editDateTime = new Date();
             return true;
           }) || [];
         };
@@ -877,18 +884,20 @@ router.post(
         }
         otherToSend?.forEach((el) => {
           if (!existingOrder.otherToSend.find((item) => String(item._id) === String(el._id)))
-            existingOrder.otherToSend.push(el);
+            existingOrder.otherToSend.push({ ...el, editDateTime: new Date() });
         });
         existingOrder.otherToSend = existingOrder?.otherToSend.filter((el) => {
           const addressee = otherToSend?.find((item) => String(item._id) === String(el._id));
           if (!addressee) return false;
-          if (el.additionalId !== addressee.additionalId) el.additionalId = addressee.additionalId;
-          if (el.existingStructuralDivision !== addressee.existingStructuralDivision) el.existingStructuralDivision = addressee.existingStructuralDivision;
-          if (el.fio !== addressee.fio) el.fio = addressee.fio;
-          if (el.post !== addressee.post) el.post = addressee.post;
-          if (el.placeTitle !== addressee.placeTitle) el.placeTitle = addressee.placeTitle;
-          if (el.position !== addressee.position) el.position = addressee.position;
-          if (el.sendOriginal !== addressee.sendOriginal) el.sendOriginal = addressee.sendOriginal;
+          let edited = false;
+          if (el.additionalId !== addressee.additionalId) { el.additionalId = addressee.additionalId; edited = true; }
+          if (el.existingStructuralDivision !== addressee.existingStructuralDivision) { el.existingStructuralDivision = addressee.existingStructuralDivision; edited = true; }
+          if (el.fio !== addressee.fio) { el.fio = addressee.fio; edited = true; }
+          if (el.post !== addressee.post) { el.post = addressee.post; edited = true; }
+          if (el.placeTitle !== addressee.placeTitle) { el.placeTitle = addressee.placeTitle; edited = true; }
+          if (el.position !== addressee.position) { el.position = addressee.position; edited = true; }
+          if (el.sendOriginal !== addressee.sendOriginal) { el.sendOriginal = addressee.sendOriginal; edited = true; }
+          if (edited) el.editDateTime = new Date();
           return true;
         }) || [];
       }
