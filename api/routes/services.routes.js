@@ -173,8 +173,7 @@ router.post(
         error: error.message,
         actionParams: { id },
       });
-      await t.rollback();
-      await session.abortTransaction();
+      try { await t.rollback(); await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -291,8 +290,7 @@ router.post(
         error: error.message,
         actionParams: { id, abbrev, title },
       });
-      await t.rollback();
-      await session.abortTransaction();
+      try { await t.rollback(); await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {

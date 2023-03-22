@@ -455,7 +455,7 @@ router.post(
         error: error.message,
         actionParams: { sectorId, nearestECDSectIds },
       });
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
@@ -554,7 +554,7 @@ router.post(
         error: error.message,
         actionParams: { sectorId, nearestDNCSectIds },
       });
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

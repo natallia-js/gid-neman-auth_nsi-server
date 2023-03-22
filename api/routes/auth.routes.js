@@ -654,7 +654,7 @@ router.post(
         },
       });
       // transaction t is rollbacked here
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     })
     .finally(() => {
@@ -755,7 +755,7 @@ router.post(
         },
       });
       // transaction t is rollbacked here
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     })
     .finally(() => {
@@ -1499,7 +1499,7 @@ router.post(
           application: applicationAbbreviation,
         },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -1775,8 +1775,7 @@ router.post(
         error: error.message,
         actionParams: { serviceName, userId },
       });
-      await t.rollback();
-      await session.abortTransaction();
+      try { await t.rollback(); await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {

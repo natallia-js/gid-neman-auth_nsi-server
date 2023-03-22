@@ -703,7 +703,7 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно удалена' });
 
     } catch (error) {
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       addError({
         errorTime: new Date(),
         action: 'Удаление участка ЭЦД',

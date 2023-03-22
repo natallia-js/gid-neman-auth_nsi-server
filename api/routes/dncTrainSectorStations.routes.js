@@ -143,7 +143,7 @@ router.post(
       res.status(OK).json({ message: 'Информация успешно обновлена', trainSectorStations });
 
     } catch (error) {
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       addError({
         errorTime: new Date(),
         action: 'Редактирование списка станций поездного участка ДНЦ',

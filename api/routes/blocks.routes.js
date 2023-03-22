@@ -338,7 +338,7 @@ router.post(
       res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       addError({
         errorTime: new Date(),
         action: 'Удаление перегона',
@@ -715,7 +715,7 @@ router.post(
       });
 
     } catch (error) {
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       addError({
         errorTime: new Date(),
         action: 'Синхронизация таблицы перегонов с ПЭНСИ',

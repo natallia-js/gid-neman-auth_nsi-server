@@ -287,7 +287,7 @@ router.post(
         actionParams: { credsGroupId },
       });
 
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
 
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
@@ -366,7 +366,7 @@ router.post(
         actionParams: { credsGroupId, credId },
       });
 
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
 
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 

@@ -237,7 +237,7 @@ router.post(
         error: error.message,
         actionParams: { userId, poligons },
       });
-      await t.rollback();
+      try { await t.rollback(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

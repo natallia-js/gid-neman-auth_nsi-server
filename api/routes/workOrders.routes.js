@@ -280,7 +280,7 @@ router.post(
           userId: req.user.userId, user: userPostFIOString(req.user), orderIds, deliverDateTime,
         },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -467,7 +467,7 @@ router.post(
           userId: req.user.userId, user: userPostFIOString(req.user), additionalConfirmPeople, orderId: id, confirmDateTime,
         },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -819,7 +819,7 @@ router.post(
           userId: req.user.userId, user: userPostFIOString(req.user), confirmWorkPoligons, orderId, confirmDateTime,
         },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
@@ -1151,7 +1151,7 @@ router.post(
           userId: req.user.userId, user: userPostFIOString(req.user), orderChainId, forceClose,
         },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {

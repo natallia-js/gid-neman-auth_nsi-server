@@ -422,12 +422,9 @@ router.post(
           { $pull: { roles: roleId } },
           { session },
         );
-
         await session.commitTransaction();
-
       } else {
         await session.abortTransaction();
-
         return res.status(ERR).json({ message: errMess });
       }
 
@@ -440,7 +437,7 @@ router.post(
         error: error.message,
         actionParams: { roleId },
       });
-      await session.abortTransaction();
+      try { await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
 
     } finally {
