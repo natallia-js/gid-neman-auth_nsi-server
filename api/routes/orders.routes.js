@@ -869,39 +869,46 @@ router.post(
             return true;
           }) || [];
         };
-        existingOrder.dspToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.STATION,
-          existingOrder.dspToSend, dspToSend, deletedDSPWorkPoligonIds);
-        existingOrder.dncToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.DNC_SECTOR,
-          existingOrder.dncToSend, dncToSend, deletedDNCWorkPoligonIds);
+        if (req.body.hasOwnProperty('dspToSend')) {
+          existingOrder.dspToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.STATION,
+            existingOrder.dspToSend, dspToSend, deletedDSPWorkPoligonIds);
+        }
+        if (req.body.hasOwnProperty('dncToSend')) {
+          existingOrder.dncToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.DNC_SECTOR,
+            existingOrder.dncToSend, dncToSend, deletedDNCWorkPoligonIds);
+        }
         // Если редактируется циркулярное распоряжение ДНЦ, то в его список адресатов искусственно на клиенте
         // включаются ЭЦД, которых ДНЦ никогда не указывает. Даже если он их и укажет, то информацию по ЭЦД мы не меняем.
         // Если применить этот список к документу, то, во-первых, его увидит ДНЦ, чего ему делать не нужно; во-вторых,
         // произойдет повторная отправка документа этим ЭЦД, т.к. они отсутствуют в редактируемом документе, но в момент
         // его создания они направлялись ЭЦД
-        if (!(workPoligon.type === WORK_POLIGON_TYPES.DNC_SECTOR && existingOrder.specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN))) {
-          existingOrder.ecdToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.ECD_SECTOR,
-            existingOrder.ecdToSend, ecdToSend, deletedECDWorkPoligonIds);
+        if (req.body.hasOwnProperty('ecdToSend')) {
+          if (!(workPoligon.type === WORK_POLIGON_TYPES.DNC_SECTOR && existingOrder.specialTrainCategories?.includes(TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN))) {
+            existingOrder.ecdToSend = await checkAndGetNewOrderAddressees(WORK_POLIGON_TYPES.ECD_SECTOR,
+              existingOrder.ecdToSend, ecdToSend, deletedECDWorkPoligonIds);
+          }
         }
-        otherToSend?.forEach((el) => {
-          if (!existingOrder.otherToSend.find((item) => String(item._id) === String(el._id)))
-            existingOrder.otherToSend.push({ ...el, editDateTime: new Date() });
-        });
-        existingOrder.otherToSend = existingOrder?.otherToSend.filter((el) => {
-          const addressee = otherToSend?.find((item) => String(item._id) === String(el._id));
-          if (!addressee) return false;
-          let edited = false;
-          if (el.additionalId !== addressee.additionalId) { el.additionalId = addressee.additionalId; edited = true; }
-          if (el.existingStructuralDivision !== addressee.existingStructuralDivision) { el.existingStructuralDivision = addressee.existingStructuralDivision; edited = true; }
-          if (el.fio !== addressee.fio) { el.fio = addressee.fio; edited = true; }
-          if (el.post !== addressee.post) { el.post = addressee.post; edited = true; }
-          if (el.placeTitle !== addressee.placeTitle) { el.placeTitle = addressee.placeTitle; edited = true; }
-          if (el.position !== addressee.position) { el.position = addressee.position; edited = true; }
-          if (el.sendOriginal !== addressee.sendOriginal) { el.sendOriginal = addressee.sendOriginal; edited = true; }
-          if (edited) el.editDateTime = new Date();
-          return true;
-        }) || [];
+        if (req.body.hasOwnProperty('otherToSend')) {
+          otherToSend?.forEach((el) => {
+            if (!existingOrder.otherToSend.find((item) => String(item._id) === String(el._id)))
+              existingOrder.otherToSend.push({ ...el, editDateTime: new Date() });
+          });
+          existingOrder.otherToSend = existingOrder?.otherToSend.filter((el) => {
+            const addressee = otherToSend?.find((item) => String(item._id) === String(el._id));
+            if (!addressee) return false;
+            let edited = false;
+            if (el.additionalId !== addressee.additionalId) { el.additionalId = addressee.additionalId; edited = true; }
+            if (el.existingStructuralDivision !== addressee.existingStructuralDivision) { el.existingStructuralDivision = addressee.existingStructuralDivision; edited = true; }
+            if (el.fio !== addressee.fio) { el.fio = addressee.fio; edited = true; }
+            if (el.post !== addressee.post) { el.post = addressee.post; edited = true; }
+            if (el.placeTitle !== addressee.placeTitle) { el.placeTitle = addressee.placeTitle; edited = true; }
+            if (el.position !== addressee.position) { el.position = addressee.position; edited = true; }
+            if (el.sendOriginal !== addressee.sendOriginal) { el.sendOriginal = addressee.sendOriginal; edited = true; }
+            if (edited) el.editDateTime = new Date();
+            return true;
+          }) || [];
+        }
       }
-
       // Далее, учитываем тот факт, что список адресатов после выполнения кода выше мог измениться: добавлены либо удалены записи.
       // Соответствующим образом необходимо отредактировать и списки получателей документа в коллекции рабочих документов.
 
@@ -919,22 +926,29 @@ router.post(
       }
 
       // Из WorkOrders удаляем те записи по рабочим местам ДСП, которых нет в dspWorkPlacesToSend
-      for (let dspWorkPoligonId of deletedDSPWorkPoligonIds) {
-        await deleteWorkOrderRecords(WORK_POLIGON_TYPES.STATION, dspWorkPoligonId, null);
+      if (req.body.hasOwnProperty('dspToSend')) {
+        for (let dspWorkPoligonId of deletedDSPWorkPoligonIds) {
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.STATION, dspWorkPoligonId, null);
+        }
       }
       // Также, удалению подлежат все соответствующие записи по рабочим местам операторов при ДСП из
       // existingOrder.stationWorkPlacesToSend
-      existingOrder.stationWorkPlacesToSend = existingOrder.stationWorkPlacesToSend.filter((wp) =>
-        !deletedDSPWorkPoligonIds.includes(wp.id));
-
+      if (deletedDSPWorkPoligonIds.length) {
+        existingOrder.stationWorkPlacesToSend = existingOrder.stationWorkPlacesToSend.filter((wp) =>
+          !deletedDSPWorkPoligonIds.includes(wp.id));
+      }
       // Из WorkOrders удаляем те записи по рабочим местам ДНЦ, которых нет в dncWorkPlacesToSend
-      for (let dncWorkPoligonId of deletedDNCWorkPoligonIds) {
-        await deleteWorkOrderRecords(WORK_POLIGON_TYPES.DNC_SECTOR, dncWorkPoligonId, null); }
-
+      if (req.body.hasOwnProperty('dncToSend')) {
+        for (let dncWorkPoligonId of deletedDNCWorkPoligonIds) {
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.DNC_SECTOR, dncWorkPoligonId, null);
+        }
+      }
       // Из WorkOrders удаляем те записи по рабочим местам ЭЦД, которых нет в ecdWorkPlacesToSend
-      for (let ecdWorkPoligonId of deletedECDWorkPoligonIds)
-        await deleteWorkOrderRecords(WORK_POLIGON_TYPES.ECD_SECTOR, ecdWorkPoligonId, null);
-
+      if (req.body.hasOwnProperty('ecdToSend')) {
+        for (let ecdWorkPoligonId of deletedECDWorkPoligonIds) {
+          await deleteWorkOrderRecords(WORK_POLIGON_TYPES.ECD_SECTOR, ecdWorkPoligonId, null);
+        }
+      }
       // Из WorkOrders удаляем те записи по рабочим местам станции, которых нет в stationWorkPlacesToSend
       // (используется сейчас только при редактировании распоряжения о приеме-сдаче дежурства ДСП)
       if (deletedStationWorkPlacesInfo.length) {
