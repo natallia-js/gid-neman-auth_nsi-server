@@ -19,8 +19,11 @@ const schema = new Schema({
   fatherName: { type: String, required: false },
   // должность
   post: { type: String, required: isPostFieldRequired },
-  // служба (аббревиатура)
+  // служба (аббревиатура) - не та, которой принадлежит пользователь, а та, за которой закреплен определенный
+  // список шаблонов документов - для работы с шаблонами документов
   service: { type: String, required: false },
+  // аббревиатура службы, которой принадлежит пользователь
+  userService: { type: String, required: false },
   // список id's ролей ГИД НЕМАН
   roles: [Types.ObjectId],
   // контактные данные пользователя

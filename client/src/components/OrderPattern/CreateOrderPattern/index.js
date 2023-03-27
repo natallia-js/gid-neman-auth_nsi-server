@@ -23,13 +23,13 @@ const ERR_VALIDATE_STATUS = 'error';
 
 
 /**
- * Возвращает компонент, представляющий собой страницу создания шаблона распоряжения.
+ * Возвращает компонент, представляющий собой страницу создания шаблона документа.
  *
- * orderPatternElRefs - массив возможных смысловых значений элементов шаблонов распоряжений
+ * orderPatternElRefs - массив возможных смысловых значений элементов шаблонов документов
  * services - массив всех служб
- * existingOrderAffiliationTree - массив, представляющий собой дерево принадлежности созданных распоряжений
- *   (уровни дерева: служба -> тип распоряжения -> категория распоряжения)
- * onCreateOrderPattern - callback для передачи "наверх" сформированного и успешно сохраненного в БД шаблона распоряжения
+ * existingOrderAffiliationTree - массив, представляющий собой дерево принадлежности созданных документов
+ *   (уровни дерева: служба -> тип документа -> категория документа)
+ * onCreateOrderPattern - callback для передачи "наверх" сформированного и успешно сохраненного в БД шаблона документа
  */
 export const CreateOrderPattern = (props) => {
   const {
@@ -51,10 +51,10 @@ export const CreateOrderPattern = (props) => {
   // Текущая позиция, на которую будет вставлен созданный элемент шаблона
   const [insertOrderElementPos, setInsertOrderElementPos] = useState(0);
 
-  // Список категорий распоряжений, соответстввующий текущей выбранной пользователем службе и типу распоряжения
+  // Список категорий документов, соответстввующий текущей выбранной пользователем службе и типу документа
   const [currentOrderCategoriesList, setCurrentOrderCategoriesList] = useState([]);
 
-  // Для создания значений полей нового распоряжения
+  // Для создания значений полей нового документа
   const [form] = Form.useForm();
 
   // Пользовательский хук для получения информации от сервера
@@ -68,29 +68,29 @@ export const CreateOrderPattern = (props) => {
   // Сообщение об ошибке, связанное с отсутствием заданного наименования службы
   const [requiredServiceErrMess, setRequiredServiceErrMess] = useState(null);
 
-  // Выбранный пользователем тип распоряжения
+  // Выбранный пользователем тип документа
   const [selectedOrderType, setSelectedOrderType] = useState(null);
-  // Сообщение об ошибке, связанное с отсутствием заданного типа распоряжения
+  // Сообщение об ошибке, связанное с отсутствием заданного типа документа
   const [requiredOrderTypeErrMess, setRequiredOrderTypeErrMess] = useState(null);
 
-  // Категория распоряжения, определенная пользователем
+  // Категория документа, определенная пользователем
   const [orderCategory, setOrderCategory] = useState(null);
-  // Сообщение об ошибке, связанное с отсутствием заданной категории распоряжения
+  // Сообщение об ошибке, связанное с отсутствием заданной категории документа
   const [missingOrderCategoryErr, setMissingOrderCategoryErr] = useState(null);
 
-  // Сообщение об ошибке, связанное с отсутствием заданного наименования распоряжения
+  // Сообщение об ошибке, связанное с отсутствием заданного наименования документа
   const [requiredOrderTitleErrMess, setRequiredOrderTitleErrMess] = useState(null);
 
   // Количество шаблонов, переданное серверу с целью сохранения в базе
   const [recsBeingAdded, setRecsBeingAdded] = useState(0);
 
   // Ошибки, выявленные серверной частью в информационных полях, в процессе обработки
-  // запроса о создании нового шаблона распоряжения
+  // запроса о создании нового шаблона документа
   const [orderPatternFieldsErrs, setOrderPatternFieldsErrs] = useState(null);
 
 
   /**
-   * Добавляет заданный элемент в создаваемый шаблон распоряжения на текущую позицию
+   * Добавляет заданный элемент в создаваемый шаблон документа на текущую позицию
    * (т.е. позицию, на которой находится курсор).
    */
   const addNewPatternElement = (selectedPatternElement) => {
@@ -180,7 +180,7 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   * Позволяет выполнить очистку создаваемого шаблона распоряжения путем удаления
+   * Позволяет выполнить очистку создаваемого шаблона документа путем удаления
    * из него всех созданных элементов.
    */
   const clearPattern = () => {
@@ -190,8 +190,8 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   * При выборе (из предложенного списка) наименования службы либо наименования типа распоряжения
-   * запоминаем выбранную информацию (для смены информации в списке категорий распоряжений).
+   * При выборе (из предложенного списка) наименования службы либо наименования типа документа
+   * запоминаем выбранную информацию (для смены информации в списке категорий документов).
    */
   const onValuesChange = (changedValues) => {
     if (changedValues.hasOwnProperty(ORDER_PATTERN_FIELDS.SERVICE)) {
@@ -203,7 +203,7 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   * Меняем текущий список категорий распоряжений при смене текущей службы и/или типа распоряжения.
+   * Меняем текущий список категорий документов при смене текущей службы и/или типа документа.
    */
   useEffect(() => {
     const currentServiceInfo = existingOrderAffiliationTree.find((service) => service.title === selectedService);
@@ -221,7 +221,7 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   * Реакция на смену определяемой пользователем категории распоряжений.
+   * Реакция на смену определяемой пользователем категории документов.
    */
   const handleChangeOrderCategory = (value) => {
     setOrderCategory(value);
@@ -232,8 +232,7 @@ export const CreateOrderPattern = (props) => {
 
 
   /**
-   * Обработка события подтверждения пользователем окончания ввода и начала создания
-   * нового распоряжения.
+   * Обработка события подтверждения пользователем окончания ввода и начала создания нового документа.
    *
    * @param {object} values
    */
@@ -242,14 +241,14 @@ export const CreateOrderPattern = (props) => {
     setOrderPatternFieldsErrs(null);
 
     if (!orderCategory || !orderCategory.length) {
-      setMissingOrderCategoryErr('Пожалуйста, определите категорию распоряжения!');
+      setMissingOrderCategoryErr('Пожалуйста, определите категорию документа!');
       return;
     }
 
     setRecsBeingAdded((value) => value + 1);
 
     try {
-      // Делаем запрос на сервер с целью добавления информации о шаблоне распоряжения
+      // Делаем запрос на сервер с целью добавления информации о шаблоне документа
       const res = await request(ServerAPI.ADD_ORDER_PATTERN_DATA, 'POST',
         {
           ...values,
@@ -356,14 +355,14 @@ export const CreateOrderPattern = (props) => {
           </Form.Item>
 
           <Form.Item
-            label={<Text strong>Тип распоряжения</Text>}
+            label={<Text strong>Тип документа</Text>}
             name={ORDER_PATTERN_FIELDS.TYPE}
             rules={[
               {
                 required: true,
                 validator: async (_, value) => {
                   if (!value || value.length < 1) {
-                    setRequiredOrderTypeErrMess('Пожалуйста, выберите тип распоряжения!');
+                    setRequiredOrderTypeErrMess('Пожалуйста, выберите тип документа!');
                   } else {
                     setRequiredOrderTypeErrMess(null);
                   }
@@ -388,7 +387,7 @@ export const CreateOrderPattern = (props) => {
             <Col span={24}>
               <div className="order-pattern-border order-pattern-block">
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Text strong>Категория распоряжения</Text>
+                  <Text strong>Категория документа</Text>
                   <OrderCategoryChooser
                     orderCategoriesList={currentOrderCategoriesList}
                     onChangeValue={handleChangeOrderCategory}
@@ -404,14 +403,14 @@ export const CreateOrderPattern = (props) => {
           </Row>
 
           <Form.Item
-            label={<Text strong>Наименование распоряжения</Text>}
+            label={<Text strong>Наименование документа</Text>}
             name={ORDER_PATTERN_FIELDS.TITLE}
             rules={[
               {
                 required: true,
                 validator: async (_, value) => {
                   if (!value || value.length < 1) {
-                    setRequiredOrderTitleErrMess('Пожалуйста, выберите наименование распоряжения!');
+                    setRequiredOrderTitleErrMess('Пожалуйста, выберите наименование документа!');
                   } else {
                     setRequiredOrderTitleErrMess(null);
                   }
@@ -437,7 +436,7 @@ export const CreateOrderPattern = (props) => {
               mode="multiple"
               allowClear
               style={{ width: '100%' }}
-              placeholder="Выберите особые отметки распоряжения"
+              placeholder="Выберите особые отметки документа"
             >
               {
                 SPECIAL_TRAIN_CATEGORIES.map(category =>

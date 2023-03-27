@@ -31,7 +31,7 @@ export const AuthPage = () => {
   const loginHandler = async (loginData) => {
     try {
       // Отправляем запрос на вход в систему на сервер
-      const responseData = await request(ServerAPI.LOGIN, 'POST', loginData);
+      const responseData = await request(ServerAPI.LOGIN, 'POST', loginData); console.log(responseData)
 
       // Входим в систему
       auth.login({
@@ -52,7 +52,7 @@ export const AuthPage = () => {
    * Обрабатывает событие нажатия на кнопку входа в систему.
    */
   const onFinish = (values) => {
-    
+
     loginHandler(values);
   };
 

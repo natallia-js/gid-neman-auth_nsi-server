@@ -32,6 +32,9 @@ const registerValidationRules = () => {
     check('service')
       .if(body('service').exists())
       .trim(),
+    check('userService')
+      .if(body('userService').exists())
+      .trim(),
     check('roles')
       .if(body('roles').exists())
       .isArray()
@@ -144,6 +147,9 @@ const modUserValidationRules = () => {
       .withMessage('Минимальная длина должности 1 символ'),
     check('service')
       .if(body('service').exists())
+      .trim(),
+    check('userService')
+      .if(body('userService').exists())
       .trim(),
     check('roles')
       .if(body('roles').exists())

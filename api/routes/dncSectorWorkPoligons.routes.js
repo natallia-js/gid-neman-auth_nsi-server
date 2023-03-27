@@ -122,6 +122,7 @@ router.post(
             online: userInfo.online,
             post: userInfo.post,
             service: userInfo.service,
+            userService: userInfo.userService,
             dncSectorId: user.DNCSWP_DNCSID,
             contactData: userInfo.contactData,
           });

@@ -122,6 +122,7 @@ router.post(
             online: userInfo.online,
             post: userInfo.post,
             service: userInfo.service,
+            userService: userInfo.userService,
             ecdSectorId: user.ECDSWP_ECDSID,
             contactData: userInfo.contactData,
           });

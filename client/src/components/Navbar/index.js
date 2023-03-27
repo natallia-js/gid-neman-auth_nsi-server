@@ -47,7 +47,8 @@ export const Navbar = () => {
         <Text strong>ФИО:</Text>
         {` ${auth.userInfo.surname} ${auth.userInfo.name.charAt(0)}. ${auth.userInfo.fatherName ? auth.userInfo.fatherName.charAt(0) + '.' : ''}`}
       </p>
-      <p><Text strong>Служба:</Text> {auth.userInfo.service}</p>
+      <p><Text strong>Служба:</Text> {auth.userInfo.userService}</p>
+      <p><Text strong>Служба шаблонов документов:</Text> {auth.userInfo.service}</p>
       <p><Text strong>Должность:</Text> {auth.userInfo.post}</p>
       <p><Text strong>Роли:</Text></p>
       {auth.userRoles.map((role, index) => <p key={index}>{role}</p>)}

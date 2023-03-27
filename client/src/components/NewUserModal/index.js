@@ -310,9 +310,30 @@ const NewUserModal = ({
         </Row>
 
         <Row>
-          <Col span={12}>
+          <Col span={8}>
             <Form.Item
               label="Служба"
+              name={USER_FIELDS.USER_SERVICE}
+              validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.USER_SERVICE] ? ERR_VALIDATE_STATUS : null}
+              help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.USER_SERVICE] : null}
+            >
+              <Select placeholder="Выберите службу">
+              {
+                services && services.map((service) =>
+                  <Option
+                    key={service[SERVICE_FIELDS.ABBREV]}
+                    value={service[SERVICE_FIELDS.ABBREV]}
+                  >
+                    {service[SERVICE_FIELDS.ABBREV]}
+                  </Option>
+                )
+              }
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="Служба шаблонов документов"
               name={USER_FIELDS.SERVICE}
               validateStatus={userFieldsErrs && userFieldsErrs[USER_FIELDS.SERVICE] ? ERR_VALIDATE_STATUS : null}
               help={userFieldsErrs ? userFieldsErrs[USER_FIELDS.SERVICE] : null}
@@ -331,7 +352,7 @@ const NewUserModal = ({
               </Select>
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col span={8}>
             <Form.Item
               label="Должность"
               name={USER_FIELDS.POST}

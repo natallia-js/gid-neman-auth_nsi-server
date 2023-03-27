@@ -19,7 +19,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обрабатывает запрос на получение списка шаблонов распоряжений.
+ * Обрабатывает запрос на получение списка шаблонов документов.
  * Результат запроса зависит от параметров запроса и от лица, производящего запрос.
  *
  * Так, главный администратор получит информацию обо всех шаблонах, кроме приватных (у которых есть поле
@@ -27,7 +27,8 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
  *
  * Для пользователей, отличных от главного администратора, в результирующий набор данных попадут шаблоны, для
  * которых выполняются одновременно следующие условия:
- * 1) шаблон принадлежит той же службе, что и лицо, запрашивающее действие;
+ * 1) у лица, запрашивающего действие, установлено значение поля "служба, по которой запрашивается информация
+ *    по шаблонам документов" равным значению поля службы шаблона документа;
  * 2) у шаблона не установлено значение рабочего полигона (workPoligon) либо установлено и совпадает с
  *    рабочим полигоном пользователя, производящего запрос;
  * 3) у шаблона не установлено значение id создателя (personalPattern) либо установлено и совпадает с
@@ -53,10 +54,13 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { workPoligonType, workPoligonId, getChildPatterns } = req.body;
-    // Служба, которой принадлежит лицо, запрашивающее действие
+
+    // Служба, по которой лицо, запрашивающее действие, может получать шаблоны документов
     const serviceName = req.user.service;
+
     // id лица, запрашивающего действие
     const userId = req.user.userId;
+
     // Данные рабочего полигона лица, запрашивающего действие
     const userWorkPoligonType = req.user.workPoligon?.type;
     const userWorkPoligonId = req.user.workPoligon?.id;
@@ -140,18 +144,18 @@ router.post(
 
 
 /**
- * Обработка запроса на добавление нового шаблона распоряжения.
+ * Обработка запроса на добавление нового шаблона документа.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * При этом главный администратор ГИД Неман может добавить любой шаблон распоряжения,
- * а иное лицо сможет добавить шаблон распоряжения лишь в рамках своей службы.
+ * При этом главный администратор ГИД Неман может добавить любой шаблон документа,
+ * а иное лицо сможет добавить шаблон документа лишь в рамках своей службы.
  *
  * Параметры тела запроса:
  *  _id - идентификатор шаблона (может отсутствовать, в этом случае будет сгенерирован автоматически),
  * service - аббревиатура службы (обязательна),
- * type - тип распоряжения (обязателен),
- * category - категория распоряжения (обязательна),
- * title - наименование распоряжения (обязательно),
+ * type - тип документа (обязателен),
+ * category - категория документа (обязательна),
+ * title - наименование документа (обязательно),
  * specialTrainCategories - список строк - отметок об особой категории поезда (не обязательно),
  * elements - массив элементов шаблона (не обязателен; если не задан, то значение параметра должно быть пустым массивом),
  *            каждый элемент - объект с параметрами:
@@ -181,8 +185,9 @@ router.post(
       _id, service, type, category, title, specialTrainCategories,
       elements, isPersonalPattern, workPoligon, positionInPatternsCategory,
     } = req.body;
+
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     try {
       if (!isMainAdmin(req) && (serviceName !== service)) {
@@ -228,7 +233,7 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Добавление нового шаблона распоряжения',
+        action: 'Добавление нового шаблона документа',
         error: error.message,
         actionParams: {
           _id, service, type, category, title, specialTrainCategories,
@@ -264,17 +269,18 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { id } = req.body;
+
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     try {
       const candidate = await OrderPattern.findById(id);
       if (!candidate) {
-        return res.status(ERR).json({ message: 'Указанный шаблон распоряжения не найден' });
+        return res.status(ERR).json({ message: 'Указанный шаблон документа не найден' });
       }
 
       if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
-        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление шаблона распоряжения в службе ${candidate.service}` });
+        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление шаблона документа в службе ${candidate.service}` });
       }
 
       // Удаляем в БД запись
@@ -285,7 +291,7 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Удаление шаблона распоряжения',
+        action: 'Удаление шаблона документа',
         error: error.message,
         actionParams: { id },
       });
@@ -326,8 +332,9 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
     // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
     const { id, title } = req.body;
+
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     try {
       // Ищем в БД шаблон распоряжения, id которого совпадает с переданным пользователем
@@ -381,7 +388,7 @@ router.post(
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
  * Параметры тела запроса:
- * service - наименование службы (обязательно),
+ * service - наименование службы, за которой закреплен документ (обязательно),
  * orderType - наименование типа распоряжений в рамках службы (обязательно),
  * title - исходное наименование категории шаблонов распоряжений в рамках типа распоряжений (обязательно),
  * newTitle - новое наименование категории шаблонов распоряжений (обязательно),
@@ -399,20 +406,21 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { service, orderType, title, newTitle } = req.body;
+
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     try {
       // Ищем шаблоны распоряжений, закрепленные за указанной службой, указанного типа и указанной категории
       const findRes = await OrderPattern.find({ service, type: orderType, category: title });
 
-      if (!findRes || !findRes.length) {
-        return res.status(ERR).json({ message: 'Указанная категория шаблонов распоряжений не найдена' });
+      if (!findRes?.length) {
+        return res.status(ERR).json({ message: 'Указанная категория шаблонов документов не найдена' });
       }
 
       if (!isMainAdmin(req) && (serviceName !== service)) {
         return res.status(ERR).json({
-          message: `У Вас нет полномочий на редактирование категории шаблонов распоряжений в службе ${service}`,
+          message: `У Вас нет полномочий на редактирование категории шаблонов документов в службе ${service}`,
         });
       }
 
@@ -455,24 +463,25 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { data } = req.body;
+
     // Служба, которой принадлежит лицо, запрашивающее действие. Пользователь может отредактировать позиции шаблонов
     // документов только в том случае, если он редактирует их в рамках своей службы.
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     try {
       // Ищем нужные распоряжения
       const findRes = await OrderPattern.find({ _id: data.map((el) => el[0]) });
 
       if (!findRes || !findRes.length) {
-        return res.status(ERR).json({ message: 'Шаблоны распоряжений не найдены' });
+        return res.status(ERR).json({ message: 'Шаблоны документов не найдены' });
       }
 
       if (!isMainAdmin(req) && findRes.find((el) => el.service !== serviceName)) {
         return res.status(ERR).json({
-          message: `У Вас нет полномочий на редактирование позиций шаблонов распоряжений в службе ${serviceName}`,
+          message: `У Вас нет полномочий на редактирование позиций шаблонов документов в службе ${serviceName}`,
         });
       }
-      // Производим переопределение позиций шаблонов распоряжений
+      // Производим переопределение позиций шаблонов документов
 
       for (let orderPattern of findRes) {
         const newOrderPatternPosition = data.find((el) => el[0] === String(orderPattern._id))[1];

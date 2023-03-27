@@ -386,6 +386,7 @@ const UsersTable = () => {
       [USER_FIELDS.SURNAME]: '',
       [USER_FIELDS.POST]: '',
       [USER_FIELDS.SERVICE]: '',
+      [USER_FIELDS.USER_SERVICE]: '',
       [USER_FIELDS.CONTACT_DATA]: '',
       ...record,
     });
@@ -639,14 +640,14 @@ const UsersTable = () => {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: col.dataIndex === USER_FIELDS.SERVICE ? 'servicesSelect' :
+        inputType: [USER_FIELDS.SERVICE, USER_FIELDS.USER_SERVICE].includes(col.dataIndex) ? 'servicesSelect' :
                    col.dataIndex === USER_FIELDS.POST ? 'postsSelect' : 'text',
         dataType: 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
-        required: ![USER_FIELDS.FATHERNAME, USER_FIELDS.SERVICE, USER_FIELDS.CONTACT_DATA].includes(col.dataIndex),
-        services: col.dataIndex === USER_FIELDS.SERVICE ? services : null,
+        required: ![USER_FIELDS.FATHERNAME, USER_FIELDS.SERVICE, USER_FIELDS.USER_SERVICE, USER_FIELDS.CONTACT_DATA].includes(col.dataIndex),
+        services: [USER_FIELDS.SERVICE, USER_FIELDS.USER_SERVICE].includes(col.dataIndex) ? services : null,
         posts: col.dataIndex === USER_FIELDS.POST ? posts : null,
         errMessage: modUserFieldsErrs ? modUserFieldsErrs[col.dataIndex] : null,
       }),

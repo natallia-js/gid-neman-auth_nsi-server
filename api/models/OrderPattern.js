@@ -3,7 +3,8 @@ const { Schema, model, Types } = require('mongoose');
 
 // Схема записи в коллекции шаблонов распоряжений
 const schema = new Schema({
-  // Служба (аббревиатура)
+  // Служба (аббревиатура) - которой (условно) принадлежит шаблон документа
+  // (служба, ответственная за ведение шаблона)
   service: { type: String, required: true },
   // Тип распоряжения
   type: { type: String, required: true },

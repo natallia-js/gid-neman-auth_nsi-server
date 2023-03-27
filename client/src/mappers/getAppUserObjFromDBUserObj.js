@@ -16,6 +16,7 @@ const getAppUserObjFromDBUserObj = (dbUserObj) => {
       [USER_FIELDS.FATHERNAME]: dbUserObj.fatherName,
       [USER_FIELDS.POST]: dbUserObj.post,
       [USER_FIELDS.SERVICE]: dbUserObj.service,
+      [USER_FIELDS.USER_SERVICE]: dbUserObj.userService,
       [USER_FIELDS.ROLES]: dbUserObj.roles || [], // массив id ролей
       [USER_FIELDS.STATION_WORK_POLIGONS]: dbUserObj.stationWorkPoligons || [], // массив объектов рабочих полигонов-станций
       [USER_FIELDS.DNC_SECTOR_WORK_POLIGONS]: dbUserObj.dncSectorsWorkPoligons || [], // массив объектов рабочих полигонов-участков ДНЦ

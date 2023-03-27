@@ -62,6 +62,16 @@ const usersTableColumns = (props) => {
     },
     {
       title: 'Служба',
+      dataIndex: USER_FIELDS.USER_SERVICE,
+      key: USER_FIELDS.USER_SERVICE,
+      width: '10%',
+      editable: true,
+      sortDirections: ['ascend', 'descend'],
+      sorter: (a, b) => compareStrings((a[USER_FIELDS.USER_SERVICE] || '').toLowerCase(), (b[USER_FIELDS.USER_SERVICE] || '').toLowerCase()),
+      ...getColumnSearchProps(USER_FIELDS.USER_SERVICE),
+    },
+    {
+      title: 'Служба шаблонов документов',
       dataIndex: USER_FIELDS.SERVICE,
       key: USER_FIELDS.SERVICE,
       width: '10%',

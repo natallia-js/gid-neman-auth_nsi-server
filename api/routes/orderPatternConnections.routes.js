@@ -16,12 +16,12 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обработка запроса на добавление дочернего шаблона распоряжения.
+ * Обработка запроса на добавление дочернего шаблона документа.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * При этом главный администратор ГИД Неман может добавить дочерний шаблон к любому распоряжению,
- * а иное лицо сможет добавить дочерний шаблон распоряжения лишь в рамках своей службы (т.е. когда
- * базовый и дочерний шаблоны принадлежат его службе).
+ * При этом главный администратор ГИД Неман может добавить дочерний шаблон к любому документу,
+ * а иное лицо сможет добавить дочерний шаблон документа лишь в рамках своей службы (т.е. когда
+ * базовый и дочерний шаблоны принадлежат той службе, которой принадлежит пользователь).
  *
  * Параметры тела запроса:
  * basePatternId - идентификатор базового шаблона (обязателен),
@@ -51,24 +51,24 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
         return res.status(ERR).json({ message: 'Базовый и дочерний шаблоны не могут совпадать' });
       }
 
-      // Ищем в БД базовый шаблон распоряжения
+      // Ищем в БД базовый шаблон документа
       let baseCandidate = await OrderPattern.findById(basePatternId);
       if (!baseCandidate) {
-        return res.status(ERR).json({ message: 'Указанный базовый шаблон распоряжения не найден' });
+        return res.status(ERR).json({ message: 'Указанный базовый шаблон документа не найден' });
       }
 
-      // Ищем в БД дочерний шаблон распоряжения
+      // Ищем в БД дочерний шаблон документа
       const childCandidate = await OrderPattern.findById(childPatternId);
       if (!childCandidate) {
-        return res.status(ERR).json({ message: 'Указанный дочерний шаблон распоряжения не найден' });
+        return res.status(ERR).json({ message: 'Указанный дочерний шаблон документа не найден' });
       }
 
       // Служба, которой принадлежит лицо, запрашивающее действие
-      const serviceName = req.user.service;
+      const serviceName = req.user.userService;
 
       if (!isMainAdmin(req) && (serviceName !== baseCandidate.service) && (serviceName !== childCandidate.service)) {
         return res.status(ERR).json({
-          message: `Для добавления дочернего шаблона распоряжения базовый и дочерний шаблоны должны принадлежать службе ${serviceName}`
+          message: `Для добавления дочернего шаблона документа базовый и дочерний шаблоны должны принадлежать службе ${serviceName}`
         });
       }
 
@@ -105,7 +105,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Добавление дочернего шаблона распоряжения',
+        action: 'Добавление дочернего шаблона документа',
         error: error.message,
         actionParams: { basePatternId, childPatternId, patternsParamsMatchingTable },
       });
@@ -116,12 +116,12 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
 
 
 /**
- * Обработка запроса на удаление связи с шаблоном распоряжения.
+ * Обработка запроса на удаление связи с шаблоном документа.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * При этом главный администратор ГИД Неман может удалить дочерний шаблон у любого распоряжения,
- * а иное лицо сможет удалить дочерний шаблон распоряжения лишь в рамках своей службы (т.е. когда
- * базовый и дочерний шаблоны принадлежат его службе).
+ * При этом главный администратор ГИД Неман может удалить дочерний шаблон у любого документа,
+ * а иное лицо сможет удалить дочерний шаблон документа лишь в рамках своей службы (т.е. когда
+ * базовый и дочерний шаблоны принадлежат той службе, которой принадлежит пользователь).
  *
  * Параметры тела запроса:
  * basePatternId - идентификатор базового шаблона (обязателен),
@@ -142,31 +142,31 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
     const { basePatternId, childPatternId } = req.body;
 
     try {
-      // Ищем в БД базовый шаблон распоряжения
+      // Ищем в БД базовый шаблон документа
       let baseCandidate = await OrderPattern.findById(basePatternId);
       if (!baseCandidate) {
-        return res.status(ERR).json({ message: 'Указанный базовый шаблон распоряжения не найден' });
+        return res.status(ERR).json({ message: 'Указанный базовый шаблон документа не найден' });
       }
 
-      // Ищем в БД дочерний шаблон распоряжения
+      // Ищем в БД дочерний шаблон документа
       const childCandidate = await OrderPattern.findById(childPatternId);
       if (!childCandidate) {
-        return res.status(ERR).json({ message: 'Указанный дочерний шаблон распоряжения не найден' });
+        return res.status(ERR).json({ message: 'Указанный дочерний шаблон документа не найден' });
       }
 
       // Служба, которой принадлежит лицо, запрашивающее действие
-      const serviceName = req.user.service;
+      const serviceName = req.user.userService;
 
       if (!isMainAdmin(req) && (serviceName !== baseCandidate.service) && (serviceName !== childCandidate.service)) {
         return res.status(ERR).json({
-          message: `Для удаления дочернего шаблона распоряжения базовый и дочерний шаблоны должны принадлежать службе ${serviceName}`
+          message: `Для удаления дочернего шаблона документа базовый и дочерний шаблоны должны принадлежать службе ${serviceName}`
         });
       }
 
       // Для указанного базового шаблона проверяем наличие связи с указанным дочерним шаблоном.
       // Если не находим, то не можем удалить связь
       if (!baseCandidate.childPatterns.find((connection) => String(connection.childPatternId) === String(childPatternId))) {
-        return res.status(ERR).json({ message: 'Связь между указанными шаблонами распоряжений не существует' });
+        return res.status(ERR).json({ message: 'Связь между указанными шаблонами документов не существует' });
       }
 
       // Редактируем в БД существующую запись
@@ -180,7 +180,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Удаление связи с шаблоном распоряжения',
+        action: 'Удаление связи с шаблоном документа',
         error: error.message,
         actionParams: { basePatternId, childPatternId },
       });

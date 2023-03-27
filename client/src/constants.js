@@ -203,6 +203,7 @@ export const USER_FIELDS = Object.freeze({
   FATHERNAME: 'fatherName',
   POST: 'post',
   SERVICE: 'service',
+  USER_SERVICE: 'userService',
   ROLES: 'roles',
   STATION_WORK_POLIGONS: 'stations',
   DNC_SECTOR_WORK_POLIGONS: 'dncSectors',

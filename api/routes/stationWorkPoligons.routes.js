@@ -136,6 +136,7 @@ router.post(
             online: userInfo.online,
             post: userInfo.post,
             service: userInfo.service,
+            userService: userInfo.userService,
             stationId: user.SWP_StID,
             stationWorkPlaceId: user.SWP_StWP_ID,
             contactData: userInfo.contactData,

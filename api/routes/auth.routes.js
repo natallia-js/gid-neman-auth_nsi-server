@@ -131,6 +131,7 @@ router.put(
         surname: MAIN_ADMIN_SURNAME,
         post: MAIN_ADMIN_POST,
         service: ALL_PERMISSIONS,
+        userService: ALL_PERMISSIONS,
         roles: [adminRole._id],
         confirmed: true,
       });
@@ -187,7 +188,7 @@ router.post(
     const addFields = {}; // дополнительно вводимые поля
 
     // Извлекаем наименование службы, которой принадлежит пользователь
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
 
     // Применяем условия сортировки.
     // Неподтвержденные записи по пользователям выводим в начале списка при условии отсутствия указанных
@@ -211,7 +212,7 @@ router.post(
     if (!isMainAdmin(req)) {
       // Если пользователь, отправивший запрос, - не главный администратор, то будем искать пользователей,
       // принадлежащих службе, которой принадлежит пользователь, отправивший запрос
-      matchFilter.service = serviceName;
+      matchFilter.userService = serviceName;
     }
     // фильтрация по полям непосредственно самой таблицы (коллекции) пользователей
     if (filterFields?.length) {
@@ -463,7 +464,7 @@ const saveNewUserData = async (props) => {
   // если false, то данные о пользователе должны быть подтверждены уполномоченным лицом
   // прежде чем пользователь сможет работать с системой
   const {
-    _id, login, password, name, fatherName, surname, post, service, contactData,
+    _id, login, password, name, fatherName, surname, post, service, userService, contactData,
     roles, stations, dncSectors, ecdSectors, authorizedRegistration, session, transaction,
     setWorkPoligonUpdateTime,
   } = props;
@@ -497,6 +498,7 @@ const saveNewUserData = async (props) => {
     surname,
     post,
     service: service || null,
+    userService: userService || null,
     roles: roles || [],
     contactData,
     confirmed: authorizedRegistration,
@@ -566,7 +568,8 @@ const saveNewUserData = async (props) => {
  * name - имя пользователя (обязательно),
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (обязательна),
- * service - наименование службы (необязательно),
+ * service - аббревиатура службы для получения для данного пользователя информации о шаблонах документов (необязательно),
+ * userService - аббревиатура службы, которой пользователь принадлежит (необязательно),
  * post - должность (обязательна),
  * contactData - контактные данные пользователя (не обязательны),
  * roles - массив ролей (не обязателен),
@@ -592,14 +595,18 @@ router.post(
     // Считываем находящиеся в пользовательском запросе регистрационные данные
     const {
       _id, login, password, name, fatherName, surname, post, contactData,
-      service, roles, stations, dncSectors, ecdSectors,
+      service, userService, roles, stations, dncSectors, ecdSectors,
     } = req.body;
 
-    // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const actionParams = {
+      login, name, fatherName, surname, post, service, userService, roles, stations, dncSectors, ecdSectors,
+    };
 
-    if (!isMainAdmin(req) && (serviceName !== service)) {
-      return res.status(ERR).json({ message: `У Вас нет полномочий на регистрацию пользователя в службе ${service}` });
+    // Служба, которой принадлежит лицо, запрашивающее действие
+    const serviceName = req.user.userService;
+
+    if (!isMainAdmin(req) && (serviceName !== userService)) {
+      return res.status(ERR).json({ message: `У Вас нет полномочий на регистрацию пользователя в службе ${userService}` });
     }
 
     // транзакция MongoDB
@@ -614,7 +621,7 @@ router.post(
 
     sequelize.transaction(async (t) => {
       return await saveNewUserData({
-        _id, login, password, name, fatherName, surname, post, service, contactData,
+        _id, login, password, name, fatherName, surname, post, service, userService, contactData,
         roles, stations, dncSectors, ecdSectors, authorizedRegistration: true, session, transaction: t,
         setWorkPoligonUpdateTime: true,
       });
@@ -637,10 +644,7 @@ router.post(
         user: userPostFIOString(req.user),
         actionTime: new Date(),
         action: 'Регистрация пользователя',
-        actionParams: {
-          userId: user._id, login, name, fatherName, surname, post,
-          service, roles, stations, dncSectors, ecdSectors,
-        },
+        actionParams: { userId: user._id, ...actionParams },
       });
     })
     .catch(async (error) => {
@@ -648,10 +652,7 @@ router.post(
         errorTime: new Date(),
         action: 'Регистрация пользователя',
         error: error.message,
-        actionParams: {
-          login, name, fatherName, surname,
-          post, service, roles, stations, dncSectors, ecdSectors,
-        },
+        actionParams,
       });
       // transaction t is rollbacked here
       try { await session.abortTransaction(); } catch {}
@@ -675,7 +676,8 @@ router.post(
  * name - имя пользователя (обязательно),
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (обязательна),
- * service - наименование службы (необязательно),
+ * service - аббревиатура службы для получения для данного пользователя информации о шаблонах документов (необязательно),
+ * userService - аббревиатура службы, которой пользователь принадлежит (необязательно),
  * post - должность (обязательна),
  * contactData - контактные данные пользователя (не обязательны),
  * roles - массив ролей (не обязателен),
@@ -700,8 +702,13 @@ router.post(
     // Считываем находящиеся в пользовательском запросе регистрационные данные
     const {
       login, password, name, fatherName, surname, post, contactData,
-      service, roles, stations, dncSectors, ecdSectors,
+      service, userService, roles, stations, dncSectors, ecdSectors,
     } = req.body;
+
+    const actionParams = {
+      login, password, name, fatherName, surname, post, contactData,
+      service, userService, roles, stations, dncSectors, ecdSectors,
+    };
 
     // транзакция MongoDB
     const session = await mongoose.startSession();
@@ -715,7 +722,7 @@ router.post(
 
     sequelize.transaction(async (t) => {
       return await saveNewUserData({
-        _id: undefined, login, password, name, fatherName, surname, post, service, contactData,
+        _id: undefined, login, password, name, fatherName, surname, post, service, userService, contactData,
         roles, stations, dncSectors, ecdSectors, authorizedRegistration: false, session, transaction: t,
         setWorkPoligonUpdateTime: false,
       });
@@ -738,10 +745,7 @@ router.post(
         user: 'Неизвестный',
         actionTime: new Date(),
         action: 'Подача заявки на регистрацию пользователя',
-        actionParams: {
-          userId: user._id, login, password, name, fatherName, surname, post, contactData,
-          service, roles, stations, dncSectors, ecdSectors,
-        },
+        actionParams: { userId: user._id, ...actionParams },
       });
     })
     .catch(async (error) => {
@@ -749,10 +753,7 @@ router.post(
         errorTime: new Date(),
         action: 'Подача заявки на регистрацию пользователя',
         error: error.message,
-        actionParams: {
-          login, password, name, fatherName, surname, post, contactData,
-          service, roles, stations, dncSectors, ecdSectors,
-        },
+        actionParams,
       });
       // transaction t is rollbacked here
       try { await session.abortTransaction(); } catch {}
@@ -790,7 +791,8 @@ router.post(
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
+
     // Считываем находящиеся в пользовательском запросе данные
     const { userId, roleId } = req.body;
 
@@ -803,8 +805,8 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
-        return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли пользователю в службе ${candidate.service}` });
+      if (!isMainAdmin(req) && (serviceName !== candidate.userService)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на добавление роли пользователю в службе ${candidate.userService}` });
       }
 
       // Среди ролей пользователя ищем такую, id которой совпадает с переданным пользователем
@@ -836,11 +838,7 @@ router.post(
         user: userPostFIOString(req.user),
         actionTime: new Date(),
         action: 'Добавление пользователю роли',
-        actionParams: {
-          userId,
-          roleId,
-          user: userPostFIOString(candidate),
-        },
+        actionParams: { userId, user: userPostFIOString(candidate), roleId },
       });
 
     } catch (error) {
@@ -1035,6 +1033,7 @@ router.post(
             fatherName: user.fatherName,
             surname: user.surname,
             service: user.service,
+            userService: user.userService,
             roles: rolesAbbreviations,
             credentials: appsCredentials,
             stationWorkPoligons: stations,
@@ -1078,6 +1077,7 @@ router.post(
           fatherName: user.fatherName,
           surname: user.surname,
           service: user.service,
+          userService: user.userService,
           post: user.post,
         },
         roles: rolesAbbreviations,
@@ -1144,6 +1144,7 @@ router.post(
           fatherName: req.user.fatherName,
           surname: req.user.surname,
           service: req.user.service,
+          userService: req.user.userService,
           post: req.user.post,
         },
         roles: req.user.roles,
@@ -1717,7 +1718,8 @@ router.post(
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
+
     // Считываем находящиеся в пользовательском запросе данные
     const { userId } = req.body;
 
@@ -1741,10 +1743,10 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
+      if (!isMainAdmin(req) && (serviceName !== candidate.userService)) {
         await t.rollback();
         await session.abortTransaction();
-        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление пользователя в службе ${candidate.service}` });
+        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление пользователя в службе ${candidate.userService}` });
       }
 
       // Удаляем в БД запись о пользователе
@@ -1808,7 +1810,8 @@ router.post(
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
+
     // Считываем находящиеся в пользовательском запросе данные
     const { userId, roleId } = req.body;
 
@@ -1821,8 +1824,8 @@ router.post(
         return res.status(ERR).json({ message: USER_NOT_FOUND_ERR_MESS });
       }
 
-      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
-        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление роли пользователя в службе ${candidate.service}` });
+      if (!isMainAdmin(req) && (serviceName !== candidate.userService)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на удаление роли пользователя в службе ${candidate.userService}` });
       }
 
       // Среди ролей пользователя ищем такую, id которой совпадает с переданным пользователем
@@ -1880,7 +1883,8 @@ router.post(
  * fatherName - отчество пользователя (не обязательно),
  * surname - фамилия пользователя (не обязательна),
  * post - наименование должности (не обязательно),
- * service - наименование службы (не обязательно),
+ * service - аббревиатура службы для получения для данного пользователя информации о шаблонах документов (необязательно),
+ * userService - аббревиатура службы, которой пользователь принадлежит (необязательно),
  * contactData - контактные данные (не обязательны),
  * roles - массив ролей (не обязателен; если задан и не пуст, то каждый элемент массива - строка с id роли),
  * Обязательный параметр запроса - applicationAbbreviation!
@@ -1896,15 +1900,18 @@ router.post(
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
+
     // Считываем находящиеся в пользовательском запросе данные, которые понадобятся для дополнительных проверок
     // (остальными просто обновим запись в БД, когда все проверки будут пройдены)
     const {
-      userId, login, password, service, roles, name, fatherName, surname, post, contactData,
+      userId, login, password, service, userService, roles, name, fatherName, surname, post, contactData,
     } = req.body;
 
+    const requestData = { login, service, userService, roles, name, fatherName, surname, post, contactData };
+
     try {
-      if (!isMainAdmin(req) && (service !== serviceName)) {
+      if (!isMainAdmin(req) && (userService !== serviceName)) {
         return res.status(ERR).json({ message: 'Вы не можете изменить принадлежность пользователя службе' });
       }
 
@@ -1919,6 +1926,7 @@ router.post(
       const initialUserData = {
         login: candidate.login,
         service: candidate.service,
+        userService: candidate.userService,
         roles: candidate.roles,
         name: candidate.name,
         fatherName: candidate.fatherName,
@@ -1928,8 +1936,8 @@ router.post(
         confirmed: candidate.confirmed,
       };
 
-      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
-        return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование информации о пользователе в службе ${candidate.service}` });
+      if (!isMainAdmin(req) && (serviceName !== candidate.userService)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на редактирование информации о пользователе в службе ${candidate.userService}` });
       }
 
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
@@ -1972,9 +1980,7 @@ router.post(
           userId,
           user: userPostFIOString(candidate),
           initialUserData,
-          requestData: {
-            login, service, roles, name, fatherName, surname, post, contactData,
-          },
+          requestData,
           changedPassword: Boolean(req.body.password),
         },
       });
@@ -1984,13 +1990,7 @@ router.post(
         errorTime: new Date(),
         action: 'Редактирование информации о пользователе',
         error: error.message,
-        actionParams: {
-          userId,
-          requestData: {
-            login, service, roles, name, fatherName, surname, post, contactData,
-          },
-          changedPassword: Boolean(req.body.password),
-        },
+        actionParams: { userId, requestData, changedPassword: Boolean(req.body.password) },
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -2020,7 +2020,8 @@ router.post(
   validate,
   async (req, res) => {
     // Служба, которой принадлежит лицо, запрашивающее действие
-    const serviceName = req.user.service;
+    const serviceName = req.user.userService;
+
     // Считываем находящиеся в пользовательском запросе данные
     const { userId } = req.body;
 
@@ -2033,8 +2034,8 @@ router.post(
         return res.status(ERR).json({ message: 'Указанный пользователь не существует в базе данных' });
       }
 
-      if (!isMainAdmin(req) && (serviceName !== candidate.service)) {
-        return res.status(ERR).json({ message: `У Вас нет полномочий на подтверждение информации о пользователе в службе ${candidate.service}` });
+      if (!isMainAdmin(req) && (serviceName !== candidate.userService)) {
+        return res.status(ERR).json({ message: `У Вас нет полномочий на подтверждение информации о пользователе в службе ${candidate.userService}` });
       }
 
       if (candidate.confirmed) {
