@@ -609,7 +609,7 @@ async function formOrderCopiesForDSPAndOperators(props) {
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  *
- * Изменению не подлежат следующие поля исходного документа (остаются неизменными):
+ * Изменению (в ходе редактирования пользователем) не подлежат следующие поля исходного документа:
  * type, number, createDateTime, actualCreateDateTime, place, workPoligon, creator, createdOnBehalfOf,
  * specialTrainCategories, showOnGID, assertDateTime, dispatchedOnOrder, invalid
  *
@@ -807,6 +807,10 @@ router.post(
       // Сравнивая значения этих параметров со значениями соответствующих параметров редактируемого документа, определяем,
       // какие значения были изменены, какие - добавлены, какие - удалены. Корректируем и определяем адресатов документа.
       else {
+        // Если в процессе редактирования информации по адресатам документа появится НОВЫЙ адресат из числа ДСП/ДНЦ/ЭЦД,
+        // которому адресован оригинал документа, то время утверждения документа будет аннулировано
+        let nullOrderAssertDateTime = false;
+
         const checkAndGetNewOrderAddressees = async (
           workPoligonType, addresseesListToCheck, newAddresseesList, arrayOfDeletedIds) => {
           // Добавляем новых получателей документа из числа ДСП/ДНЦ/ЭЦД (тех, которых нет в предыдущем списке)
@@ -821,6 +825,9 @@ router.post(
                 workPlaceId: el.workPlaceId,
                 sendOriginal: el.sendOriginal,
               });
+              // проверяем необходимость сброса даты-времени утверждения документа
+              if (el.sendOriginal && !nullOrderAssertDateTime)
+                nullOrderAssertDateTime = true;
               // если документ отправляется на станцию, то необходимо разослать его и на все
               // стационарные рабочие места станции (т.н. Операторам при ДСП)
               if (workPoligonType === WORK_POLIGON_TYPES.STATION) {
@@ -888,23 +895,31 @@ router.post(
               existingOrder.ecdToSend, ecdToSend, deletedECDWorkPoligonIds);
           }
         }
+
+        if (nullOrderAssertDateTime)
+          existingOrder.assertDateTime = null;
+
         if (req.body.hasOwnProperty('otherToSend')) {
           otherToSend?.forEach((el) => {
-            if (!existingOrder.otherToSend.find((item) => String(item._id) === String(el._id)))
-              existingOrder.otherToSend.push({ ...el, editDateTime: new Date() });
+            if (!existingOrder.otherToSend.find((item) => String(item._id) === String(el._id))) {
+              // для новой записи об "ином" адресате автоматически определяем дату-время ее подтверждения
+              existingOrder.otherToSend.push({ ...el, confirmDateTime: new Date(), editDateTime: new Date() });
+            }
           });
           existingOrder.otherToSend = existingOrder?.otherToSend.filter((el) => {
             const addressee = otherToSend?.find((item) => String(item._id) === String(el._id));
             if (!addressee) return false;
+            // для существующей записи (что бы в ней ни поменялось) не меняем и не сбрасываем дату-время ее подтверждения
             let edited = false;
-            if (el.additionalId !== addressee.additionalId) { el.additionalId = addressee.additionalId; edited = true; }
+            // именно !=, а не !==, т.к. сравниваются строка и число
+            if (el.additionalId != addressee.additionalId) { el.additionalId = addressee.additionalId; edited = true; }
             if (el.existingStructuralDivision !== addressee.existingStructuralDivision) { el.existingStructuralDivision = addressee.existingStructuralDivision; edited = true; }
             if (el.fio !== addressee.fio) { el.fio = addressee.fio; edited = true; }
             if (el.post !== addressee.post) { el.post = addressee.post; edited = true; }
             if (el.placeTitle !== addressee.placeTitle) { el.placeTitle = addressee.placeTitle; edited = true; }
             if (el.position !== addressee.position) { el.position = addressee.position; edited = true; }
             if (el.sendOriginal !== addressee.sendOriginal) { el.sendOriginal = addressee.sendOriginal; edited = true; }
-            if (edited) el.editDateTime = new Date();
+            if (edited) { el.editDateTime = new Date(); }
             return true;
           }) || [];
         }
