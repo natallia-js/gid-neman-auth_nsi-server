@@ -18,7 +18,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -224,7 +224,7 @@ router.post(
         });
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', nearECDSectorsArr });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, nearECDSectorsArr });
 
     } catch (error) {
       addError({
@@ -292,7 +292,7 @@ router.post(
         });
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', nearDNCSectorsArr });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, nearDNCSectorsArr });
 
     } catch (error) {
       addError({
@@ -341,7 +341,7 @@ router.post(
         }
       });
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -446,7 +446,7 @@ router.post(
 
       await t.commit();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({
@@ -545,7 +545,7 @@ router.post(
 
       await t.commit();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({

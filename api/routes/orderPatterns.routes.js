@@ -15,7 +15,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -228,7 +228,7 @@ router.post(
       }
       await orderPattern.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', orderPattern });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, orderPattern });
 
     } catch (error) {
       addError({
@@ -286,7 +286,7 @@ router.post(
       // Удаляем в БД запись
       await OrderPattern.deleteOne({ _id: id });
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -367,7 +367,7 @@ router.post(
       candidate.lastPatternUpdater = req.user.userId;
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', orderPattern: candidate });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, orderPattern: candidate });
 
     } catch (error) {
       addError({
@@ -430,7 +430,7 @@ router.post(
         { $set: { category: newTitle } },
       );
 
-      res.status(OK).json({ message: 'Информация успешно изменена', newTitle });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, newTitle });
 
     } catch (error) {
       addError({
@@ -489,7 +489,7 @@ router.post(
         await orderPattern.save();
       }
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: SUCCESS_MOD_RES });
 
     } catch (error) {
       addError({

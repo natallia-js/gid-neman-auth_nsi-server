@@ -8,7 +8,7 @@ const testUniqueArrayElements = require('../additional/testUniqueArrayElements')
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -113,7 +113,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', ref: { typeId: elementTypeId, ...newRef } });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, ref: { typeId: elementTypeId, ...newRef } });
 
     } catch (error) {
       addError({
@@ -165,7 +165,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно удалена', data: { elementTypeId, refId } });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS, data: { elementTypeId, refId } });
 
     } catch (error) {
       addError({
@@ -249,7 +249,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', data: { elementTypeId, ref: refCandidate } });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, data: { elementTypeId, ref: refCandidate } });
 
     } catch (error) {
       addError({

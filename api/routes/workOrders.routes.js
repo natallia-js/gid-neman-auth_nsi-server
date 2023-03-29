@@ -3,11 +3,6 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const WorkOrder = require('../models/WorkOrder');
 const User = require('../models/User');
-const {
-  WORK_POLIGON_TYPES,
-  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
-  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
-} = require('../constants');
 const { addDY58UserActionInfo, addError } = require('../serverSideProcessing/processLogsActions');
 const {
   getUserConciseFIOString,
@@ -22,9 +17,15 @@ const getUserWorkPoligonString = require('./additional/getUserWorkPoligonString'
 const router = Router();
 
 const {
-  OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR,
-  DSP_FULL,
+  WORK_POLIGON_TYPES,
+
   ORDER_PATTERN_TYPES,
+  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+
+  OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR, SUCCESS_DEL_MESS,
+
+  DSP_FULL,
 } = require('../constants');
 
 
@@ -903,7 +904,7 @@ router.post(
     try {
       // Удаляем записи в таблице рабочих распоряжений
       await WorkOrder.deleteMany({ $and: findRecordsConditions });
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -1016,7 +1017,7 @@ router.post(
 
       await order.save();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({

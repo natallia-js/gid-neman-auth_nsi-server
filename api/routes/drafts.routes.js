@@ -6,14 +6,14 @@ const DY58_ACTIONS = require('../middleware/DY58_ACTIONS');
 
 const router = Router();
 
-const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR } = require('../constants');
+const { OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
  * Обработка запроса на создание (сохранение) нового черновика распоряжения.
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -44,7 +44,7 @@ router.post(
 
       await draft.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', draft });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, draft });
 
     } catch (error) {
       addError({
@@ -104,7 +104,7 @@ router.post(
 
       await foundDraft.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', draft: foundDraft });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, draft: foundDraft });
 
     } catch (error) {
       addError({
@@ -146,7 +146,7 @@ router.post(
       if (!delRes.deletedCount) {
         return res.status(ERR).json({ message: 'Не найден черновик документа' });
       }
-      res.status(OK).json({ message: 'Информация успешно удалена', id });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS, id });
 
     } catch (error) {
       addError({
@@ -170,7 +170,7 @@ router.post(
  * Информация о типе, id рабочего полигона (и id рабочего места в рамках рабочего полигона) извлекается из
  * токена пользователя. Именно по этим данным осуществляется поиск в БД. Если этой информации в токене нет,
  * то информация извлекаться не будет.
- * 
+ *
  * Обязательный параметр запроса - applicationAbbreviation!
  */
  router.post(

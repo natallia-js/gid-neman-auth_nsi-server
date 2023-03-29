@@ -41,6 +41,9 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
   USER_NOT_FOUND_ERR_MESS,
+  SUCCESS_MOD_RES,
+  SUCCESS_DEL_MESS,
+  SUCCESS_ADD_MESS,
 
   ALL_PERMISSIONS,
 
@@ -705,6 +708,7 @@ router.post(
       service, userService, roles, stations, dncSectors, ecdSectors,
     } = req.body;
 
+    const actionTitle = 'Подача заявки на регистрацию пользователя';
     const actionParams = {
       login, password, name, fatherName, surname, post, contactData,
       service, userService, roles, stations, dncSectors, ecdSectors,
@@ -744,14 +748,14 @@ router.post(
       addAdminActionInfo({
         user: 'Неизвестный',
         actionTime: new Date(),
-        action: 'Подача заявки на регистрацию пользователя',
+        action: actionTitle,
         actionParams: { userId: user._id, ...actionParams },
       });
     })
     .catch(async (error) => {
       addError({
         errorTime: new Date(),
-        action: 'Подача заявки на регистрацию пользователя',
+        action: actionTitle,
         error: error.message,
         actionParams,
       });
@@ -796,6 +800,9 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { userId, roleId } = req.body;
 
+    const actionTitle = 'Добавление пользователю роли';
+    const actionParams = { serviceName, userId, roleId };
+
     try {
       // Ищем в БД пользователя, id которого совпадает с переданным
       const candidate = await User.findOne({ _id: userId });
@@ -831,22 +838,22 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
       // Логируем действие пользователя
       addAdminActionInfo({
         user: userPostFIOString(req.user),
         actionTime: new Date(),
-        action: 'Добавление пользователю роли',
-        actionParams: { userId, user: userPostFIOString(candidate), roleId },
+        action: actionTitle,
+        actionParams: { ...actionParams, user: userPostFIOString(candidate) },
       });
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Добавление пользователю роли',
+        action: actionTitle,
         error: error.message,
-        actionParams: { serviceName, userId, roleId },
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -875,6 +882,9 @@ router.post(
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
     const { login, password, applicationAbbreviation } = req.body;
+
+    const actionTitle = 'Вход в систему';
+    const actionParams = { application: applicationAbbreviation, login };
 
     try {
       // Ищем в БД пользователя, login которого совпадает с переданным пользователем
@@ -1092,12 +1102,8 @@ router.post(
         user: userPostFIOString(user),
         workPoligon: '(Пока) не определен',
         actionTime: new Date(),
-        action: 'Вход в систему',
-        actionParams: {
-          userId: user._id,
-          application: applicationAbbreviation,
-          login,
-        },
+        action: actionTitle,
+        actionParams: { userId: user._id, ...actionParams },
       };
       if (applicationAbbreviation === DY58_APP_CODE_NAME) {
         addDY58UserActionInfo(logObject);
@@ -1108,9 +1114,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Вход в систему',
+        action: actionTitle,
         error: error.message,
-        actionParams: { application: applicationAbbreviation, login },
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -1760,7 +1766,7 @@ router.post(
       await t.commit();
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
       // Логируем действие пользователя
       addAdminActionInfo({
@@ -1845,7 +1851,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
       // Логируем действие пользователя
       addAdminActionInfo({
@@ -1908,7 +1914,9 @@ router.post(
       userId, login, password, service, userService, roles, name, fatherName, surname, post, contactData,
     } = req.body;
 
-    const requestData = { login, service, userService, roles, name, fatherName, surname, post, contactData };
+    const actionTitle = 'Редактирование информации о пользователе';
+    const actionParams = { userId, login, service, userService, roles, name, fatherName, surname, post,
+      contactData, changedPassword: Boolean(req.body.password) };
 
     try {
       if (!isMainAdmin(req) && (userService !== serviceName)) {
@@ -1964,33 +1972,34 @@ router.post(
         req.body.password = await bcrypt.hash(password, 12);
       }
       delete req.body.userId;
+
+      let userDataEdited = false;
+      if (candidate.name !== name || candidate.fatherName !== fatherName || candidate.surname !== surname)
+        userDataEdited = true;
+
       candidate = Object.assign(candidate, req.body);
+      if (userDataEdited)
+        candidate.lastEditDateTime = new Date();
 
       // Редактируем в БД запись
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', user: candidate });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, user: candidate });
 
       // Логируем действие пользователя
       addAdminActionInfo({
         user: userPostFIOString(req.user),
         actionTime: new Date(),
-        action: 'Редактирование информации о пользователе',
-        actionParams: {
-          userId,
-          user: userPostFIOString(candidate),
-          initialUserData,
-          requestData,
-          changedPassword: Boolean(req.body.password),
-        },
+        action: actionTitle,
+        actionParams: { ...actionParams, user: userPostFIOString(candidate), initialUserData },
       });
 
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Редактирование информации о пользователе',
+        action: actionTitle,
         error: error.message,
-        actionParams: { userId, requestData, changedPassword: Boolean(req.body.password) },
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

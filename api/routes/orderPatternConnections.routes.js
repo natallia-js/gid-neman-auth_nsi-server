@@ -12,7 +12,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -100,7 +100,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       }
       await baseCandidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', baseCandidate });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, baseCandidate });
 
     } catch (error) {
       addError({
@@ -175,7 +175,7 @@ const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
       });
       await baseCandidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно удалена', baseCandidate });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS, baseCandidate });
 
     } catch (error) {
       addError({

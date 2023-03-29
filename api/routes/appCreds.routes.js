@@ -17,7 +17,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -128,7 +128,7 @@ router.post(
       }
       await credsGroup.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', credsGroup });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, credsGroup });
 
     } catch (error) {
       addError({
@@ -205,7 +205,7 @@ router.post(
         }
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', cred: {
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, cred: {
         _id: newRecId,
         englAbbreviation,
         description,
@@ -277,7 +277,7 @@ router.post(
         return res.status(ERR).json({ message: errMess });
       }
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -356,7 +356,7 @@ router.post(
 
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -430,7 +430,7 @@ router.post(
       candidate = Object.assign(candidate, req.body);
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', appCredsGroup: candidate });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, appCredsGroup: candidate });
 
     } catch (error) {
       addError({
@@ -508,7 +508,7 @@ router.post(
 
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена',
+      res.status(OK).json({ message: SUCCESS_ADD_MESS,
         cred: {
           _id: credId,
           englAbbreviation,

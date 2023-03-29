@@ -15,7 +15,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -207,7 +207,7 @@ router.post(
         });
       }
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', finalAdjSectIds });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, finalAdjSectIds });
 
     } catch (error) {
       addError({
@@ -266,7 +266,7 @@ router.post(
         return res.status(ERR).json({ message: 'Данные для удаления не были найдены в базе' });
       }
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -397,7 +397,7 @@ router.post(
 
       await t.commit();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({

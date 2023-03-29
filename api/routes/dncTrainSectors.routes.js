@@ -19,6 +19,9 @@ const {
   UNKNOWN_ERR,
   UNKNOWN_ERR_MESS,
   DATA_TO_DEL_NOT_FOUND,
+  SUCCESS_MOD_RES,
+  SUCCESS_DEL_MESS,
+  SUCCESS_ADD_MESS,
 } = require('../constants');
 
 
@@ -57,7 +60,7 @@ router.post(
       // Создаем в БД запись с данными о новом поездном участке ДНЦ
       const sector = await TDNCTrainSector.create({ DNCTS_Title: name, DNCTS_DNCSectorID: dncSectorId });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', sector });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, sector });
 
     } catch (error) {
       addError({
@@ -112,7 +115,7 @@ router.post(
 
       await t.commit();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       try { await t.rollback(); } catch {}
@@ -184,7 +187,7 @@ router.post(
         },
       });
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: SUCCESS_MOD_RES });
 
     } catch (error) {
       addError({

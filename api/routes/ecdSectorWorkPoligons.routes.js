@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const mongoose = require('mongoose');
 const {
   getDefinitUsersValidationRules,
   changeECDSectorWorkPoligonsValidationRules,
@@ -14,7 +15,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -171,6 +172,11 @@ router.post(
       return res.status(ERR).json({ message: 'Для выполнения операции изменения списка рабочих полигонов-участков ЭЦД не определен объект транзакции' });
     }
 
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    // транзакция MS SQL
     const t = await sequelize.transaction();
 
     // Считываем находящиеся в пользовательском запросе данные
@@ -183,6 +189,7 @@ router.post(
       // Если не находим, то продолжать не можем
       if (!candidate) {
         await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
@@ -207,9 +214,13 @@ router.post(
         }
       }
 
-      await t.commit();
+      candidate.lastEditDateTime = new Date();
+      await candidate.save({ session });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      await t.commit();
+      await session.commitTransaction();
+
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({
@@ -218,7 +229,7 @@ router.post(
         error: error.message,
         actionParams: { userId, ecdSectorIds },
       });
-      try { await t.rollback(); } catch {}
+      try { await t.rollback(); await session.abortTransaction(); } catch {}
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

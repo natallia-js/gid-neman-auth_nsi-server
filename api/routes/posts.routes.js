@@ -14,7 +14,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -83,7 +83,7 @@ router.post(
       // Создаем в БД запись с данными о новой должности
       const post = await TPost.create({ P_Abbrev: abbrev, P_Title: title });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', post });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, post });
 
     } catch (error) {
       addError({
@@ -161,7 +161,7 @@ router.post(
       await t.commit();
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -272,7 +272,7 @@ router.post(
       await t.commit();
       await session.commitTransaction();
 
-      res.status(OK).json({ message: 'Информация успешно изменена' });
+      res.status(OK).json({ message: SUCCESS_MOD_RES });
 
     } catch (error) {
       addError({

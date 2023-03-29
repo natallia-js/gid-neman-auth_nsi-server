@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const mongoose = require('mongoose');
 const {
   getDefinitUsersValidationRules,
   changeStationWorkPoligonsValidationRules,
@@ -14,7 +15,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -149,7 +150,7 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение id всех пользователей, у которых рабочий полигон - станция с одним из заданных id',
+        action: 'Получение информации о пользователях, у которых рабочий полигон - станция с одним из заданных id',
         error: error.message,
         actionParams: { stationIds, onlyOnline, credsGroups, includeWorkPlaces },
       });
@@ -191,6 +192,11 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { userId, poligons } = req.body;
 
+    // транзакция MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    // транзакция MS SQL
     const t = await sequelize.transaction();
 
     try {
@@ -200,6 +206,7 @@ router.post(
       // Если не находим, то продолжать не можем
       if (!candidate) {
         await t.rollback();
+        await session.abortTransaction();
         return res.status(ERR).json({ message: 'Пользователь не найден' });
       }
 
@@ -211,7 +218,7 @@ router.post(
         transaction: t,
       });
 
-      if (poligons && poligons.length) {
+      if (poligons?.length) {
         // Не проверяю начилие в БД всех станций, которые необходимо связать с заданным пользователем,
         // т.к. модель TStationWorkPoligon определяет соответствующий внешний ключ
 
@@ -227,9 +234,13 @@ router.post(
         await TStationWorkPoligon.bulkCreate(objectsToCreateInDatabase, { transaction: t });
       }
 
-      await t.commit();
+      candidate.lastEditDateTime = new Date();
+      await candidate.save({ session });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      await t.commit();
+      await session.commitTransaction();
+
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({
@@ -238,7 +249,71 @@ router.post(
         error: error.message,
         actionParams: { userId, poligons },
       });
-      try { await t.rollback(); } catch {}
+      try { await t.rollback(); await session.abortTransaction(); } catch {}
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+router.post(
+  '/definitDataForGID',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_USERS_FOR_GID; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationIds, posts } = req.body;
+
+    const sequelize = req.sequelize;
+
+    if (!sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции получения данных не определен объект для обращения к БД' });
+    }
+
+    try {
+      // Ищем id пользователей и id соответствующих им рабочих полигонов-станций (сюда же войдут пользователи,
+      // зарегистрированные лишь на рабочих местах операторов на станциях)
+      const { QueryTypes } = require('sequelize');
+      const userWorkPoligons = await sequelize.query(
+        `SELECT DISTINCT SWP_UserID, SWP_StID FROM TStationWorkPoligons WHERE SWP_StID IN (${stationIds})`,
+        { type: QueryTypes.SELECT }
+      );
+
+      let dataToReturn = [];
+
+      // По найденным id пользователей ищем интересующую информацию по данным лицам
+      if (userWorkPoligons?.length) {
+        const searchCondition = {
+          _id: userWorkPoligons.map((item) => item.SWP_UserID),
+          post: posts,
+          confirmed: true,
+        };
+        const projection = {
+          _id: 1, name: 1, surname: 1, fatherName: 1, post: 1,
+        }
+        const users = await User.find(searchCondition, projection);
+        if (users?.length) {
+          dataToReturn = users.map((user) => ({
+            _id: user._id,
+            name: user.name,
+            fatherName: user.fatherName,
+            surname: user.surname,
+            post: user.post,
+          }));
+        }
+      }
+
+      res.status(OK).json(dataToReturn);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Получение информцаии о пользователях на станциях для ГИД',
+        error: error.message,
+        actionParams: { stationIds, posts },
+      });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }

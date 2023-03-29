@@ -18,7 +18,7 @@ const { isMainAdmin } = require('../middleware/checkMainAdmin');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -226,7 +226,7 @@ router.post(
       }
       await role.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', role });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, role });
 
     } catch (error) {
       addError({
@@ -298,7 +298,7 @@ router.post(
       // Сохраняем в БД
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({
@@ -363,7 +363,7 @@ router.post(
       // Сохраняем в БД
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно сохранена' });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS });
 
     } catch (error) {
       addError({
@@ -428,7 +428,7 @@ router.post(
         return res.status(ERR).json({ message: errMess });
       }
 
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -511,7 +511,7 @@ router.post(
       candidate = Object.assign(candidate, req.body);
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', role: candidate });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, role: candidate });
 
     } catch (error) {
       addError({

@@ -12,7 +12,7 @@ const AUTH_NSI_ACTIONS = require('../middleware/AUTH_NSI_ACTIONS');
 
 const router = Router();
 
-const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS } = require('../constants');
+const { OK, ERR, UNKNOWN_ERR, UNKNOWN_ERR_MESS, SUCCESS_MOD_RES, SUCCESS_DEL_MESS, SUCCESS_ADD_MESS } = require('../constants');
 
 
 /**
@@ -52,7 +52,7 @@ router.post(
         ECDSD_Position: +position || null,
       });
 
-      res.status(OK).json({ message: 'Информация успешно сохранена', newRecord });
+      res.status(OK).json({ message: SUCCESS_ADD_MESS, newRecord });
 
     } catch (error) {
       addError({
@@ -91,7 +91,7 @@ router.post(
 
     try {
       await TECDStructuralDivision.destroy({ where: { ECDSD_ID: id } });
-      res.status(OK).json({ message: 'Информация успешно удалена' });
+      res.status(OK).json({ message: SUCCESS_DEL_MESS });
 
     } catch (error) {
       addError({
@@ -160,7 +160,7 @@ router.post(
       candidate.set(updateFields);
       await candidate.save();
 
-      res.status(OK).json({ message: 'Информация успешно изменена', modRecord: candidate });
+      res.status(OK).json({ message: SUCCESS_MOD_RES, modRecord: candidate });
 
     } catch (error) {
       addError({
