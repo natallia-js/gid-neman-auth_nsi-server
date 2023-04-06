@@ -505,6 +505,7 @@ const saveNewUserData = async (props) => {
     roles: roles || [],
     contactData,
     confirmed: authorizedRegistration,
+    lastEditDateTime: new Date(),
   };
   let user;
   if (_id) {

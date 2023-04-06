@@ -27,9 +27,8 @@ const router = Router();
 const {
   OK, UNKNOWN_ERR, UNKNOWN_ERR_MESS, ERR, SUCCESS_ADD_MESS,
   WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
-  SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN, TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF,
-  TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN, SPECIAL_CLOSE_BLOCK_ORDER_SIGN,
-  SPECIAL_OPEN_BLOCK_ORDER_SIGN, TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,
+  TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF, TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN, SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+  SPECIAL_CLOSE_BLOCK_ORDER_SIGN, SPECIAL_OPEN_BLOCK_ORDER_SIGN, TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,
 } = require('../constants');
 
 
@@ -113,10 +112,20 @@ async function formOrderCopiesForDSPAndOperators(props) {
           // полигона. Но нас не интересуют работники, нас интересует непосредственно сам рабочий полигон (работа
           // ДУ-58 ведется на рабочих полигонах!). Поэтому формируем список рабочих полигонов с учетом возможного
           // дублирования информации (дубликаты удаляем).
-          const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
+          const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value); console
           takeDutyPersonal.forEach((el) => {
             if (!workPlaces.find((wp) => wp.id === el.workPlaceId))
-              workPlaces.push({ id: el.workPlaceId, name: el.placeTitle });
+              workPlaces.push({
+                id: el.workPlaceId,
+                name: el.placeTitle,
+                // Информация о должностях и ФИО лиц на рабочих местах станции включается только в запись
+                // о приеме-сдаче дежурства ДСП, т.к. эта информация нужна Приложению к ГИД. В остальных случаях
+                // информация не нужна, т.к. издаваемый документ адресуется только рабочим местам на станции, а
+                // конкретные лица подставляются на станции из ее последнего циркуляра, который может быть скорректирован
+                // уже после того как конкретный документ попадет на станцию.
+                post: el.post,
+                fio: getUserConciseFIOString({ name: el.name, fatherName: el.fatherName, surname: el.surname }),
+              });
           });
         } catch (error) {
           addError({ errorTime: new Date(), action: operationKind, error: error.message, actionParams });
@@ -127,7 +136,7 @@ async function formOrderCopiesForDSPAndOperators(props) {
     // Если издается распоряжение НЕ о приеме-сдаче дежурства ДСП, то для определения адресатов распоряжения на
     // рабочих местах станции (т.е. операторов при ДСП) извлекаем действующее распоряжение о приеме-сдаче
     // дежурства на станции stationId
-    const activeTakePassOrder = await Order.findOne({
+    let activeTakePassOrder = await Order.find({
       "workPoligon.type": WORK_POLIGON_TYPES.STATION,
       "workPoligon.id": stationId,
       $or: [
@@ -138,6 +147,8 @@ async function formOrderCopiesForDSPAndOperators(props) {
       ],
       specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
     }).sort({ createDateTime: -1 }).limit(1).session(session);
+
+    activeTakePassOrder = activeTakePassOrder?.length ? activeTakePassOrder[0] : null;
 
     // если на станции stationId нет действующего распоряжения о приеме сдаче-дежурства либо в нем нет
     // списка рабочих мест операторов при ДСП, то новое распоряжение не будет передаваться на рабочие места
@@ -180,6 +191,8 @@ async function formOrderCopiesForDSPAndOperators(props) {
       workPlaceId: wp.id,
       placeTitle: wp.name,
       sendOriginal,
+      fio: wp.fio,
+      post: wp.post,
     });
   });
 
@@ -769,13 +782,16 @@ router.post(
             return doNotDeleteRecord;
           });
 
-          // Добавляем новых получателей документа на рабочих местах станции
+          // Добавляем новых получателей документа на рабочих местах станции,
+          // существующих корректируем
+          let editedRecordsCount = 0;
           takeDutyPersonal.forEach((newWorkPlaceInfo) => {
             const existingElement = stationWorkPlacesToSend.find((el) =>
               el.type === WORK_POLIGON_TYPES.STATION &&
               el.id === workPoligon.id &&
               el.workPlaceId === newWorkPlaceInfo.workPlaceId
             );
+            const userFIO = getUserConciseFIOString({ name: newWorkPlaceInfo.name, fatherName: newWorkPlaceInfo.fatherName, surname: newWorkPlaceInfo.surname });
             // добавляем нового получателя (при необходимости)
             if (!existingElement) {
               stationWorkPlacesToSend.push({
@@ -785,6 +801,8 @@ router.post(
                 placeTitle: newWorkPlaceInfo.placeTitle,
                 sendOriginal: true,
                 editDateTime: new Date(),
+                post: newWorkPlaceInfo.post,
+                fio: userFIO,
               });
               newWorkPoligonAddressees.push({
                 type: workPoligon.type,
@@ -793,9 +811,18 @@ router.post(
                 sendOriginal: true,
               });
             }
+            // корректируем существующего получателя (при необходимости)
+            else {
+              if (existingElement.fio !== userFIO || existingElement.post !== newWorkPlaceInfo.post) {
+                existingElement.fio = userFIO;
+                existingElement.post = post;
+                existingElement.editDateTime = new Date();
+                editedRecordsCount += 1;
+              }
+            }
           });
 
-          if (deletedStationWorkPlacesInfo.length || newWorkPoligonAddressees.length) {
+          if (deletedStationWorkPlacesInfo.length || newWorkPoligonAddressees.length || editedRecordsCount > 0) {
             existingOrder.stationWorkPlacesToSend = stationWorkPlacesToSend;
           }
         } catch (err) {
@@ -1036,8 +1063,9 @@ router.post(
 
 
 /**
- * Обработка запроса на получение информации о распоряжениях, которые необходимо отобразить на ГИД участка ДНЦ,
- * а также циркулярных распоряжений ДНЦ этого участка.
+ * Обработка запроса на получение:
+ * - распоряжений, которые необходимо отобразить на ГИД участка ДНЦ,
+ * - циркулярных распоряжений ДНЦ этого участка.
  * Распоряжения извлекаются и сортируются в порядке увеличения времени их создания.
  *
  * Предполагается, что данный запрос будет выполняться службой (программой, установленной на рабочем месте ДНЦ).
@@ -1205,7 +1233,7 @@ router.post(
           // если циркуляр, то ищем информацию о лице, принявшем дежурство
           TAKEDUTY = item.orderText.orderText.find((el) => el.ref === TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF)?.value;
           if (item.dspToSend?.length) {
-            TAKEDUTYPERSONAL = item.dspToSend.map((el) => ({ stationId: el.id, fio: el.fio }));
+            TAKEDUTYPERSONAL = item.dspToSend.filter((el) => el._id).map((el) => el._id);
           }
         }
         // 0 - циркуляр, 1 - распоряжение о закрытии (станции/перегона/пути), 2 - распоряжение об открытии (станции/перегона/пути)
@@ -1241,6 +1269,123 @@ router.post(
         actionParams: {
           startDate, stations, dncSectorName,
         },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса на получение адресатов последнего актуального циркулярного распоряжения ДНЦ.
+ *
+ * Параметры тела запроса:
+ * searchOrderStartDate - дата-время начала поиска информации об изданном циркуляре и записях станций и приеме-сдаче дежурства
+ * searchOrderEndDate - дата-время окончания поиска информации об изданном циркуляре и записях станций и приеме-сдаче дежурства
+ * dncSectorId - id участка ДНЦ (из НСИ)
+ */
+router.post(
+  '/getLastCircularOrderAddressees',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_DATA_FOR_GID; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+
+    // Считываем находящиеся в пользовательском запросе данные
+    const { searchOrderStartDate, searchOrderEndDate, dncSectorId } = req.body;
+
+    const actionTitle = 'Получение информации об адресатах последнего циркуляра ДНЦ';
+    const actionParams = { searchOrderStartDate, searchOrderEndDate, dncSectorId };
+
+    try {
+      let circularOrderSearchConditions = {
+        showOnGID: false,
+        specialTrainCategories: TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN,
+        "workPoligon.id": dncSectorId,
+        "workPoligon.type": WORK_POLIGON_TYPES.DNC_SECTOR,
+        createDateTime: {
+          $gte: new Date(searchOrderStartDate),
+          $lte: new Date(searchOrderEndDate),
+        },
+      };
+
+      let dataToReturn = [];
+
+      // Ищем циркуляр на указанном участке ДНЦ, удовлетворяющий условиям поиска
+      let lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
+      lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
+
+      if (lastActualCircularOrder?.dspToSend?.length) {
+        // Получаю из циркуляра id станций-адресатов с конкретными лицами-адресатами
+        const stationIds = lastActualCircularOrder.dspToSend.filter((dsp) => dsp.fio).map((dsp) => dsp.id);
+
+        // Если адресаты среди станций имеются, то...
+        if (stationIds.length) {
+          // ...ищу информацию по данным станциям
+          const stationsData = await TStation.findAll({ where: { St_ID: stationIds } });
+          const getStationById = (stationId) => stationsData.find((st) => st.St_ID === stationId);
+
+          if (stationsData?.length) {
+            // В выходной массив заношу информацию по основным (ДСП) адресатам на станциях участка
+            dataToReturn = lastActualCircularOrder.dspToSend
+              .filter((dsp) => dsp.fio)
+              .map((dsp) => {
+                const station = getStationById(dsp.id);
+                return {
+                  fio: dsp.fio,
+                  post: dsp.post,
+                  station_UNMC: station.St_UNMC,
+                  stationGID_UNMC: station.St_GID_UNMC,
+                };
+              });
+            // Выходной массив дополняю информацией по дополнительным адресатам на станциях участка.
+            // Дополнительных адресатов получаю из записей о приеме-сдаче дежурства, сделанных на соответствующих станциях.
+            circularOrderSearchConditions = {
+              showOnGID: false,
+              specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+              "workPoligon.type": WORK_POLIGON_TYPES.STATION,
+              $or: [{ "workPoligon.workPlaceId": null }, { "workPoligon.workPlaceId": { $exists: false } }],
+              createDateTime: {
+                $gte: new Date(searchOrderStartDate),
+                $lte: new Date(searchOrderEndDate),
+              },
+            };
+            for (let station of stationsData) {
+              // Для очередной станции ищем последнюю актуальную запись о приеме-сдаче дежурства
+              circularOrderSearchConditions["workPoligon.id"] = station.St_ID;
+              lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
+              lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
+              // Если в ней имеются адресаты на станции, то добавляю их в результирующий набор данных,
+              // предварительно убедившись в том, что запись о лице с такими же ФИО, должностью и станцией не была уже
+              // добавлена в этот набор ранее
+              if (lastActualCircularOrder?.stationWorkPlacesToSend?.length) {
+                dataToReturn.push(...lastActualCircularOrder.stationWorkPlacesToSend
+                  .filter((dspOperator) => dspOperator.fio)
+                  .map((dspOperator) => {
+                    const station = getStationById(dspOperator.id);
+                    return {
+                      fio: dspOperator.fio,
+                      post: dspOperator.post,
+                      station_UNMC: station.St_UNMC,
+                      stationGID_UNMC: station.St_GID_UNMC,
+                    };
+                  })
+                )
+              }
+            }
+          }
+        }
+      }
+
+      res.status(OK).json(dataToReturn);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: actionTitle,
+        error: error.message,
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
@@ -1378,8 +1523,10 @@ router.post(
       // документа этой цепочки (не учитываем документ, который нужно отметить как недействительный)
 
       // Ищем последний документ цепочки, отличный от документа order, найденного выше
-      const lastOrderInChain = await Order.findOne({ _id: { $ne: orderId }, "orderChain.chainId": order.orderChain.chainId })
+      let lastOrderInChain = await Order.find({ _id: { $ne: orderId }, "orderChain.chainId": order.orderChain.chainId })
         .sort({ createDateTime: -1 }).limit(1).session(session);
+
+      lastOrderInChain = lastOrderInChain?.length ? lastOrderInChain[0] : null;
 
       // Если такой документ есть, то для него и всех иных документов его цепочки обновляем дату окончания действия цепочки
       // (если она могла измениться при удалении документа из цепочки)
@@ -1823,6 +1970,9 @@ router.post(
     }
   }
 );
+
+
+
 
 
 module.exports = router;

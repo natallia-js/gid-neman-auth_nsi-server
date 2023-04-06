@@ -256,6 +256,17 @@ router.post(
 );
 
 
+/**
+ * Обработка запроса от ГИД на получение списка лиц, являющихся работниками определенных станций
+ * и имеющими определенные должности. Запрос возвращает полную информацию только по тем пользователям,
+ * информация по которым изменилась. Если информация по пользователю не изменилась, то по нему будет
+ * возвращена лишь информация о его id.
+ *
+ * Параметры запроса:
+ * stationUNMCs - массив строк с "ЕСР кодами ГИД" станций
+ * posts - массив строк с названиями должностей
+ * lastRequestDateTime - дата-время, начиная с которого проверять наличие изменений в информации по пользователям
+ */
 router.post(
   '/definitDataForGID',
   // определяем действие, которое необходимо выполнить
@@ -263,21 +274,133 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    // Считываем находящиеся в пользовательском запросе данные
-    const { stationIds, posts } = req.body;
 
-    const sequelize = req.sequelize;
-
-    if (!sequelize) {
+    if (!req.sequelize) {
       return res.status(ERR).json({ message: 'Для выполнения операции получения данных не определен объект для обращения к БД' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationUNMCs, posts, lastRequestDateTime } = req.body;
+
+    const actionTitle = 'Получение информации о пользователях на станциях для ГИД (с учетом ее изменений)';
+    const actionParams = { stationUNMCs, posts, lastRequestDateTime };
+
+    let lastTimeUserRequestedData = new Date(2000, 1, 1, 0, 0, 0);
+    if (lastRequestDateTime) {
+      try {
+        lastTimeUserRequestedData = new Date(lastRequestDateTime);
+      } catch (error) {
+        return res.status(ERR).json({ message: 'Неверный формат даты' });
+      }
+    }
+
     try {
+      // Вначале по ГИД-кодам ЕСР станций найдем их id
+      const { TStation } = require('../models/TStation');
+      let stationIds = await TStation.findAll({ raw: true, attributes: ['St_ID'], where: { St_GID_UNMC: stationUNMCs } });
+      if (!stationIds?.length)
+        return res.status(ERR).json({ message: `Указанные станции не найдены: ${stationUNMCs}` });
+      stationIds = stationIds.map((el) => el.St_ID);
+
       // Ищем id пользователей и id соответствующих им рабочих полигонов-станций (сюда же войдут пользователи,
       // зарегистрированные лишь на рабочих местах операторов на станциях)
       const { QueryTypes } = require('sequelize');
-      const userWorkPoligons = await sequelize.query(
-        `SELECT DISTINCT SWP_UserID, SWP_StID FROM TStationWorkPoligons WHERE SWP_StID IN (${stationIds})`,
+      const userWorkPoligons = await req.sequelize.query(
+        `SELECT DISTINCT SWP_UserID FROM TStationWorkPoligons WHERE SWP_StID IN (${stationIds})`,
+        { type: QueryTypes.SELECT }
+      );
+
+      let dataToReturn = [];
+
+      // По найденным id пользователей ищем интересующую информацию по данным лицам
+      if (userWorkPoligons?.length) {
+        const searchCondition = {
+          _id: userWorkPoligons.map((item) => item.SWP_UserID),
+          post: posts,
+          confirmed: true,
+        };
+        const projection = {
+          _id: 1, name: 1, surname: 1, fatherName: 1, post: 1, lastEditDateTime: 1,
+        }
+        const users = await User.find(searchCondition, projection);
+
+        if (users?.length) {
+          dataToReturn = users.map((user) => {
+            // Если информация по пользователю с момента последнего запроса изменилась, то высылаем новую
+            if (user.lastEditDateTime >= lastTimeUserRequestedData) {
+              return {
+                _id: user._id,
+                name: user.name,
+                fatherName: user.fatherName,
+                surname: user.surname,
+                post: user.post,
+                changed: true,
+              };
+            } else {
+              // Если информация по пользователю с момента последнего запроса не изменилась, то высылаем id этого пользователя
+              return { _id: user._id, changed: false };
+            }
+          });
+        }
+      }
+
+      res.status(OK).json(dataToReturn);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: actionTitle,
+        error: error.message,
+        actionParams,
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса от ГИД на получение списка лиц, являющихся работниками определенных станций
+ * и имеющими определенные должности.
+ *
+ * Параметры запроса:
+ * stationUNMCs - массив строк с "ЕСР кодами ГИД" станций
+ * posts - массив строк с названиями должностей
+ */
+router.post(
+  '/stationsUsers',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_USERS_FOR_GID; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+
+    if (!req.sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции получения данных не определен объект для обращения к БД' });
+    }
+
+    // Считываем находящиеся в пользовательском запросе данные
+    const { stationUNMCs, posts } = req.body;
+
+    const actionTitle = 'Получение информации о пользователях на станциях для ГИД';
+    const actionParams = { stationUNMCs, posts };
+
+    try {
+      // Вначале по ГИД-кодам ЕСР станций найдем их id
+      const { TStation } = require('../models/TStation');
+      let stations = await TStation.findAll({
+        raw: true,
+        attributes: ['St_ID','St_UNMC','St_GID_UNMC'],
+        where: { St_GID_UNMC: stationUNMCs },
+      });
+      if (!stations?.length)
+        return res.status(ERR).json({ message: `Указанные станции не найдены: ${stationUNMCs}` });
+
+      // Ищем id пользователей и id соответствующих им рабочих полигонов-станций (сюда войдут все пользователи,
+      // зарегистрированные на разных рабочих местах на станциях)
+      const { QueryTypes } = require('sequelize');
+      const userWorkPoligons = await req.sequelize.query(
+        `SELECT DISTINCT SWP_UserID, SWP_StID FROM TStationWorkPoligons WHERE SWP_StID IN (${stations.map((el) => el.St_ID)})`,
         { type: QueryTypes.SELECT }
       );
 
@@ -294,14 +417,24 @@ router.post(
           _id: 1, name: 1, surname: 1, fatherName: 1, post: 1,
         }
         const users = await User.find(searchCondition, projection);
+
         if (users?.length) {
-          dataToReturn = users.map((user) => ({
-            _id: user._id,
-            name: user.name,
-            fatherName: user.fatherName,
-            surname: user.surname,
-            post: user.post,
-          }));
+          dataToReturn = userWorkPoligons
+            .map((item) => {
+              const user = users.find((el) => String(el._id) === String(item.SWP_UserID));
+              if (!user) return null;
+              const station = stations.find((st) => st.St_ID === item.SWP_StID);
+              return {
+                _id: user._id,
+                name: user.name,
+                fatherName: user.fatherName,
+                surname: user.surname,
+                post: user.post,
+                station_UNMC: station.St_UNMC,
+                stationGID_UNMC: station.St_GID_UNMC,
+              };
+            })
+            .filter((el) => el);
         }
       }
 
@@ -310,9 +443,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение информцаии о пользователях на станциях для ГИД',
+        action: actionTitle,
         error: error.message,
-        actionParams: { stationIds, posts },
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }

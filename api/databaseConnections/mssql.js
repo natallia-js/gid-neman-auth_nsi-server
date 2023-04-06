@@ -52,16 +52,16 @@ async function connectToMSSQL(CentralConfigDBParams) {
       logging: false,
     }
   );
-  
+
   // Override timezone formatting for MSSQL (это нужно, чтобы не было ошибки,
   // когда дату в виде строки записываю в БД)
   Sequelize.DATE.prototype._stringify = function(date, options) {
     return this._applyTimezone(date, options).format(CentralConfigDBParams.timezoneFormat);
   };
-  
+
   // Testing the connection to the Central Config database
   await sequelize.authenticate();
-  
+
   // Создаю модели для работы с конфигурационной БД
   createDNCSectorModel(sequelize);
   createECDSectorModel(sequelize);
@@ -84,12 +84,12 @@ async function connectToMSSQL(CentralConfigDBParams) {
   createBlockTrackModel(sequelize);
   createStationTrackModel(sequelize);
   createStationWorkPlaceModel(sequelize);
-  createECDStructuralDivisionModel(sequelize);  
-  
+  createECDStructuralDivisionModel(sequelize);
+
   // This creates the tables if they don't exist (and does nothing if they already exist)
   //await sequelize.sync({ alter: true });
 
   return sequelize;
 }
-  
+
 module.exports = connectToMSSQL;

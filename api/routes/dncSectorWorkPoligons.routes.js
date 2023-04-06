@@ -237,6 +237,17 @@ router.post(
 );
 
 
+/**
+ * Обработка запроса от ГИД на получение списка лиц, являющихся работниками определенного участка ДНЦ
+ * и имеющими определенные должности. Запрос возвращает полную информацию только по тем пользователям,
+ * информация по которым изменилась. Если информация по пользователю не изменилась, то по нему будет
+ * возвращена лишь информация о его id.
+ *
+ * Параметры запроса:
+ * dncSectorName - название участка ДНЦ (такое, как в НСИ)
+ * posts - массив строк с названиями должностей
+ * lastRequestDateTime - дата-время, начиная с которого проверять наличие изменений в информации по пользователям
+ */
 router.post(
   '/definitDataForGID',
   // определяем действие, которое необходимо выполнить
@@ -244,25 +255,118 @@ router.post(
   // проверяем полномочия пользователя на выполнение запрошенного действия
   hasUserRightToPerformAction,
   async (req, res) => {
-    // Считываем находящиеся в пользовательском запросе данные
-    const { dncSectorName, posts } = req.body;
 
-    const sequelize = req.sequelize;
-
-    if (!sequelize) {
+    if (!req.sequelize) {
       return res.status(ERR).json({ message: 'Для выполнения операции получения данных не определен объект для обращения к БД' });
     }
 
+    // Считываем находящиеся в пользовательском запросе данные
+    const { dncSectorName, posts, lastRequestDateTime } = req.body;
+
+    const actionTitle = 'Получение информации о пользователях на участке ДНЦ для ГИД (с учетом ее изменений)';
+    const actionParams = { dncSectorName, posts, lastRequestDateTime };
+
+    let lastTimeUserRequestedData = new Date(2000, 1, 1, 0, 0, 0);
+    if (lastRequestDateTime) {
+      try {
+        lastTimeUserRequestedData = new Date(lastRequestDateTime);
+      } catch (error) {
+        return res.status(ERR).json({ message: 'Неверный формат даты' });
+      }
+    }
+
     try {
-      // Вначале по названию участка ДНЦ найдет его id
-      const workPoligon = await TDNCSector.findOne({ where: { DNCS_Title: dncSectorName } });
+      // Вначале по названию участка ДНЦ найдем его id
+      const workPoligon = await TDNCSector.findOne({ raw: true, attributes: ['DNCS_ID'], where: { DNCS_Title: dncSectorName } });
       if (!workPoligon)
         return res.status(ERR).json({ message: `Указанный рабочий полигон не найден: ${dncSectorName}` });
 
       // Ищем id пользователей найденного участка ДНЦ
       const { QueryTypes } = require('sequelize');
-      const workPoligonUsers = await sequelize.query(
+      const workPoligonUsers = await req.sequelize.query(
         `SELECT DISTINCT DNCSWP_UserID FROM TDNCSectorWorkPoligons WHERE DNCSWP_DNCSID = ${workPoligon.DNCS_ID}`,
+        { type: QueryTypes.SELECT }
+      );
+
+      let dataToReturn = [];
+
+      // По найденным id пользователей ищем интересующую информацию по данным лицам
+      if (workPoligonUsers?.length) {
+        const searchCondition = {
+          _id: workPoligonUsers.map((item) => item.DNCSWP_UserID),
+          post: posts,
+          confirmed: true,
+        };
+        const projection = {
+          _id: 1, name: 1, surname: 1, fatherName: 1, post: 1, lastEditDateTime: 1,
+        }
+        const users = await User.find(searchCondition, projection);
+        if (users?.length) {
+          dataToReturn = users.map((user) => {
+            // Если информация по пользователю с момента последнего запроса изменилась, то высылаем новую
+            if (user.lastEditDateTime >= lastTimeUserRequestedData) {
+              return {
+                _id: user._id,
+                name: user.name,
+                fatherName: user.fatherName,
+                surname: user.surname,
+                post: user.post,
+                changed: true,
+              };
+            } else {
+              // Если информация по пользователю с момента последнего запроса не изменилась, то высылаем id этого пользователя
+              return { _id: user._id, changed: false };
+            }
+          });
+        }
+      }
+
+      res.status(OK).json(dataToReturn);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: actionTitle,
+        error: error.message,
+        actionParams,
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
+ * Обработка запроса от ГИД на получение списка лиц, являющихся работниками определенного участка ДНЦ
+ * и имеющими определенные должности.
+ *
+ * Параметры запроса:
+ * dncSectorId - id участка ДНЦ (из НСИ)
+ * posts - массив строк с названиями должностей
+ */
+router.post(
+  '/dncSectorUsers',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_DNC_SECTOR_USERS_FOR_GID; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+
+    if (!req.sequelize) {
+      return res.status(ERR).json({ message: 'Для выполнения операции получения данных не определен объект для обращения к БД' });
+    }
+
+    // Считываем находящиеся в пользовательском запросе данные
+    const { dncSectorId, posts } = req.body;
+
+    const actionTitle = 'Получение информации о пользователях на участке ДНЦ для ГИД';
+    const actionParams = { dncSectorId, posts };
+
+    try {
+      // Ищем id пользователей участка ДНЦ
+      const { QueryTypes } = require('sequelize');
+      const workPoligonUsers = await req.sequelize.query(
+        `SELECT DISTINCT DNCSWP_UserID FROM TDNCSectorWorkPoligons WHERE DNCSWP_DNCSID = ${dncSectorId}`,
         { type: QueryTypes.SELECT }
       );
 
@@ -280,13 +384,15 @@ router.post(
         }
         const users = await User.find(searchCondition, projection);
         if (users?.length) {
-          dataToReturn = users.map((user) => ({
-            _id: user._id,
-            name: user.name,
-            fatherName: user.fatherName,
-            surname: user.surname,
-            post: user.post,
-          }));
+          dataToReturn = users.map((user) => {
+            return {
+              _id: user._id,
+              name: user.name,
+              fatherName: user.fatherName,
+              surname: user.surname,
+              post: user.post,
+            };
+          });
         }
       }
 
@@ -295,9 +401,9 @@ router.post(
     } catch (error) {
       addError({
         errorTime: new Date(),
-        action: 'Получение информцаии о пользователях на станциях для ГИД',
+        action: actionTitle,
         error: error.message,
-        actionParams: { dncSectorName, posts },
+        actionParams,
       });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
