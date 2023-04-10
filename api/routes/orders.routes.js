@@ -112,7 +112,7 @@ async function formOrderCopiesForDSPAndOperators(props) {
           // полигона. Но нас не интересуют работники, нас интересует непосредственно сам рабочий полигон (работа
           // ДУ-58 ведется на рабочих полигонах!). Поэтому формируем список рабочих полигонов с учетом возможного
           // дублирования информации (дубликаты удаляем).
-          const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value); console
+          const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
           takeDutyPersonal.forEach((el) => {
             if (!workPlaces.find((wp) => wp.id === el.workPlaceId))
               workPlaces.push({
@@ -815,7 +815,7 @@ router.post(
             else {
               if (existingElement.fio !== userFIO || existingElement.post !== newWorkPlaceInfo.post) {
                 existingElement.fio = userFIO;
-                existingElement.post = post;
+                existingElement.post = newWorkPlaceInfo.post;
                 existingElement.editDateTime = new Date();
                 editedRecordsCount += 1;
               }
@@ -825,7 +825,7 @@ router.post(
           if (deletedStationWorkPlacesInfo.length || newWorkPoligonAddressees.length || editedRecordsCount > 0) {
             existingOrder.stationWorkPlacesToSend = stationWorkPlacesToSend;
           }
-        } catch (err) {
+        } catch (error) {
           addError({ errorTime: new Date(), action: actionTitle,  error: error.message, actionParams });
         }
       }
@@ -1277,15 +1277,16 @@ router.post(
 
 
 /**
- * Обработка запроса на получение адресатов последнего актуального циркулярного распоряжения ДНЦ.
+ * Обработка запроса на получение адресатов (ДСП) последнего циркулярного распоряжения ДНЦ, изданного в указанный промежуток времени.
+ * А также адресатов в записях о приеме-сдаче дежурства на соответствующих станциях.
  *
  * Параметры тела запроса:
- * searchOrderStartDate - дата-время начала поиска информации об изданном циркуляре и записях станций и приеме-сдаче дежурства
- * searchOrderEndDate - дата-время окончания поиска информации об изданном циркуляре и записях станций и приеме-сдаче дежурства
+ * searchOrderStartDate - дата-время начала поиска информации об изданном циркуляре и записях станций о приеме-сдаче дежурства
+ * searchOrderEndDate - дата-время окончания поиска информации об изданном циркуляре и записях станций о приеме-сдаче дежурства
  * dncSectorId - id участка ДНЦ (из НСИ)
  */
 router.post(
-  '/getLastCircularOrderAddressees',
+  '/getDNCCircularOrderAddressees',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_DATA_FOR_GID; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1295,7 +1296,7 @@ router.post(
     // Считываем находящиеся в пользовательском запросе данные
     const { searchOrderStartDate, searchOrderEndDate, dncSectorId } = req.body;
 
-    const actionTitle = 'Получение информации об адресатах последнего циркуляра ДНЦ';
+    const actionTitle = 'Получение информации об адресатах из циркуляра ДНЦ';
     const actionParams = { searchOrderStartDate, searchOrderEndDate, dncSectorId };
 
     try {
@@ -1311,82 +1312,87 @@ router.post(
       };
 
       let dataToReturn = [];
+      const addDataToReturn = (arrayElement) => {
+        if (!arrayElement) return;
+        if (!dataToReturn.find((el) =>
+          el.station_UNMC === arrayElement.station_UNMC && el.post === arrayElement.post && el.fio === arrayElement.fio)) {
+          dataToReturn.push(arrayElement);
+        }
+      };
 
-      // Ищем циркуляр на указанном участке ДНЦ, удовлетворяющий условиям поиска
+      // Ищем последний по времени издания циркуляр на указанном участке ДНЦ, удовлетворяющий условиям поиска
       let lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
       lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
 
-      if (lastActualCircularOrder?.dspToSend?.length) {
-        // Получаю из циркуляра id станций-адресатов с конкретными лицами-адресатами
-        const stationIds = lastActualCircularOrder.dspToSend.filter((dsp) => dsp.fio).map((dsp) => dsp.id);
+      if (!lastActualCircularOrder?.dspToSend?.length)
+        return res.status(OK).json(dataToReturn);
 
-        // Если адресаты среди станций имеются, то...
-        if (stationIds.length) {
-          // ...ищу информацию по данным станциям
-          const stationsData = await TStation.findAll({ where: { St_ID: stationIds } });
-          const getStationById = (stationId) => stationsData.find((st) => st.St_ID === stationId);
+      // Получаю из циркуляра id станций-адресатов с конкретными лицами-адресатами
+      const stationIds = lastActualCircularOrder.dspToSend.filter((dsp) => dsp.fio).map((dsp) => dsp.id);
 
-          if (stationsData?.length) {
-            // В выходной массив заношу информацию по основным (ДСП) адресатам на станциях участка
-            dataToReturn = lastActualCircularOrder.dspToSend
-              .filter((dsp) => dsp.fio)
-              .map((dsp) => {
-                const station = getStationById(dsp.id);
-                return {
-                  fio: dsp.fio,
-                  post: dsp.post,
-                  station_UNMC: station.St_UNMC,
-                  stationGID_UNMC: station.St_GID_UNMC,
-                };
-              });
-            // Выходной массив дополняю информацией по дополнительным адресатам на станциях участка.
-            // Дополнительных адресатов получаю из записей о приеме-сдаче дежурства, сделанных на соответствующих станциях.
-            circularOrderSearchConditions = {
-              showOnGID: false,
-              specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
-              "workPoligon.type": WORK_POLIGON_TYPES.STATION,
-              $or: [{ "workPoligon.workPlaceId": null }, { "workPoligon.workPlaceId": { $exists: false } }],
-              createDateTime: {
-                $gte: new Date(searchOrderStartDate),
-                $lte: new Date(searchOrderEndDate),
-              },
-            };
-            for (let station of stationsData) {
-              // Для очередной станции ищем последнюю актуальную запись о приеме-сдаче дежурства
-              circularOrderSearchConditions["workPoligon.id"] = station.St_ID;
-              lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
-              lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
-              // Если в ней имеются адресаты на станции, то добавляю их в результирующий набор данных,
-              // предварительно убедившись в том, что запись о лице с такими же ФИО, должностью и станцией не была уже
-              // добавлена в этот набор ранее
-              if (lastActualCircularOrder?.stationWorkPlacesToSend?.length) {
-                dataToReturn.push(...lastActualCircularOrder.stationWorkPlacesToSend
-                  .filter((dspOperator) => dspOperator.fio)
-                  .map((dspOperator) => {
-                    const station = getStationById(dspOperator.id);
-                    return {
-                      fio: dspOperator.fio,
-                      post: dspOperator.post,
-                      station_UNMC: station.St_UNMC,
-                      stationGID_UNMC: station.St_GID_UNMC,
-                    };
-                  })
-                )
-              }
-            }
-          }
-        }
+      if (!stationIds.length)
+        return res.status(OK).json(dataToReturn);
+
+      // Если адресаты среди станций имеются, то ищу информацию по данным станциям
+      const stationsData = await TStation.findAll({
+        attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC'],
+        where: { St_ID: stationIds },
+      });
+      const getStationById = (stationId) => stationsData.find((st) => st.St_ID === stationId);
+
+      if (!stationsData?.length)
+        return res.status(OK).json(dataToReturn);
+
+      // В выходной массив заношу информацию по основным (ДСП) адресатам на станциях участка
+      lastActualCircularOrder.dspToSend
+        .filter((dsp) => dsp.fio)
+        .forEach((dsp) => {
+          const station = getStationById(dsp.id);
+          addDataToReturn({
+            fio: dsp.fio,
+            post: dsp.post,
+            station_UNMC: station.St_UNMC,
+            stationGID_UNMC: station.St_GID_UNMC,
+          });
+        });
+      // Выходной массив дополняю информацией по дополнительным адресатам на станциях участка.
+      // Дополнительных адресатов получаю из записей о приеме-сдаче дежурства, сделанных на соответствующих станциях.
+      circularOrderSearchConditions = {
+        showOnGID: false,
+        specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
+        "workPoligon.type": WORK_POLIGON_TYPES.STATION,
+        $or: [{ "workPoligon.workPlaceId": null }, { "workPoligon.workPlaceId": { $exists: false } }],
+        createDateTime: {
+          $gte: new Date(searchOrderStartDate),
+          $lte: new Date(searchOrderEndDate),
+        },
+      };
+      for (let station of stationsData) {
+        // Для очередной станции ищем последнюю актуальную (в заданный промежуток времени) запись о приеме-сдаче дежурства
+        circularOrderSearchConditions["workPoligon.id"] = station.St_ID;
+        lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
+        lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
+        // Если в ней имеются адресаты на станции, то добавляю их в результирующий набор данных,
+        // предварительно убедившись в том, что запись о лице с такими же ФИО, должностью и станцией не была уже
+        // добавлена в этот набор ранее
+        if (!lastActualCircularOrder?.stationWorkPlacesToSend?.length)
+          continue;
+        lastActualCircularOrder.stationWorkPlacesToSend
+          .filter((dspOperator) => dspOperator.fio)
+          .forEach((dspOperator) => {
+            addDataToReturn({
+              fio: dspOperator.fio,
+              post: dspOperator.post,
+              station_UNMC: station.St_UNMC,
+              stationGID_UNMC: station.St_GID_UNMC,
+            });
+          });
       }
 
       res.status(OK).json(dataToReturn);
 
     } catch (error) {
-      addError({
-        errorTime: new Date(),
-        action: actionTitle,
-        error: error.message,
-        actionParams,
-      });
+      addError({ errorTime: new Date(), action: actionTitle, error: error.message, actionParams });
       res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
     }
   }
