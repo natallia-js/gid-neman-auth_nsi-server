@@ -12,6 +12,7 @@ const {
 const { TStation } = require('../models/TStation');
 const { TBlock } = require('../models/TBlock');
 const { TDNCSector } = require('../models/TDNCSector');
+const { TStationWorkPlace } = require('../models/TStationWorkPlace');
 const OrderPatternElementRef = require('../models/OrderPatternElementRef');
 const validate = require('../validators/validate');
 const { Op } = require('sequelize');
@@ -29,6 +30,7 @@ const {
   WORK_POLIGON_TYPES, INCLUDE_DOCUMENTS_CRITERIA, ORDER_PATTERN_TYPES,
   TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF, TAKE_PASS_DUTY_ORDER_DNC_ECD_SPECIAL_SIGN, SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
   SPECIAL_CLOSE_BLOCK_ORDER_SIGN, SPECIAL_OPEN_BLOCK_ORDER_SIGN, TAKE_DUTY_FIO_ORDER_TEXT_ELEMENT_REF,
+  STATION_WORKPLACE_TYPES,
 } = require('../constants');
 
 
@@ -53,19 +55,20 @@ const getToSendObject = (props) => {
   };
 };
 
-// Формирование копий распоряжения для ДСП станции и тех операторов при ДСП, которые приняли дежурство
-// вместе с ДСП согласно распоряжения о приеме-сдаче дежурства ДСП (самому себе копия не формируется).
-// Если же издается распоряжение о приеме-сдаче дежурства ДСП, то копии распоряжения идут тем операторам
-// при ДСП, которые фигурируют в тексте распоряжения.
-async function formOrderCopiesForDSPAndOperators(props) {
+// Формирование копий распоряжения для ДСП станции, тех операторов при ДСП, которые приняли дежурство
+// вместе с ДСП согласно распоряжения о приеме-сдаче дежурства ДСП (самому себе копия не формируется),
+// а также (при необходимости) - руководителям работ на станции.
+// Если же издается распоряжение о приеме-сдаче дежурства ДСП, то копии распоряжения идут только тем
+// операторам при ДСП, которые фигурируют в тексте распоряжения.
+async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
   const { operationKind, workPoligon, workPoligonTitle, stationId,
-    stationName, order, sendOriginal, actionParams, session } = props;
+    stationName, order, sendToStationWorkManagers, sendOriginal, actionParams, session } = props;
 
   const orderCopies = [];
   const stationWorkPlacesOrderIsSentTo = [];
 
   // Отправка ДСП (если распоряжение издается не на станции, но ей адресуется, либо издается
-  // на рабочем месте станции и должна попасть на это рабочее место)
+  // на рабочем месте станции, отличном от рабочего места ДСП, и должна попасть на это рабочее место)
   if (workPoligon.type !== WORK_POLIGON_TYPES.STATION || stationId !== workPoligon.id || workPoligon.workPlaceId) {
     orderCopies.push(new WorkOrder(
       getToSendObject({
@@ -97,7 +100,7 @@ async function formOrderCopiesForDSPAndOperators(props) {
     });
   }
 
-  // Рабочие места ОПЕРАТОРОВ при ДСП станции, которым будет передана копия издаваемого документа
+  // Рабочие места ОПЕРАТОРОВ при ДСП станции и РУКОВОДИТЕЛЕЙ работ, которым будет передана копия издаваемого документа
   let workPlaces = [];
 
   // Издается распоряжение о приеме-сдаче дежурства ДСП => из текста распоряжения выделяем информацию о
@@ -160,6 +163,20 @@ async function formOrderCopiesForDSPAndOperators(props) {
       workPlaces = activeTakePassOrder.stationWorkPlacesToSend.map((workPlace) => {
         return { id: workPlace.workPlaceId, name: workPlace.placeTitle };
       });
+    }
+    // осталось только передать распоряжение (при необходимости) руководителям работ на станции
+    if (sendToStationWorkManagers) {
+      // получаем список всех рабочих мест руководителей работ станции
+      const workManagersWorkPlaces = await TStationWorkPlace.findAll({
+        attributes: ['SWP_ID', 'SWP_Name'],
+        where: { SWP_StationId: stationId, SWP_Type: STATION_WORKPLACE_TYPES.WORKS_MANAGER },
+      });
+      // формируем им копии издаваемого документа
+      if (workManagersWorkPlaces?.length) {
+        workPlaces.push(...workManagersWorkPlaces.map((workPlace) => {
+          return { id: workPlace.SWP_ID, name: workPlace.SWP_Name };
+        }));
+      }
     }
   }
 
@@ -480,11 +497,12 @@ async function formOrderCopiesForDSPAndOperators(props) {
       // Станция - это не только ДСП, но и операторы при ДСП, и иные рабочие места
       // (в частности, временные рабочие места руководителей работ на станции).
       // Как ДСП, так и операторы при ДСП, а также руководители работ - все они могут издавать распоряжения.
-      // Но получать распоряжения, направляемые в адрес станции, могут только "стационарные" рабочие места
-      // (т.е. на временное рабочее место руководителя работ распоряжение не должно идти; на такое рабочее место
-      // идут только те распоряжения, которые издаются в рамках этого временного рабочего места).
-      // Потому для каждой станции - будь то издатель или получатель распоряжения - проверяем наличие в
-      // ее составе рабочих мест ОПЕРАТОРОВ. Копия издаваемого распоряжения должна попасть как ДСП,
+      // Получать распоряжения, направляемые в адрес станции, могут только "стационарные" рабочие места
+      // (т.е. на временное рабочее место руководителя работ распоряжение не должно идти). Исключение - заявки
+      // и уведомления, которые должны поступать в том числе и на рабочие места руководителей работ.
+      // На рабочее место руководителя работ идут также все те распоряжения, которые издаются в рамках этого
+      // временного рабочего места, + заявки и уведомления, формируемые в рамках рабочих мест станции.
+      // Относительно "стационарных" рабочих мест станции: копия распоряжения должна попасть как ДСП,
       // так и тем операторам на станции, которые фигурировали в последнем (ныне активном) распоряжении
       // о приеме-сдаче дежурства ДСП.
       const workOrders = [];
@@ -502,16 +520,18 @@ async function formOrderCopiesForDSPAndOperators(props) {
         workOrders.push(workOrder);
       });
 
-      // рассылка на станции (ДСП, явно указанным издателем распоряжения в качестве адресатов, и операторам при ДСП)
+      // рассылка на станции (ДСП, явно указанным издателем распоряжения в качестве адресатов, операторам при ДСП и,
+      // при необходимости - руководителям работ на станции)
       for (let dspSector of dspToSend) {
         const { orderCopies, stationWorkPlacesOrderIsSentTo } =
-          await formOrderCopiesForDSPAndOperators({
+          await formOrderCopiesForDSPAndOtherStationReceivers({
             operationKind: actionTitle,
             workPoligon,
             workPoligonTitle,
             stationId: dspSector.id,
             stationName: dspSector.placeTitle,
             order,
+            sendToStationWorkManagers: [ORDER_PATTERN_TYPES.REQUEST, ORDER_PATTERN_TYPES.NOTIFICATION].includes(type),
             sendOriginal: dspSector.sendOriginal,
             actionParams,
             session,
@@ -550,16 +570,19 @@ async function formOrderCopiesForDSPAndOperators(props) {
       }));
 
       // если распоряжение издается на станции (ДСП или оператором при ДСП), то оно
-      // автоматически должно попасть как ДСП, так и на все рабочие места операторов при ДСП данной станции
+      // автоматически должно попасть как ДСП, так и на все рабочие места операторов при ДСП данной станции,
+      // указанных в последней записи станции о приеме-сдаче дежурства, а также руководителям работ на станции,
+      // если издается заявка либо уведомление
       if (workPoligon.type === WORK_POLIGON_TYPES.STATION) {
         const { orderCopies, stationWorkPlacesOrderIsSentTo } =
-          await formOrderCopiesForDSPAndOperators({
+          await formOrderCopiesForDSPAndOtherStationReceivers({
             operationKind: actionTitle,
             workPoligon,
             workPoligonTitle,
             stationId: workPoligon.id,
             stationName: null,
             order,
+            sendToStationWorkManagers: [ORDER_PATTERN_TYPES.REQUEST, ORDER_PATTERN_TYPES.NOTIFICATION].includes(type),
             sendOriginal: true,
             actionParams,
             session,
@@ -865,7 +888,7 @@ router.post(
                 // которым необходимо отослать документ (т.е. по сути то же, что и в orderCopies), но это та информация, которая
                 // должна присутствовать в самом редактируемом документе (в общей коллекции документов);
                 const { orderCopies, stationWorkPlacesOrderIsSentTo } =
-                  await formOrderCopiesForDSPAndOperators({
+                  await formOrderCopiesForDSPAndOtherStationReceivers({
                     operationKind: actionTitle,
                     workPoligon,
                     workPoligonTitle,

@@ -580,7 +580,9 @@ router.post(
  *    создании распоряжения; если распоряжение издается на станции, то за рабочие места на станции
  *    подтвердить распоряжение может лишь его издатель (например, распоряжение издается на рабочем месте
  *    Оператора при ДСП №1, значит, его подтвердить за все рабочие места на станции может только лицо с
- *    этого рабочего места, ДСП не может)
+ *    этого рабочего места, ДСП не может) - справедливо только для ДСП и Операторов при ДСП; Руководитель
+ *    работ не может подтверждать изданный им документ за получаталей документа в рамках станции - это может
+ *    делать только ДСП;
  * 2) получатель распоряжения на станции (ДСП) может подтвердить распоряжение за все рабочие места на этой
  *    станции (получатель распоряжения, изданного вне станции - станция, значит, подтвердить за других на
  *    станции может только ДСП).
@@ -639,36 +641,57 @@ router.post(
 
       // Далее, нам необходимо убедиться в том, что распоряжение было издано на том рабочем
       // полигоне, на котором может работать пользователь, сделавший запрос
-      const wrongPoligonByDispatchSector =
+      const wrongGlobalPoligon =
         (order.workPoligon.type !== userWorkPoligon.type) ||
-        (String(order.workPoligon.id) !== String(userWorkPoligon.id)) ||
+        (String(order.workPoligon.id) !== String(userWorkPoligon.id));
+      const wrongPoligonByDispatchSector = wrongGlobalPoligon ||
         (
           (!order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) !== String(userWorkPoligon.workPlaceId))
         );
       if (wrongPoligonByDispatchSector) {
-        // Если рабочий полигон не прошел проверку, то убеждаемся в том, что распоряжение было адресовано
-        // станции, при этом рабочие полигоны, за которые необходимо подтвердить распоряжение - рабочие места
-        // на этой станции, а подтверждающий за других - обязательно ДСП этой станции!
         const wrongConfirmedWorkPoligon = confirmWorkPoligons.find((wp) =>
           wp.workPoligonType !== userWorkPoligon.type ||
           wp.workPoligonId !== userWorkPoligon.id
         );
-        const wrongPoligonByAddressee =
-          (
-            userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
-            wrongConfirmedWorkPoligon ||
-            !order.dspToSend ||
-            !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
-            !req.user.specialCredentials ||
-            !req.user.specialCredentials.includes(DSP_FULL)
-          );
-        if (wrongPoligonByAddressee) {
-          await session.abortTransaction();
-          return res.status(ERR).json({
-            message: 'Подтверждать распоряжение за других может лишь его издатель либо ДСП в случае подтверждения адресованного станции распоряжения за рабочие места на станции',
-          });
+        // Если документ издан не на конкретно указанном рабочем полигоне, то смотрим, издан ли он на глобальном
+        // рабочем полигоне, частью которого является указанный рабочий полигон. Если да и этот глобальный полигон -
+        // станция, а пользователь - ДСП, то он имеет право подтвердить документ за иного адресата (рабочее место)
+        // в рамках своей станции
+        if (!wrongGlobalPoligon) {
+          const wrongPoligonByAddressee =
+            (
+              userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+              wrongConfirmedWorkPoligon ||
+              !req.user.specialCredentials ||
+              !req.user.specialCredentials.includes(DSP_FULL)
+            );
+            if (wrongPoligonByAddressee) {
+              await session.abortTransaction();
+              return res.status(ERR).json({
+                message: 'У Вас нет права на подтверждение документа за указанных адресатов',
+              });
+            }
+        } else {
+          // Если рабочий полигон не прошел проверку, то убеждаемся в том, что распоряжение было адресовано
+          // станции, при этом рабочие полигоны, за которые необходимо подтвердить распоряжение - рабочие места
+          // на этой станции, а подтверждающий за других - обязательно ДСП этой станции!
+          const wrongPoligonByAddressee =
+            (
+              userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+              wrongConfirmedWorkPoligon ||
+              !order.dspToSend ||
+              !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
+              !req.user.specialCredentials ||
+              !req.user.specialCredentials.includes(DSP_FULL)
+            );
+          if (wrongPoligonByAddressee) {
+            await session.abortTransaction();
+            return res.status(ERR).json({
+              message: 'У Вас нет права на подтверждение документа за указанных адресатов',
+            });
+          }
         }
       }
 
@@ -927,10 +950,11 @@ router.post(
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Информацию по получателю распоряжения на рабочем месте станции может удалить:
- * 1) издатель данного распоряжения, если он - работник станции (ДСП, Оператор при ДСП либо Руководитель работ) -
+ * 1) издатель данного распоряжения, если он - работник станции (ДСП, Оператор при ДСП, но не Руководитель работ) -
  *    может удалить любого из получателей на станции (в том числе и ДСП),
  * 2) ДСП (не иной работник станции!) в случае распоряжения, изданного не на станции, но адресованного ей,
- *    может удалить любого из получателей на станции, кроме себя
+ *    может удалить любого из получателей на станции, кроме себя; также ДСП может удалить любого из получателей
+ *   документа на станции, если документ издан руководителем работ
  *
  * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
  * Если этой информации в токене нет, то запрос не будет обработан.
@@ -978,36 +1002,53 @@ router.post(
 
       // Далее, нам необходимо убедиться в том, что распоряжение было издано на том рабочем
       // полигоне, на котором может работать пользователь, сделавший запрос, и этот полигон - станция
-      const wrongPoligonByDispatchSector =
+      const wrongGlobalPoligon =
         (order.workPoligon.type !== WORK_POLIGON_TYPES.STATION) ||
         (order.workPoligon.type !== userWorkPoligon.type) ||
-        (String(order.workPoligon.id) !== String(userWorkPoligon.id)) ||
+        (String(order.workPoligon.id) !== String(userWorkPoligon.id));
+      const wrongPoligonByDispatchSector = wrongGlobalPoligon ||
         (
           (!order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) !== String(userWorkPoligon.workPlaceId))
         );
       if (wrongPoligonByDispatchSector) {
-        // Если пользователь - не издатель распоряжения, то он должен быть ДСП, станции которого
-        // адресовано распоряжение
-        const wrongPoligonByAddressee =
-          (
-            userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
-            !order.dspToSend ||
-            !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
-            !req.user.specialCredentials ||
-            !req.user.specialCredentials.includes(DSP_FULL)
-          );
-        if (wrongPoligonByAddressee) {
-          return res.status(ERR).json({
-            message: 'Удалить адресата на станции может лишь работник того рабочего места на станции, на котором распоряжение было издано, либо ДСП в случае распоряжения, изданного вне станции',
-          });
-        }
-        // ДСП не может удалить сам себя!
-        if (!recordToDelete.workPlaceId) {
-          return res.status(ERR).json({
-            message: 'Удаление основного получателя на станции недопустимо',
-          });
+        // Если документ издан не на конкретно указанном рабочем полигоне, то смотрим, издан ли он на глобальном
+        // рабочем полигоне, частью которого является указанный рабочий полигон. Если да и этот глобальный полигон -
+        // станция, а пользователь - ДСП, то он имеет право удалить получателя документа в рамках рабочего места своей станции
+        if (!wrongGlobalPoligon) {
+          const wrongPoligonByAddressee =
+            (
+              userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+              !req.user.specialCredentials ||
+              !req.user.specialCredentials.includes(DSP_FULL)
+            );
+            if (wrongPoligonByAddressee) {
+              return res.status(ERR).json({
+                message: 'У Вас нет права на удаление адресата документа на рабочем месте станции',
+              });
+            }
+        } else {
+          // Если пользователь - не издатель документа, то он должен быть ДСП, станции которого адресован документ
+          const wrongPoligonByAddressee =
+            (
+              userWorkPoligon.type !== WORK_POLIGON_TYPES.STATION ||
+              !order.dspToSend ||
+              !order.dspToSend.find((item) => String(item.id) === String(userWorkPoligon.id)) ||
+              !req.user.specialCredentials ||
+              !req.user.specialCredentials.includes(DSP_FULL)
+            );
+          if (wrongPoligonByAddressee) {
+            return res.status(ERR).json({
+              message: 'У Вас нет права на удаление адресата документа на рабочем месте станции',
+            });
+          }
+          // ДСП не может удалить сам себя!
+          if (!recordToDelete.workPlaceId) {
+            return res.status(ERR).json({
+              message: 'Удаление основного получателя на станции недопустимо',
+            });
+          }
         }
       }
 
