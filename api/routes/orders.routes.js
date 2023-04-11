@@ -128,6 +128,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
                 // уже после того как конкретный документ попадет на станцию.
                 post: el.post,
                 fio: getUserConciseFIOString({ name: el.name, fatherName: el.fatherName, surname: el.surname }),
+                type: STATION_WORKPLACE_TYPES.OPERATOR,
               });
           });
         } catch (error) {
@@ -161,7 +162,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       // новое распоряжение будет передано на те рабочие места операторов при ДСП станции, которые
       // фигурируют в найденном распоряжении о приеме-сдаче дежурства
       workPlaces = activeTakePassOrder.stationWorkPlacesToSend.map((workPlace) => {
-        return { id: workPlace.workPlaceId, name: workPlace.placeTitle };
+        return { id: workPlace.workPlaceId, name: workPlace.placeTitle, type: STATION_WORKPLACE_TYPES.OPERATOR };
       });
     }
     // осталось только передать распоряжение (при необходимости) руководителям работ на станции
@@ -174,7 +175,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       // формируем им копии издаваемого документа
       if (workManagersWorkPlaces?.length) {
         workPlaces.push(...workManagersWorkPlaces.map((workPlace) => {
-          return { id: workPlace.SWP_ID, name: workPlace.SWP_Name };
+          return { id: workPlace.SWP_ID, name: workPlace.SWP_Name, type: STATION_WORKPLACE_TYPES.WORKS_MANAGER };
         }));
       }
     }
@@ -188,6 +189,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
     workPlaces = workPlaces.filter((item) => item.id !== workPoligon.workPlaceId);
   }
   workPlaces.forEach((wp) => {
+    // На какие рабочие полигоны документ разослать
     orderCopies.push(new WorkOrder(
       getToSendObject({
         orderId: order._id,
@@ -202,15 +204,18 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
           sendOriginal,
         },
       })));
-    stationWorkPlacesOrderIsSentTo.push({
-      id: stationId,
-      type: WORK_POLIGON_TYPES.STATION,
-      workPlaceId: wp.id,
-      placeTitle: wp.name,
-      sendOriginal,
-      fio: wp.fio,
-      post: wp.post,
-    });
+    // Какие рабочие места указывать в качестве получателя документа в рамках текущей станции
+    if (wp.type !== STATION_WORKPLACE_TYPES.WORKS_MANAGER) {
+      stationWorkPlacesOrderIsSentTo.push({
+        id: stationId,
+        type: WORK_POLIGON_TYPES.STATION,
+        workPlaceId: wp.id,
+        placeTitle: wp.name,
+        sendOriginal,
+        fio: wp.fio,
+        post: wp.post,
+      });
+    }
   });
 
   return { orderCopies, stationWorkPlacesOrderIsSentTo };
