@@ -133,6 +133,9 @@ router.post(
  * Параметры тела запроса:
  * id - идентификатор пути станции (обязателен),
  * name - наименование пути станции (не обязательно),
+ * suburbanReception, passengerReception, cargoReception,
+   suburbanDeparture, passengerDeparture, cargoDeparture, suburbanPass, passengerPass,
+   cargoPass, specialTrainReception, specialTrainDeparture, specialTrainPass - необязательные флаги
  * Обязательный параметр запроса - applicationAbbreviation!
  */
 router.post(
@@ -146,7 +149,9 @@ router.post(
   validate,
   async (req, res) => {
     // Считываем находящиеся в пользовательском запросе данные
-    const { id, name } = req.body;
+    const { id, name, suburbanReception, passengerReception, cargoReception,
+      suburbanDeparture, passengerDeparture, cargoDeparture, suburbanPass, passengerPass,
+      cargoPass, specialTrainReception, specialTrainDeparture, specialTrainPass } = req.body;
 
     try {
       // Ищем в БД путь станции, id которого совпадает с переданным пользователем
@@ -173,9 +178,32 @@ router.post(
         }
       }
 
-      if (req.body.hasOwnProperty('name')) {
+      if (req.body.hasOwnProperty('name'))
         candidate.ST_Name = name;
-      }
+      if (req.body.hasOwnProperty('suburbanReception'))
+        candidate.ST_SuburbanReception = suburbanReception;
+      if (req.body.hasOwnProperty('passengerReception'))
+        candidate.ST_PassengerReception = passengerReception;
+      if (req.body.hasOwnProperty('cargoReception'))
+        candidate.ST_CargoReception = cargoReception;
+      if (req.body.hasOwnProperty('suburbanDeparture'))
+        candidate.ST_SuburbanDeparture = suburbanDeparture;
+      if (req.body.hasOwnProperty('passengerDeparture'))
+        candidate.ST_PassengerDeparture = passengerDeparture;
+      if (req.body.hasOwnProperty('cargoDeparture'))
+        candidate.ST_CargoDeparture = cargoDeparture;
+      if (req.body.hasOwnProperty('suburbanPass'))
+        candidate.ST_SuburbanPass = suburbanPass;
+      if (req.body.hasOwnProperty('passengerPass'))
+        candidate.ST_PassengerPass = passengerPass;
+      if (req.body.hasOwnProperty('cargoPass'))
+        candidate.ST_CargoPass = cargoPass;
+      if (req.body.hasOwnProperty('specialTrainReception'))
+        candidate.ST_SpecialTrainReception = specialTrainReception;
+      if (req.body.hasOwnProperty('specialTrainDeparture'))
+        candidate.ST_SpecialTrainDeparture = specialTrainDeparture;
+      if (req.body.hasOwnProperty('specialTrainPass'))
+        candidate.ST_SpecialTrainPass = specialTrainPass;
 
       await candidate.save();
 

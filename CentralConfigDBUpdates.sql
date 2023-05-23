@@ -400,3 +400,18 @@ ALTER TABLE TDNCSectors
 ADD DNCS_LastPersonalUpdateTime datetime NOT NULL default CURRENT_TIMESTAMP;
 ALTER TABLE TDNCSectors
 ADD DNCS_LastUpdatePersonalRequestTime datetime;
+
+/* Дополнительные поля в таблице путей станций */
+ALTER TABLE TStationTracks ADD
+ST_SuburbanReception bit not null default 0,
+ST_PassengerReception bit not null default 0,
+ST_CargoReception bit not null default 0,
+ST_SuburbanDeparture bit not null default 0,
+ST_PassengerDeparture bit not null default 0,
+ST_CargoDeparture bit not null default 0,
+ST_SuburbanPass bit not null default 0,
+ST_PassengerPass bit not null default 0,
+ST_CargoPass bit not null default 0,
+ST_SpecialTrainReception bit not null default 0,
+ST_SpecialTrainDeparture bit not null default 0,
+ST_SpecialTrainPass bit not null default 0;

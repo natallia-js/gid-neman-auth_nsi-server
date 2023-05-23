@@ -36,7 +36,8 @@ const {
 
 // Возвращает объект записи о документе, копию которого необходимо передать
 const getToSendObject = (props) => {
-  const { orderId, timeSpan, orderChainInfo, workPoligon, workPoligonTitle, sectorInfo, isHiddenDocument = false } = props;
+  const { orderId, timeSpan, orderChainInfo, workPoligon, workPoligonTitle, sectorInfo,
+    isHiddenDocument = false, deliverDateTime = null, confirmDateTime = null } = props;
   return {
     senderWorkPoligon: { ...workPoligon, title: workPoligonTitle },
     recipientWorkPoligon: {
@@ -50,8 +51,8 @@ const getToSendObject = (props) => {
     orderChain: orderChainInfo,
     hidden: isHiddenDocument,
     // Для скрытых документов сразу устанавливаем даты доставки и подтверждения, чтобы документ находился "в работе"
-    deliverDateTime: isHiddenDocument ? new Date() : null,
-    confirmDateTime: isHiddenDocument ? new Date() : null,
+    deliverDateTime: isHiddenDocument && !deliverDateTime ? new Date() : deliverDateTime,
+    confirmDateTime: isHiddenDocument && !confirmDateTime ? new Date() : confirmDateTime,
   };
 };
 
@@ -61,8 +62,8 @@ const getToSendObject = (props) => {
 // Если же издается распоряжение о приеме-сдаче дежурства ДСП, то копии распоряжения идут только тем
 // операторам при ДСП, которые фигурируют в тексте распоряжения.
 async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
-  const { operationKind, workPoligon, workPoligonTitle, stationId,
-    stationName, order, sendToStationWorkManagers, sendOriginal, actionParams, session } = props;
+  const { operationKind, workPoligon, workPoligonTitle, stationId, stationName, order, sendToStationWorkManagers,
+    defaultDeliverAndConfirmDateTime, sendOriginal, actionParams, session } = props;
 
   const orderCopies = [];
   const stationWorkPlacesOrderIsSentTo = [];
@@ -165,7 +166,8 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
         return { id: workPlace.workPlaceId, name: workPlace.placeTitle, type: STATION_WORKPLACE_TYPES.OPERATOR };
       });
     }
-    // осталось только передать распоряжение (при необходимости) руководителям работ на станции
+    // осталось только передать документ (при необходимости) руководителям работ на станции;
+    // такой документ актоматически должен быть отмечен как доставленный и подтвержденный на рабочем месте руководителя работ
     if (sendToStationWorkManagers) {
       // получаем список всех рабочих мест руководителей работ станции
       const workManagersWorkPlaces = await TStationWorkPlace.findAll({
@@ -175,7 +177,13 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       // формируем им копии издаваемого документа
       if (workManagersWorkPlaces?.length) {
         workPlaces.push(...workManagersWorkPlaces.map((workPlace) => {
-          return { id: workPlace.SWP_ID, name: workPlace.SWP_Name, type: STATION_WORKPLACE_TYPES.WORKS_MANAGER };
+          return {
+            id: workPlace.SWP_ID,
+            name: workPlace.SWP_Name,
+            type: STATION_WORKPLACE_TYPES.WORKS_MANAGER,
+            deliverDateTime: defaultDeliverAndConfirmDateTime,
+            confirmDateTime: defaultDeliverAndConfirmDateTime,
+          };
         }));
       }
     }
@@ -203,6 +211,8 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
           type: WORK_POLIGON_TYPES.STATION,
           sendOriginal,
         },
+        deliverDateTime: wp.deliverDateTime || null,
+        confirmDateTime: wp.confirmDateTime || null,
       })));
     // Какие рабочие места указывать в качестве получателя документа в рамках текущей станции
     if (wp.type !== STATION_WORKPLACE_TYPES.WORKS_MANAGER) {
@@ -525,6 +535,8 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
         workOrders.push(workOrder);
       });
 
+      const deliverAndConfirmDateTimeOnCurrentWorkPoligon = new Date();
+
       // рассылка на станции (ДСП, явно указанным издателем распоряжения в качестве адресатов, операторам при ДСП и,
       // при необходимости - руководителям работ на станции)
       for (let dspSector of dspToSend) {
@@ -537,6 +549,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
             stationName: dspSector.placeTitle,
             order,
             sendToStationWorkManagers: [ORDER_PATTERN_TYPES.REQUEST, ORDER_PATTERN_TYPES.NOTIFICATION].includes(type),
+            defaultDeliverAndConfirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
             sendOriginal: dspSector.sendOriginal,
             actionParams,
             session,
@@ -562,7 +575,6 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       });
 
       // себе
-      const deliverAndConfirmDateTimeOnCurrentWorkPoligon = new Date();
       workOrders.push(new WorkOrder({
         senderWorkPoligon: senderInfo,
         recipientWorkPoligon: { ...workPoligon },
@@ -588,6 +600,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
             stationName: null,
             order,
             sendToStationWorkManagers: [ORDER_PATTERN_TYPES.REQUEST, ORDER_PATTERN_TYPES.NOTIFICATION].includes(type),
+            defaultDeliverAndConfirmDateTime: deliverAndConfirmDateTimeOnCurrentWorkPoligon,
             sendOriginal: true,
             actionParams,
             session,
@@ -775,7 +788,7 @@ router.post(
       }
 
       // Изменился текст документа?
-      if (orderText && JSON.stringify(existingOrder.orderText) !== JSON.stringify(orderText)) {
+      if (req.body.hasOwnProperty('orderText') && JSON.stringify(existingOrder.orderText) !== JSON.stringify(orderText)) {
         existingOrder.orderText = orderText;
       }
 
@@ -788,7 +801,7 @@ router.post(
       // Если редактируется документ о приеме-сдаче дежурства ДСП, то количество рабочих мест
       // ОПЕРАТОРОВ при ДСП на станции, которым адресуется документ, должно соответствовать количеству
       // ОПЕРАТОРОВ при ДСП, указанных в тексте документа в качестве персонала, принимающего дежурство вместе с ДСП станции.
-      if (existingOrder.specialTrainCategories?.includes(SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN)) {
+      if (req.body.hasOwnProperty('orderText') && existingOrder.specialTrainCategories?.includes(SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN)) {
         // Извлекаем элемент текста документа, в котором приводится список рабочих мест на станции, принимающих
         // дежурство наряду с текущим ДСП
         const takeDutyPersonalInfo = orderText?.orderText?.find((el) => el.ref === TAKE_DUTY_PERSONAL_ORDER_TEXT_ELEMENT_REF) || { value: '[]' };
@@ -797,7 +810,6 @@ router.post(
           const takeDutyPersonal = JSON.parse(takeDutyPersonalInfo.value);
           // Просто заменить текущий список новым не можем: затрем время доставки и подтверждения документа на
           // рабочих местах станции. Придется анализировать каждый элемент списка отдельно.
-
           // Удаляем тех получателей документа на станции, которых нет в новом списке получателей
           stationWorkPlacesToSend = stationWorkPlacesToSend.filter((el) => {
             const doNotDeleteRecord =
@@ -809,7 +821,6 @@ router.post(
               addRecInDeletedStationWorkPlacesInfo({ stationId: el.id, workPlaceId: el.workPlaceId });
             return doNotDeleteRecord;
           });
-
           // Добавляем новых получателей документа на рабочих местах станции,
           // существующих корректируем
           let editedRecordsCount = 0;
@@ -1201,11 +1212,16 @@ router.post(
       }
 
       // Формируем критерии выборки данных из коллекции распоряжений
-      const ordersMatchFilter = {};
+      const ordersMatchFilter = {
+        invalid: false,
+      };
       if (possibleOrdersPlaces.length) {
         ordersMatchFilter.$or = [
           // условия для распоряжений о закрытии-открытии перегона
-          { showOnGID: true, $or: possibleOrdersPlaces },
+          {
+            showOnGID: true,
+            $or: possibleOrdersPlaces,
+          },
         ];
       }
 
@@ -1225,11 +1241,11 @@ router.post(
       }
       // Дата начала извлечения информации
       if (startDate) {
-        ordersMatchFilter.createDateTime = { $gt: new Date(startDate) };
+        ordersMatchFilter.actualCreateDateTime = { $gt: new Date(startDate) };
       }
 
       // Ищем данные, сортируя найденные распоряжения по времени их создания
-      const data = await Order.find(ordersMatchFilter).sort([['createDateTime', 'ascending']]) || [];
+      const data = await Order.find(ordersMatchFilter).sort([['actualCreateDateTime', 'ascending']]) || [];
 
       // Перед отправкой распоряжений ГИД форматирую их в соответствии с форматом предоставления данных ГИД
       res.status(OK).json(data.map((item) => {
@@ -1276,7 +1292,7 @@ router.post(
         return {
           ORDERID: item._id,
           ORDERTYPE: getOrderType(),
-          ORDERGIVINGTIME: item.createDateTime,
+          ORDERGIVINGTIME: item.actualCreateDateTime,
           STATION1,
           STATION2,
           ADDITIONALPLACEINFO,
@@ -1314,7 +1330,7 @@ router.post(
  * dncSectorId - id участка ДНЦ (из НСИ)
  */
 router.post(
-  '/getDNCCircularOrderAddressees',
+  '/DNCCircularOrderAddressees',
   // определяем действие, которое необходимо выполнить
   (req, _res, next) => { req.requestedAction = DY58_ACTIONS.GET_DATA_FOR_GID; next(); },
   // проверяем полномочия пользователя на выполнение запрошенного действия
@@ -1377,7 +1393,7 @@ router.post(
         .forEach((dsp) => {
           const station = getStationById(dsp.id);
           addDataToReturn({
-            fio: dsp.fio,
+            fio: dsp.fio.split(' ')[0], // нужна только фамилия
             post: dsp.post,
             station_UNMC: station.St_UNMC,
             stationGID_UNMC: station.St_GID_UNMC,
@@ -1409,7 +1425,7 @@ router.post(
           .filter((dspOperator) => dspOperator.fio)
           .forEach((dspOperator) => {
             addDataToReturn({
-              fio: dspOperator.fio,
+              fio: dspOperator.fio.split(' ')[0], // нужна только фамилия
               post: dspOperator.post,
               station_UNMC: station.St_UNMC,
               stationGID_UNMC: station.St_GID_UNMC,

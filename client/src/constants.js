@@ -234,6 +234,18 @@ export const STATION_FIELDS = Object.freeze({
 export const STATION_TRACK_FIELDS = Object.freeze({
   KEY: 'key',
   NAME: 'name',
+  ST_SuburbanReception: 'suburbanReception',
+  ST_PassengerReception: 'passengerReception',
+  ST_CargoReception: 'cargoReception',
+  ST_SuburbanDeparture: 'suburbanDeparture',
+  ST_PassengerDeparture: 'passengerDeparture',
+  ST_CargoDeparture: 'cargoDeparture',
+  ST_SuburbanPass: 'suburbanPass',
+  ST_PassengerPass: 'passengerPass',
+  ST_CargoPass: 'cargoPass',
+  ST_SpecialTrainReception: 'specialTrainReception',
+  ST_SpecialTrainDeparture: 'specialTrainDeparture',
+  ST_SpecialTrainPass: 'specialTrainPass',
 });
 
 export const STATION_WORK_PLACE_FIELDS = Object.freeze({

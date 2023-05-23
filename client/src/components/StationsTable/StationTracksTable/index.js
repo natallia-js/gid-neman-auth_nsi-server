@@ -233,17 +233,23 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
   /**
    * Правила отображения редактируемых и нередактируемых столбцов таблицы.
    */
-  const mergedColumns = columns.map((col) => {
+  const mergedColumns = columns.map((col) => { console.log(col)
     if (!col.editable) {
       return col;
     }
+
+    const isBooleanField = [STATION_TRACK_FIELDS.ST_SuburbanReception, STATION_TRACK_FIELDS.ST_PassengerReception,
+      STATION_TRACK_FIELDS.ST_CargoReception, STATION_TRACK_FIELDS.ST_SuburbanDeparture, STATION_TRACK_FIELDS.ST_PassengerDeparture,
+      STATION_TRACK_FIELDS.ST_CargoDeparture, STATION_TRACK_FIELDS.ST_SuburbanPass, STATION_TRACK_FIELDS.ST_PassengerPass,
+      STATION_TRACK_FIELDS.ST_CargoPass, STATION_TRACK_FIELDS.ST_SpecialTrainReception,
+      STATION_TRACK_FIELDS.ST_SpecialTrainDeparture, STATION_TRACK_FIELDS.ST_SpecialTrainPass].includes(col.dataIndex);
 
     return {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: 'text',
-        dataType: 'string',
+        inputType: isBooleanField ? 'boolean' : 'text',
+        dataType: isBooleanField ? 'boolean' : 'string',
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

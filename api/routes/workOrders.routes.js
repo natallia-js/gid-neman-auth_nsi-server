@@ -142,7 +142,7 @@ router.post(
 
       // Ищем распоряжения в основной коллекции распоряжений и сопоставляем их с распоряжениями,
       // найденными в рабочей коллекции распоряжений
-      if (workData && workData.length) {
+      if (workData?.length) {
         data = await Order.find({ _id: workData.map((item) => item.orderId) });
         data = data.map((item) => {
           const correspWorkDataObject = workData.find((wd) => String(wd.orderId) === String(item._id));
@@ -1085,7 +1085,7 @@ router.post(
  *
  * Данный запрос доступен любому лицу, наделенному соответствующим полномочием.
  * Принудительно завершить цепочку документов может только находящийся на дежурстве работник
- * того рабочего полигона, на котором было издано хотя бы одно распоряжение из этой цепочки.
+ * того ГЛОБАЛЬНОГО рабочего полигона, на котором было издано хотя бы одно распоряжение из этой цепочки.
  *
  * Информация о типе, id рабочего полигона (и id рабочего места) извлекается из токена пользователя.
  * Если этой информации в токене нет, то запрос не будет обработан.
@@ -1118,14 +1118,14 @@ router.post(
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Цепочка распоряжений не найдена' });
       }
-      // Смотрим, есть ли в цепочке распоряжение, изданное на рабочем полигоне, с которого пришел запрос
+      // Смотрим, есть ли в цепочке распоряжение, изданное на ГЛОБАЛЬНОМ рабочем полигоне, с которого пришел запрос
       const firstPoligonOrder = chainOrders.find((order) =>
         (order.workPoligon.type === userWorkPoligon.type) &&
-        (String(order.workPoligon.id) === String(userWorkPoligon.id)) &&
+        (String(order.workPoligon.id) === String(userWorkPoligon.id))/* &&
         (
           (!order.workPoligon.workPlaceId && !userWorkPoligon.workPlaceId) ||
           (order.workPoligon.workPlaceId && userWorkPoligon.workPlaceId && String(order.workPoligon.workPlaceId) === String(userWorkPoligon.workPlaceId))
-        )
+        )*/
       );
       if (!firstPoligonOrder) {
         await session.abortTransaction();

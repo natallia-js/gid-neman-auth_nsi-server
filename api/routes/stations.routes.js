@@ -51,7 +51,10 @@ const {
         attributes: ['St_ID', 'St_UNMC', 'St_GID_UNMC', 'St_Title', 'St_PENSI_ID', 'St_PENSI_UNMC'],
         include: [{
           model: TStationTrack,
-          attributes: ['ST_ID', 'ST_Name'],
+          attributes: ['ST_ID', 'ST_Name', 'ST_SuburbanReception', 'ST_PassengerReception', 'ST_CargoReception',
+                       'ST_SuburbanDeparture', 'ST_PassengerDeparture', 'ST_CargoDeparture', 'ST_SuburbanPass',
+                       'ST_PassengerPass', 'ST_CargoPass', 'ST_SpecialTrainReception', 'ST_SpecialTrainDeparture',
+                       'ST_SpecialTrainPass'],
         },
         {
           model: TStationWorkPlace,
