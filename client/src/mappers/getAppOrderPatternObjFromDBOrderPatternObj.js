@@ -10,7 +10,6 @@ import getAppChildPatternObjFromDBChildPatternObj from './getAppChildPatternObjF
  */
 const getAppOrderPatternObjFromDBOrderPatternObj = (dbOrderPatternObj) => {
   if (dbOrderPatternObj) {
-    if (dbOrderPatternObj.workPoligons)
     return {
       [ORDER_PATTERN_FIELDS.KEY]: dbOrderPatternObj._id,
       [ORDER_PATTERN_FIELDS.SERVICE]: dbOrderPatternObj.service,

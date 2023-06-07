@@ -162,7 +162,7 @@ export const OrderPatternsPage = () => {
    *
    */
   useEffect(() => {
-    if (!orderPatterns || !orderPatterns.length) {
+    if (!orderPatterns?.length) {
       setExistingOrderAffiliationTree([]);
       return;
     }
@@ -210,6 +210,8 @@ export const OrderPatternsPage = () => {
     };
 
     orderPatterns.forEach((orderPattern) => {
+      if (!orderPattern)
+        return;
       const theSameServiceElement = treeData.find((service) => service.title === orderPattern[ORDER_PATTERN_FIELDS.SERVICE]);
       // Существует ли в дереве узел с наименованием службы?
       if (!theSameServiceElement) {
