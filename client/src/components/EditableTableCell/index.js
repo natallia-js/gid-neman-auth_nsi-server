@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { STATION_FIELDS, SERVICE_FIELDS, POST_FIELDS } from '../../constants';
-import SpecifyWorkPoligon from '../SpecifyWorkPoligon';
+import SpecifyWorkPoligons from '../SpecifyWorkPoligons';
 
 const { Option } = Select;
 const ERR_VALIDATE_STATUS = 'error';
@@ -75,7 +75,7 @@ const EditableTableCell = ({
       break;
     case 'workPoligonSelect':
       inputNode =
-        <SpecifyWorkPoligon
+        <SpecifyWorkPoligons
           onError={handleError}
           availableStationWorkPoligons={stations || []}
           availableDNCSectorWorkPoligons={dncSectors || []}

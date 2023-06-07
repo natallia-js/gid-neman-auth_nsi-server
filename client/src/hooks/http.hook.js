@@ -35,7 +35,7 @@ export const useHttp = () => {
       if (body) {
         body = JSON.stringify({ ...body, applicationAbbreviation: CURR_APP_ABBREV_NAME });
         headers['Content-Type'] = 'application/json';
-      }      
+      }
       const response = await fetch(url, { method, body, headers, credentials: 'include' });
       const data = await response.json();
 

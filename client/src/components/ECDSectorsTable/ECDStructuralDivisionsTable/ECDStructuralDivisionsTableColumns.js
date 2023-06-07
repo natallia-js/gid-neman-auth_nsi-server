@@ -14,6 +14,7 @@ const ecdStructuralDivisionsTableColumns = (props) => {
     handleStartEditECDStructuralDivision,
     handleDelECDStructuralDivision,
     recsBeingProcessed,
+    getColumnSearchProps,
   } = props;
 
   return [
@@ -26,6 +27,7 @@ const ecdStructuralDivisionsTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(
         (a[ECD_STRUCTURAL_DIVISION_FIELDS.NAME] || '').toLowerCase(), (b[ECD_STRUCTURAL_DIVISION_FIELDS.NAME] || '').toLowerCase()),
+      ...getColumnSearchProps(ECD_STRUCTURAL_DIVISION_FIELDS.NAME),
     },
     {
       title: 'Должность',
@@ -36,6 +38,7 @@ const ecdStructuralDivisionsTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(
         (a[ECD_STRUCTURAL_DIVISION_FIELDS.POST] || '').toLowerCase(), (b[ECD_STRUCTURAL_DIVISION_FIELDS.POST] || '').toLowerCase()),
+      ...getColumnSearchProps(ECD_STRUCTURAL_DIVISION_FIELDS.POST),
     },
     {
       title: 'ФИО',
@@ -46,6 +49,7 @@ const ecdStructuralDivisionsTableColumns = (props) => {
       sortDirections: ['ascend', 'descend'],
       sorter: (a, b) => compareStrings(
         (a[ECD_STRUCTURAL_DIVISION_FIELDS.FIO] || '').toLowerCase(), (b[ECD_STRUCTURAL_DIVISION_FIELDS.FIO] || '').toLowerCase()),
+      ...getColumnSearchProps(ECD_STRUCTURAL_DIVISION_FIELDS.FIO),
     },
     {
       title: 'Позиция',

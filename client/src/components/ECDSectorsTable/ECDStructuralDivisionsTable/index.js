@@ -7,6 +7,7 @@ import { useHttp } from '../../../hooks/http.hook';
 import { ServerAPI, ECDSECTOR_FIELDS, ECD_STRUCTURAL_DIVISION_FIELDS } from '../../../constants';
 import getAppECDStructuralDivisionFromDBECDStructuralDivisionObj from '../../../mappers/getAppECDStructuralDivisionFromDBECDStructuralDivisionObj';
 import NewECDStructuralDivisionModal from '../../NewECDStructuralDivisionModal';
+import { useColumnSearchProps } from '../../../hooks/columnSearchProps.hook';
 
 
 /**
@@ -47,6 +48,9 @@ const ECDStructuralDivisionsTable = (props) => {
 
   // id записей, по которым запущен процесс обработки данных на сервере (удаление, редактирование)
   const [recsBeingProcessed, setRecsBeingProcessed] = useState([]);
+
+  // Для поиска данных в столбцах таблицы
+  const { getColumnSearchProps } = useColumnSearchProps({ useOnFilterEventProcessor: true });
 
 
   /**
@@ -243,6 +247,7 @@ const ECDStructuralDivisionsTable = (props) => {
     handleStartEditECDStructuralDivision,
     handleDelECDStructuralDivision,
     recsBeingProcessed,
+    getColumnSearchProps,
   });
 
   /**

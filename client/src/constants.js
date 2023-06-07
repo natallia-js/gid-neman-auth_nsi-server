@@ -350,7 +350,7 @@ export const ECD_STRUCTURAL_DIVISION_FIELDS = Object.freeze({
 
 export const ORDER_PATTERN_FIELDS = Object.freeze({
   KEY: '_id',
-  WORK_POLIGON: 'workPoligon',
+  WORK_POLIGONS: 'workPoligons',
   SERVICE: 'service',
   TYPE: 'type',
   CATEGORY: 'category',

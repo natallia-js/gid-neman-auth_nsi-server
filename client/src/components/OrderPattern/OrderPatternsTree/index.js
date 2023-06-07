@@ -16,7 +16,7 @@ import { EditOrderPatternElement } from '../EditOrderPatternElement';
 import objectId from '../../../generators/objectId.generator';
 import { OrderPatternsNodeType, SPECIAL_TRAIN_CATEGORIES } from '../constants';
 import getAppOrderPatternObjFromDBOrderPatternObj from '../../../mappers/getAppOrderPatternObjFromDBOrderPatternObj';
-import SpecifyWorkPoligon from '../../SpecifyWorkPoligon';
+import SpecifyWorkPoligons from '../../SpecifyWorkPoligons';
 
 const { Text, Title } = Typography;
 const { Search } = Input;
@@ -108,7 +108,7 @@ export const OrderPatternsTree = (props) => {
           [ORDER_PATTERN_FIELDS.TITLE]: getNodeTitleByNodeKey(selectedKeys[0], existingOrderAffiliationTree),
           [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: info.node.specialTrainCategories,
           [ORDER_PATTERN_FIELDS.ELEMENTS]: info.node.pattern,
-          [ORDER_PATTERN_FIELDS.WORK_POLIGON]: info.node.workPoligon,
+          [ORDER_PATTERN_FIELDS.WORK_POLIGONS]: info.node.workPoligons,
         });
         if (selectedOrderCategory) {
           setSelectedOrderCategory(null);
@@ -151,7 +151,7 @@ export const OrderPatternsTree = (props) => {
       [ORDER_PATTERN_FIELDS.TITLE]: selectedPattern[ORDER_PATTERN_FIELDS.TITLE],
       [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: selectedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
       [ORDER_PATTERN_FIELDS.ELEMENTS]: [...selectedPattern[ORDER_PATTERN_FIELDS.ELEMENTS]],
-      [ORDER_PATTERN_FIELDS.WORK_POLIGON]: selectedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
+      [ORDER_PATTERN_FIELDS.WORK_POLIGONS]: selectedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGONS],
     });
     if (patternEdited) {
       setPatternEdited(false);
@@ -344,7 +344,7 @@ export const OrderPatternsTree = (props) => {
           title: editedPattern[ORDER_PATTERN_FIELDS.TITLE],
           specialTrainCategories: editedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           elements: editedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-          workPoligon: editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
+          workPoligons: editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGONS],
         }
       );
       message(MESSAGE_TYPES.SUCCESS, res.message);
@@ -358,7 +358,7 @@ export const OrderPatternsTree = (props) => {
           [ORDER_PATTERN_FIELDS.TITLE]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.TITLE],
           [ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.SPECIAL_TRAIN_CATEGORIES],
           [ORDER_PATTERN_FIELDS.ELEMENTS]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.ELEMENTS],
-          [ORDER_PATTERN_FIELDS.WORK_POLIGON]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
+          [ORDER_PATTERN_FIELDS.WORK_POLIGONS]: editedAndTransformedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGONS],
         };
       })
       setEditedPattern(null);
@@ -477,16 +477,16 @@ export const OrderPatternsTree = (props) => {
 
 
   /**
-   * Запоминает правки в принадлежности распоряжения рабочему полигону.
+   * Запоминает правки в принадлежности распоряжения рабочим полигонам.
    */
-  const handleChangeWorkPoligon = (workPoligon) => {
+  const handleChangeWorkPoligons = (workPoligons) => {
     if (!editedPattern) {
       return;
     }
     setEditedPattern((value) => {
       return {
         ...value,
-        [ORDER_PATTERN_FIELDS.WORK_POLIGON]: workPoligon,
+        [ORDER_PATTERN_FIELDS.WORK_POLIGONS]: workPoligons,
       };
     });
     if (!patternEdited) {
@@ -575,7 +575,7 @@ export const OrderPatternsTree = (props) => {
                         isLeaf={true}
                         key={pattern.key}
                         title={nodeTitle}
-                        workPoligon={pattern.workPoligon}
+                        workPoligons={pattern.workPoligons}
                         type={pattern.type}
                         additionalInfo={pattern.additionalInfo}
                         pattern={pattern.pattern}
@@ -720,10 +720,10 @@ export const OrderPatternsTree = (props) => {
                       }
                     </Select>
 
-                    <Text strong>Принадлежность рабочему полигону</Text>
-                    <SpecifyWorkPoligon
-                      value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON]}
-                      onChange={handleChangeWorkPoligon}
+                    <Text strong>Принадлежность рабочим полигонам</Text>
+                    <SpecifyWorkPoligons
+                      value={editedPattern[ORDER_PATTERN_FIELDS.WORK_POLIGONS]}
+                      onChange={handleChangeWorkPoligons}
                       onError={handleWorkPoligonError}
                       availableStationWorkPoligons={stations}
                       availableDNCSectorWorkPoligons={dncSectors}

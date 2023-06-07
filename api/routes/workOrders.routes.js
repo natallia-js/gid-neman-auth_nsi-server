@@ -1113,7 +1113,7 @@ router.post(
 
     try {
       // Ищем все распоряжения указанной цепочки, сортируя их по возрастанию времени издания
-      const chainOrders = await Order.find({ "orderChain.chainId": orderChainId }).sort({ createDateTime: 1 }).session(session);
+      const chainOrders = await Order.find({ "orderChain.chainId": orderChainId }).sort({ actualCreateDateTime: 1 }).session(session);
       if (!chainOrders?.length) {
         await session.abortTransaction();
         return res.status(ERR).json({ message: 'Цепочка распоряжений не найдена' });

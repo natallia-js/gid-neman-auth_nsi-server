@@ -14,7 +14,7 @@ import {
   ServerAPI,
   SERVICE_FIELDS,
 } from '../../../constants';
-import SpecifyWorkPoligon from '../../SpecifyWorkPoligon';
+import SpecifyWorkPoligons from '../../SpecifyWorkPoligons';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -274,8 +274,8 @@ export const CreateOrderPattern = (props) => {
   };
 
 
-  const handleChangeWorkPoligon = (value) => {
-    form.setFieldsValue({ [ORDER_PATTERN_FIELDS.WORK_POLIGON]: value });
+  const handleChangeWorkPoligons = (value) => {
+    form.setFieldsValue({ [ORDER_PATTERN_FIELDS.WORK_POLIGONS]: value });
   };
 
   const handleWorkPoligonError = (errorMessage) => {
@@ -307,13 +307,13 @@ export const CreateOrderPattern = (props) => {
           { recsBeingAdded > 0 && <Text type="warning">На сервер отправлено {recsBeingAdded} новых записей. Ожидаю ответ...</Text> }
 
           <Form.Item
-            label={<Text strong>Рабочий полигон</Text>}
-            name={ORDER_PATTERN_FIELDS.WORK_POLIGON}
-            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON]) ? ERR_VALIDATE_STATUS : null}
-            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGON])}
+            label={<Text strong>Рабочие полигоны</Text>}
+            name={ORDER_PATTERN_FIELDS.WORK_POLIGONS}
+            validateStatus={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGONS]) ? ERR_VALIDATE_STATUS : null}
+            help={(orderPatternFieldsErrs && orderPatternFieldsErrs[ORDER_PATTERN_FIELDS.WORK_POLIGONS])}
           >
-            <SpecifyWorkPoligon
-              onChange={handleChangeWorkPoligon}
+            <SpecifyWorkPoligons
+              onChange={handleChangeWorkPoligons}
               onError={handleWorkPoligonError}
               availableStationWorkPoligons={stations}
               availableDNCSectorWorkPoligons={dncSectors}

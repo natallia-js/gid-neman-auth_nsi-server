@@ -183,7 +183,7 @@ export const OrderPatternsPage = () => {
           orderCategory: orderPattern[ORDER_PATTERN_FIELDS.CATEGORY],
         },
         positionInPatternsCategory: orderPattern[ORDER_PATTERN_FIELDS.POSITION_IN_PATTERNS_CATEGORY],
-        workPoligon: orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGON],
+        workPoligons: orderPattern[ORDER_PATTERN_FIELDS.WORK_POLIGONS],
       };
     };
 

@@ -1131,6 +1131,7 @@ router.post(
  * заново проходить процедуру аутентификации).
  *
  * Обязательный параметр запроса - applicationAbbreviation!
+ * "mongoURI": "mongodb://mongo-root:passw0rd@10.23.101.86:27017,10.23.101.202:27017?replicaSet=rs0&readPreference=primaryPreferred",
  */
 router.post(
   '/whoAmI',

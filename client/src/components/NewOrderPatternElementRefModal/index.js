@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Checkbox, Modal, Form, Input, Button, Typography } from 'antd';
 import { ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS } from '../../constants';
-import SpecifyWorkPoligon from '../SpecifyWorkPoligon';
+import SpecifyWorkPoligons from '../SpecifyWorkPoligons';
 
 const { Text } = Typography;
 
@@ -68,7 +68,7 @@ const NewOrderPatternElementRefModal = ({
   };
 
 
-  const handleChangeWorkPoligon = (value) => {
+  const handleChangeWorkPoligons = (value) => {
     form.setFieldsValue({ [ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]: value });
   };
 
@@ -123,8 +123,8 @@ const NewOrderPatternElementRefModal = ({
           validateStatus={(recFieldsErrs && recFieldsErrs[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON]) ? ERR_VALIDATE_STATUS : null}
           help={(recFieldsErrs && recFieldsErrs[ORDER_PATTERN_ELEMENT_REF_POSSIBLE_DATA_FIELDS.WORK_POLIGON])}
         >
-          <SpecifyWorkPoligon
-            onChange={handleChangeWorkPoligon}
+          <SpecifyWorkPoligons
+            onChange={handleChangeWorkPoligons}
             onError={handleWorkPoligonError}
             availableStationWorkPoligons={stations}
             availableDNCSectorWorkPoligons={dncSectors}

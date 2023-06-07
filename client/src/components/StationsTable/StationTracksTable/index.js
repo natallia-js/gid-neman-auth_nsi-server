@@ -233,7 +233,7 @@ const StationTracksTable = ({ stationId, stationTracks, setTableDataCallback }) 
   /**
    * Правила отображения редактируемых и нередактируемых столбцов таблицы.
    */
-  const mergedColumns = columns.map((col) => { console.log(col)
+  const mergedColumns = columns.map((col) => {
     if (!col.editable) {
       return col;
     }

@@ -151,7 +151,7 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
         { "timeSpan.end": { $gt: new Date() } },
       ],
       specialTrainCategories: SPECIAL_ORDER_DSP_TAKE_DUTY_SIGN,
-    }).sort({ createDateTime: -1 }).limit(1).session(session);
+    }).sort({ actualCreateDateTime: -1 }).limit(1).session(session);
 
     activeTakePassOrder = activeTakePassOrder?.length ? activeTakePassOrder[0] : null;
 
@@ -358,18 +358,60 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       };
 
       // Если необходимо включить создаваемое распоряжение в существующую цепочку распоряжений,
-      // то ищем сведения о существующей цепочке
+      // то ищем сведения о существующей цепочке и проводим дополнительный анализ для уточнения даты окончания
+      // действия цепочки документов.
       if (orderChainId) {
-        // для этого берем первое распоряжение в указанной цепочке
-        const firstChainOrder = await Order.findById(orderChainId).session(session);
-        if (!firstChainOrder) {
+        const theSameChainOrders = await Order.find({ "orderChain.chainId": orderChainId })
+          .sort({ actualCreateDateTime: 1 }).session(session);
+        if (!theSameChainOrders?.length) {
           await session.abortTransaction();
           return res.status(ERR).json({ message: 'Распоряжение не может быть издано: не найдена цепочка распоряжений, которой оно принадлежит' });
         }
+        // Дата окончания действия цепочки, как правило, равна дате издания последнего распоряжения в этой цепочке,
+        // исключение - случай издания распоряжения в рамках той цепочки, в которой уже есть (одно из):
+        //  - распоряжение ДНЦ о закрытии перегона, за которым не следует распоряжение об открытии перегона
+        //  - заявка, за которой не следует уведомление
+        //  - приказ/запрещение ЭЦД, за которым не следует уведомление/отмена запрещения ЭЦД
+        // Если есть хотя бы один документ, ожидающий прихода закрывающего его документа, то цепочка распоряжений не должна
+        // закрыться после издания текущего документа, т.е. дата окончания действия цепочки не должна меняться.
+        // Исключение - когда текущий документ сам является закрывающим в отношении ожидающего закрытия документа цепочки,
+        // при этом других типов ожидающих закрытия документов нет.
+        if (orderChainInfo.chainEndDateTime) {
+          const nonClosedDoc = theSameChainOrders.find((order) =>
+            (
+              order.type === ORDER_PATTERN_TYPES.REQUEST &&
+              !theSameChainOrders.find((order2) => order2.type === ORDER_PATTERN_TYPES.NOTIFICATION && order2.actualCreateDateTime > order.actualCreateDateTime)
+            ) ||
+            (
+              order.type === ORDER_PATTERN_TYPES.ORDER && order.specialTrainCategories?.includes(SPECIAL_CLOSE_BLOCK_ORDER_SIGN) &&
+              !theSameChainOrders.find((order2) => order2.type === ORDER_PATTERN_TYPES.ORDER && order2.specialTrainCategories?.includes(SPECIAL_OPEN_BLOCK_ORDER_SIGN) && order2.actualCreateDateTime > order.actualCreateDateTime)
+            ) ||
+            (
+              [ORDER_PATTERN_TYPES.ECD_ORDER, ORDER_PATTERN_TYPES.ECD_PROHIBITION].includes(order.type) &&
+              !theSameChainOrders.find((order2) => order2.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order2.actualCreateDateTime > order.actualCreateDateTime)
+            )
+          );
+          let nonClosedDocExists = true;
+          switch (nonClosedDoc.type) {
+            case ORDER_PATTERN_TYPES.ORDER:
+              if (type == ORDER_PATTERN_TYPES.ORDER && specialTrainCategories?.includes(SPECIAL_OPEN_BLOCK_ORDER_SIGN))
+                nonClosedDocExists = false;
+              break;
+            case ORDER_PATTERN_TYPES.ECD_ORDER:
+            case ORDER_PATTERN_TYPES.ECD_PROHIBITION:
+              if (type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION)
+                nonClosedDocExists = false;
+              break;
+          }
+          if (nonClosedDocExists)
+            orderChainInfo.chainEndDateTime = null;
+        }
+
         // редактируем информацию о цепочке создаваемого распоряжения
         orderChainInfo.chainId = orderChainId;
-        orderChainInfo.chainStartDateTime = firstChainOrder.orderChain.chainStartDateTime;
-        // обновляем информацию о конечной дате у всех распоряжений цепочки
+        orderChainInfo.chainStartDateTime = theSameChainOrders[0].orderChain.chainStartDateTime;
+
+        // в текущей цепочке обновляем информацию о конечной дате у всех распоряжений цепочки
         await Order.updateMany(
           // filter
           { "orderChain.chainId": orderChainInfo.chainId },
@@ -1365,7 +1407,7 @@ router.post(
       };
 
       // Ищем последний по времени издания циркуляр на указанном участке ДНЦ, удовлетворяющий условиям поиска
-      let lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
+      let lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ actualCreateDateTime: -1 }).limit(1);
       lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
 
       if (!lastActualCircularOrder?.dspToSend?.length)
@@ -1414,7 +1456,7 @@ router.post(
       for (let station of stationsData) {
         // Для очередной станции ищем последнюю актуальную (в заданный промежуток времени) запись о приеме-сдаче дежурства
         circularOrderSearchConditions["workPoligon.id"] = station.St_ID;
-        lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ createDateTime: -1 }).limit(1);
+        lastActualCircularOrder = await Order.find(circularOrderSearchConditions).sort({ actualCreateDateTime: -1 }).limit(1);
         lastActualCircularOrder = lastActualCircularOrder?.length ? lastActualCircularOrder[0] : null;
         // Если в ней имеются адресаты на станции, то добавляю их в результирующий набор данных,
         // предварительно убедившись в том, что запись о лице с такими же ФИО, должностью и станцией не была уже
@@ -1574,7 +1616,7 @@ router.post(
 
       // Ищем последний документ цепочки, отличный от документа order, найденного выше
       let lastOrderInChain = await Order.find({ _id: { $ne: orderId }, "orderChain.chainId": order.orderChain.chainId })
-        .sort({ createDateTime: -1 }).limit(1).session(session);
+        .sort({ actualCreateDateTime: -1 }).limit(1).session(session);
 
       lastOrderInChain = lastOrderInChain?.length ? lastOrderInChain[0] : null;
 

@@ -8,8 +8,9 @@ import { useECDSectors } from '../../serverRequests/ecdSectors';
 const { Option } = Select;
 
 
-const SpecifyWorkPoligon = (props) => {
+const SpecifyWorkPoligons = (props) => {
   const {
+    // массив объектов {type,id} - типы и идентификаторы рабочих полигонов (у всех полигонов типы должны быть одинаковыми)
     value = null,
     onChange,
     onError,
@@ -20,17 +21,16 @@ const SpecifyWorkPoligon = (props) => {
 
   // true - идет процесс получения данных о рабочих полигонах
   const [gettingWorkPoligonsData, setGettingWorkPoligonsData] = useState(false);
-  // тип выбранного рабочего полигона
-  const [selectedWorkPoligonType, setSelectedWorkPoligonType] = useState(value?.type || ALL_SECTORS_MARK);
-  // id выбранного рабочего полигона
-  const [selectedWorkPoligonId, setSelectedWorkPoligonId] = useState(value?.id || null);
+  // тип выбранных рабочих полигонов
+  const [selectedWorkPoligonType, setSelectedWorkPoligonType] = useState(value?.length ? value[0].type : ALL_SECTORS_MARK);
+  // id выбранных рабочих полигонов
+  const [selectedWorkPoligonIds, setSelectedWorkPoligonIds] = useState(value?.length ? value.map(el => el.id) : []);
   // информация обо всех рабочих полигонах выбранного типа
   const [workPoligons, setWorkPoligons] = useState([]);
 
   const { getShortStationsData } = useStations();
   const { getShortDNCSectorsData } = useDNCSectors();
   const { getShortECDSectorsData } = useECDSectors();
-
 
   const getWorkPoligonsOfGivenType = async () => {
     let workPoligonsArray = [];
@@ -78,7 +78,7 @@ const SpecifyWorkPoligon = (props) => {
 
   const handleChangeWorkPoligonType = (value) => {
     setSelectedWorkPoligonType(value);
-    setSelectedWorkPoligonId(null);
+    setSelectedWorkPoligonIds([]);
   };
 
 
@@ -87,35 +87,35 @@ const SpecifyWorkPoligon = (props) => {
   }, [selectedWorkPoligonType]);
 
 
-  const handleChangeWorkPoligonId = (value) => {
-    setSelectedWorkPoligonId(value);
+  const handleChangeWorkPoligonIds = (value) => {
+    setSelectedWorkPoligonIds(value);
   };
 
 
-  const getWorkPoligonName = () => {
-    if (!selectedWorkPoligonType || !selectedWorkPoligonId) return null;
+  const getWorkPoligonName = (workPoligonId) => {
+    if (!selectedWorkPoligonType) return null;
     switch (selectedWorkPoligonType) {
       case WORK_POLIGON_TYPES.STATION:
         if (!availableStationWorkPoligons?.length) return null;
-        return availableStationWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+        return availableStationWorkPoligons.find((el) => el.value === workPoligonId).label;
       case WORK_POLIGON_TYPES.DNC_SECTOR:
         if (!availableDNCSectorWorkPoligons?.length) return null;
-        return availableDNCSectorWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+        return availableDNCSectorWorkPoligons.find((el) => el.value === workPoligonId).label;
       case WORK_POLIGON_TYPES.ECD_SECTOR:
         if (!availableECDSectorWorkPoligons?.length) return null;
-        return availableECDSectorWorkPoligons.find((el) => el.value === selectedWorkPoligonId).label;
+        return availableECDSectorWorkPoligons.find((el) => el.value === workPoligonId).label;
     }
     return null;
   }
 
 
   useEffect(() => {
-    if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonId) {
+    if (selectedWorkPoligonType === ALL_SECTORS_MARK || !selectedWorkPoligonIds.length) {
       onChange(null);
     } else {
-      onChange({ type: selectedWorkPoligonType, id: selectedWorkPoligonId, name: getWorkPoligonName() });
+      onChange(selectedWorkPoligonIds.map(el => ({ type: selectedWorkPoligonType, id: el, name: getWorkPoligonName(el) })));
     }
-  }, [selectedWorkPoligonId]);
+  }, [selectedWorkPoligonIds]);
 
 
   return (
@@ -135,17 +135,24 @@ const SpecifyWorkPoligon = (props) => {
         (selectedWorkPoligonType !== ALL_SECTORS_MARK) &&
         <Col flex="auto">
           <Select
-            options={workPoligons}
-            value={selectedWorkPoligonId}
+            mode="multiple"
             style={{ width: '100%' }}
+            value={selectedWorkPoligonIds}
             loading={gettingWorkPoligonsData}
-            onChange={handleChangeWorkPoligonId}
-            dropdownMatchSelectWidth={false}
-          />
+            onChange={handleChangeWorkPoligonIds}
+          >
+            {
+              workPoligons.map(wp =>
+                <Option key={wp.value} value={wp.value}>
+                  {wp.label}
+                </Option>
+              )
+            }
+          </Select>
         </Col>
       }
     </Row>
   );
 };
 
-export default SpecifyWorkPoligon;
+export default SpecifyWorkPoligons;
