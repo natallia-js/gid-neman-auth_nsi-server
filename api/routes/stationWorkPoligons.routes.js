@@ -297,18 +297,27 @@ router.post(
     try {
       // Вначале по ГИД-кодам ЕСР станций найдем их id
       const { TStation } = require('../models/TStation');
-      let stationIds = await TStation.findAll({ raw: true, attributes: ['St_ID'], where: { St_GID_UNMC: stationUNMCs } });
-      if (!stationIds?.length)
+      let stationsData = await TStation.findAll({ raw: true, attributes: ['St_ID', 'St_Title'], where: { St_GID_UNMC: stationUNMCs } });
+      if (!stationsData?.length)
         return res.status(ERR).json({ message: `Указанные станции не найдены: ${stationUNMCs}` });
-      stationIds = stationIds.map((el) => el.St_ID);
 
       // Ищем id пользователей и id соответствующих им рабочих полигонов-станций (сюда же войдут пользователи,
       // зарегистрированные лишь на рабочих местах операторов на станциях)
       const { QueryTypes } = require('sequelize');
       const userWorkPoligons = await req.sequelize.query(
-        `SELECT DISTINCT SWP_UserID FROM TStationWorkPoligons WHERE SWP_StID IN (${stationIds})`,
+        `SELECT DISTINCT SWP_UserID, SWP_StID FROM TStationWorkPoligons WHERE SWP_StID IN (${stationsData.map((el) => el.St_ID)})`,
         { type: QueryTypes.SELECT }
       );
+
+      const getUserStationWorkPoligonTitle = (userId) => {
+        const userWorkPoligon = userWorkPoligons.find((userWP) => String(userWP.SWP_UserID) === String(userId));
+        if (userWorkPoligon) {
+          const stationData = stationsData.find((stationData) => stationData.St_ID === userWorkPoligon.SWP_StID);
+          if (stationData)
+            return stationData.St_Title;
+        }
+        return null;
+      }
 
       let dataToReturn = [];
 
@@ -334,6 +343,7 @@ router.post(
                 fatherName: user.fatherName,
                 surname: user.surname,
                 post: user.post,
+                stationTitle: getUserStationWorkPoligonTitle(user._id),
                 changed: true,
               };
             } else {
