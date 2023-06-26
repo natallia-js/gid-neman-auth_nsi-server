@@ -335,17 +335,17 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
       orderChainId, dispatchedOnOrder, showOnGID, idOfTheOrderToCancel, draftId, additionalWorkers,
     } = req.body;
 
+    // Генерируем id нового распоряжения
+    const newOrderObjectId = new mongoose.Types.ObjectId();
+
     const actionTitle = 'Издание документа';
     const actionParams = {
-      userId: req.user.userId, user: userPostFIOString(req.user),
+      userId: req.user.userId, user: userPostFIOString(req.user), orderId: newOrderObjectId,
       type, orderNumSaveType, number, createDateTime, actualCreateDateTime, place, timeSpan, orderText,
       dncToSend, dspToSend, ecdToSend, otherToSend,
       workPoligonTitle, createdOnBehalfOf, specialTrainCategories,
       orderChainId, dispatchedOnOrder, showOnGID, idOfTheOrderToCancel, draftId, additionalWorkers,
     };
-
-    // Генерируем id нового распоряжения
-    const newOrderObjectId = new mongoose.Types.ObjectId();
 
     try {
       // Полагаем по умолчанию, что распоряжение принадлежит цепочке, в которой оно одно
@@ -375,8 +375,10 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
         // Если есть хотя бы один документ, ожидающий прихода закрывающего его документа, то цепочка распоряжений не должна
         // закрыться после издания текущего документа, т.е. дата окончания действия цепочки не должна меняться.
         // Исключение - когда текущий документ сам является закрывающим в отношении ожидающего закрытия документа цепочки,
-        // при этом других типов ожидающих закрытия документов нет.
-        if (orderChainInfo.chainEndDateTime) {
+        // при этом других типов ожидающих закрытия документов нет либо текущий документ является распоряжением ДНЦ об открытии
+        // (пути) станции / перегона.
+        if (orderChainInfo.chainEndDateTime && (type !== ORDER_PATTERN_TYPES.ORDER || !specialTrainCategories || !specialTrainCategories.includes(SPECIAL_OPEN_BLOCK_ORDER_SIGN))) {
+          // ищем первый в цепочке "открывающий" документ, на который не приходил "закрывающий" его документ
           const nonClosedDoc = theSameChainOrders.find((order) =>
             (
               order.type === ORDER_PATTERN_TYPES.REQUEST &&
@@ -391,17 +393,22 @@ async function formOrderCopiesForDSPAndOtherStationReceivers(props) {
               !theSameChainOrders.find((order2) => order2.type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION && order2.actualCreateDateTime > order.actualCreateDateTime)
             )
           );
+          // проверяем, нужно ли продолжать держать цепочку открытой
           let nonClosedDocExists = true;
-          switch (nonClosedDoc.type) {
-            case ORDER_PATTERN_TYPES.ORDER:
-              if (type == ORDER_PATTERN_TYPES.ORDER && specialTrainCategories?.includes(SPECIAL_OPEN_BLOCK_ORDER_SIGN))
-                nonClosedDocExists = false;
-              break;
-            case ORDER_PATTERN_TYPES.ECD_ORDER:
-            case ORDER_PATTERN_TYPES.ECD_PROHIBITION:
-              if (type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION)
-                nonClosedDocExists = false;
-              break;
+          if (nonClosedDoc) {
+            switch (nonClosedDoc.type) {
+              case ORDER_PATTERN_TYPES.ORDER:
+                if (type === ORDER_PATTERN_TYPES.ORDER && specialTrainCategories?.includes(SPECIAL_OPEN_BLOCK_ORDER_SIGN))
+                  nonClosedDocExists = false;
+                break;
+              case ORDER_PATTERN_TYPES.ECD_ORDER:
+              case ORDER_PATTERN_TYPES.ECD_PROHIBITION:
+                if (type === ORDER_PATTERN_TYPES.ECD_NOTIFICATION)
+                  nonClosedDocExists = false;
+                break;
+            }
+          } else {
+            nonClosedDocExists = false;
           }
           if (nonClosedDocExists)
             orderChainInfo.chainEndDateTime = null;

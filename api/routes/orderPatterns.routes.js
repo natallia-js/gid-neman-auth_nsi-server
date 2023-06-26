@@ -72,6 +72,8 @@ router.post(
       return res.status(ERR).json({ message: 'У Вас нет права просматривать шаблоны документов указанного рабочего полигона' });
     }
 
+    console.log(workPoligonType, workPoligonId, isMainAdmin(req))
+
     try {
       var dataProjection = {
         __v: false,
@@ -82,6 +84,11 @@ router.post(
 
       let data;
       let matchFilter;
+      const personalPatternFilter = {
+        $or: [
+          { personalPattern: { $exists: false } },
+          { personalPattern: userId }
+      ] };
       if (!isMainAdmin(req)) {
         matchFilter = {
           $and: [
@@ -92,14 +99,13 @@ router.post(
             { $or: [
               { workPoligons: { $exists: false } },
               { workPoligons: [] },
+              { workPoligons: null },
+              { workPoligons: undefined },
               { workPoligons: { $elemMatch: { type: userWorkPoligonType, id: userWorkPoligonId } } },
             ] },
             // Шаблоны распоряжений не должны принадлежать конкретному лицу либо принадлежать лицу,
             // производящему запрос
-            { $or: [
-              { personalPattern: { $exists: false } },
-              { personalPattern: userId }
-            ] },
+            personalPatternFilter,
           ],
         };
       } else {
@@ -107,11 +113,7 @@ router.post(
         // не принадлежащих ему. При необходимости, учитываем рабочий полигон.
         matchFilter = {
           $and: [
-            { $or: [
-                { personalPattern: { $exists: false } },
-                { personalPattern: userId },
-              ],
-            },
+            personalPatternFilter,
           ],
         };
         if (workPoligonType && workPoligonId) {
