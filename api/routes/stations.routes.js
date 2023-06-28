@@ -215,6 +215,46 @@ router.post(
 
 
 /**
+ * Обрабатывает запрос на получение массива кодов ЕСР (ПЭ НСИ) станций, соответствующих заданным кодам ЕСР (ГИД).
+ *
+ * Предполагается, что данный запрос будет выполняться службой (программой, установленной на рабочем месте ДНЦ).
+ * Полномочия службы на выполнение данного действия не проверяем.
+ *
+ * Параметры тела запроса:
+ * gidESRStationCodes - массив ЕСР-кодов ГИД станций
+ */
+router.post(
+  '/esrCodesByGIDCodes',
+  // определяем действие, которое необходимо выполнить
+  (req, _res, next) => { req.requestedAction = AUTH_NSI_ACTIONS.GET_STATION_ESR_CODES_BY_GID_ESR_CODES; next(); },
+  // проверяем полномочия пользователя на выполнение запрошенного действия
+  hasUserRightToPerformAction,
+  async (req, res) => {
+    // Считываем находящиеся в пользовательском запросе данные
+    const { gidESRStationCodes } = req.body;
+
+    try {
+      const data = await TStation.findAll({
+        attributes: ['St_UNMC', 'St_GID_UNMC'],
+        where: { St_GID_UNMC: gidESRStationCodes },
+      });
+      const sortedResultArray = (gidESRStationCodes || []).map(code => (data.find(el => el.St_GID_UNMC === code) || {}).St_UNMC);
+      res.status(OK).json(sortedResultArray);
+
+    } catch (error) {
+      addError({
+        errorTime: new Date(),
+        action: 'Получение списка кодов ЕСР станций по кодам ЕСР ГИД станций',
+        error: error.message,
+        actionParams: { gidESRStationCodes },
+      });
+      res.status(UNKNOWN_ERR).json({ message: `${UNKNOWN_ERR_MESS}. ${error.message}` });
+    }
+  }
+);
+
+
+/**
  * Обрабатывает запрос на получение списка станций и их рабочих мест по заданным id станций.
  * Если id станций не указаны, то возвращает список всех станций.
  *
